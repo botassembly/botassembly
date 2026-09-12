@@ -1,0 +1,76 @@
+---
+title: botassembly
+head:
+  - tag: title
+    content: botassembly
+description: "A folder of markdown files runs as an agent workflow. Folders are the control flow, a file is a stage, and every run leaves a record on disk."
+template: splash
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import Lockup from '../../components/Lockup.astro';
+import Walkthrough from '../../components/Walkthrough.astro';
+
+<Lockup />
+
+<div class="ba-story">
+	<section class="ba-story__card">
+		<h2>Who it is for</h2>
+		<p>You own the work and you do not write code. You describe the procedure step by step, the way you would hand it to a new colleague. The work runs on its own, it repeats, and it waits for nobody.</p>
+	</section>
+	<section class="ba-story__card">
+		<h2>What it is</h2>
+		<p>botassembly is a specification and a runtime. The procedure lives in a folder of plain files. The runtime walks the folder, runs the checks you wrote, and writes down what happened.</p>
+	</section>
+	<section class="ba-story__card">
+		<h2>Why it holds</h2>
+		<p><strong>Understandable.</strong> A person reads the instructions and the record without installing anything. <strong>Durable.</strong> The files live in git and outlive the program that ran them. <strong>Portable.</strong> The format names no program.</p>
+	</section>
+</div>
+
+<p class="ba-lead-in">Twelve files, one run. Step through the folder.</p>
+
+<Walkthrough />
+
+<div class="ba-actions">
+	<a class="ba-button ba-button--filled" href="/guides/first-assembly/">Install and run one</a>
+	<a class="ba-button" href="/guides/authoring-assemblies/">Build your own</a>
+</div>
+
+## Where to go next
+
+<CardGrid>
+	<Card title="The specification" icon="open-book">
+		The format is written down one document per part: the folder layout, a stage's options, the three checks, slots, the graph, and the record. Beside it sit 143 conformance cases. Each case names a command and the exact output it must produce, so a runtime either accepts the folder or refuses it for a stated reason.
+
+		[Read the specification](/specification/overview/) · [Conformance](/specification/conformance/) · [The principles](/principles/)
+	</Card>
+	<Card title="The runtime" icon="rocket">
+		`bot` is one implementation of that format. `bot assembly check` resolves every stage and refuses a bad folder without calling a model or spending money. `bot run start` calls the provider you configured and seals the record. The format and the runtime carry separate version numbers.
+
+		[Install and run one](/guides/first-assembly/) · [Operating runs](/guides/install-and-use/) · [Format and runtime](/format-and-runtime/)
+	</Card>
+	<Card title="The use cases" icon="puzzle">
+		Four folders of everyday knowledge work, each one a step up. `hello` greets a new teammate in one stage. `triage` sorts a customer request into urgent or routine, and the walkthrough above builds it. `brief` turns a week of team notes into a digest, fanning out and looping. `outline` plans a report from a rough topic by calling itself.
+
+		<a href="https://github.com/botassembly/botassembly/tree/main/examples/hello"><code>hello</code></a> · <a href="https://github.com/botassembly/botassembly/tree/main/examples/triage"><code>triage</code></a> · <a href="https://github.com/botassembly/botassembly/tree/main/examples/brief"><code>brief</code></a> · <a href="https://github.com/botassembly/botassembly/tree/main/examples/outline"><code>outline</code></a>
+	</Card>
+</CardGrid>
+
+## What it is not
+
+<Aside type="caution" title="Know this before you pilot it">
+	**Not a sandbox.** Commands, hooks, gates, and subprocesses use your filesystem and network authority. Contain an untrusted folder with the operating system or a container.
+
+	**No run-wide budget.** A stage carries a timeout and concurrency has a width. Nothing bounds a run as a whole: no deadline, no cost budget, no disk cap.
+
+	**Pre-1.0.** Assembly and record contracts may change without migrations before 1.0. Version 1.0 is the first promised compatibility boundary.
+
+	**Linux only.** Linux with Node 22.22 or newer is the supported platform, because the checks prove it there. macOS may work and is not verified. Windows is not supported.
+</Aside>
+
+<footer class="ba-footer">
+	<a href="https://github.com/botassembly/botassembly">github.com/botassembly/botassembly</a>
+	<span>MIT licensed</span>
+	<span>Built by Ian Maurer</span>
+</footer>

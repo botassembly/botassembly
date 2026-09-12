@@ -1,0 +1,8 @@
+#!/bin/sh
+# success hook — append one line to the run log when a log is configured.
+# Set BOT_HOOK_LOG to a writable file to collect the three hook lines.
+set -eu
+[ -n "${BOT_HOOK_LOG:-}" ] || exit 0
+printf '%s\t%s\tCAUSE=%s\tREASON=%s\tINPUT=%s\tOUTPUT=%s\n' \
+	"$(date -u +%Y-%m-%dT%H:%M:%SZ)" "success" "${CAUSE:-}" "${REASON:-}" "${INPUT:-}" "${OUTPUT:-}" \
+	>> "$BOT_HOOK_LOG"

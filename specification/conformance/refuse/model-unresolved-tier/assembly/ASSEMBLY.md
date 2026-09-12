@@ -1,0 +1,5 @@
+---
+model: example-model
+---
+
+Purpose.

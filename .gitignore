@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+credentials.json
+auth.json
+
+# Raw run folders contain provider sessions and may capture the caller's environment.
+examples/runs/
+
+# agent worktrees
+.claude/

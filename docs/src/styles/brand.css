@@ -1,0 +1,1656 @@
+/* botassembly brand theme for Starlight.
+   One file. Every color and face is a variable; no rule hard-codes either.
+   Palette: Catppuccin Mocha (dark) and Catppuccin Latte (light).
+   Type: Outfit display, Noto Sans body, Ioskeley Mono machine text.
+   Starlight's own default is dark, so :root carries Mocha and
+   :root[data-theme='light'] carries Latte. */
+
+/* ---- Faces. Self-hosted under /fonts/, SIL OFL 1.1. See LICENSES.md. ---- */
+
+@font-face {
+	font-family: 'Outfit';
+	src: url('/fonts/Outfit-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Outfit';
+	src: url('/fonts/Outfit-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Ioskeley Mono';
+	src: url('/fonts/IoskeleyMono-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Ioskeley Mono';
+	src: url('/fonts/IoskeleyMono-SemiBold.woff2') format('woff2');
+	font-weight: 600 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+	/* The three type roles. Swapping a face is one edit here. */
+	--ba-font-display: 'Outfit', system-ui, sans-serif;
+	--ba-font-body: 'Noto Sans', system-ui, sans-serif;
+	--ba-font-mono: 'Ioskeley Mono', ui-monospace, 'JetBrains Mono', monospace;
+
+	--sl-font: var(--ba-font-body);
+	--sl-font-mono: var(--ba-font-mono);
+}
+
+/* ---- Dark: Catppuccin Mocha. Starlight's :root is its dark mode. ---- */
+
+:root,
+::backdrop {
+	/* Brand roles */
+	--ba-ground: #1e1e2e;
+	--ba-card: #181825;
+	--ba-line: #313244;
+	--ba-ink: #cdd6f4;
+	--ba-muted: #a6adc8;
+	--ba-accent: #cba6f7;
+	--ba-accent-on: #11111b;
+	--ba-wash: #313244;
+	--ba-wash-line: #45475a;
+
+	/* Text ramp: gray-1 is nearest the ink, gray-6 nearest the ground. */
+	--sl-color-white: var(--ba-ink);
+	--sl-color-gray-1: #bac2de;
+	--sl-color-gray-2: var(--ba-muted);
+	--sl-color-gray-3: #9399b2;
+	--sl-color-gray-4: #6c7086;
+	--sl-color-gray-5: #45475a;
+	--sl-color-gray-6: #313244;
+	--sl-color-gray-7: #181825;
+	--sl-color-black: var(--ba-ground);
+
+	/* Accent: mauve. -high is link and button text, -low is a fill.
+	   Mauve itself clears 8:1 on the ground, so links keep the brand hue. */
+	--sl-color-accent: var(--ba-accent);
+	--sl-color-accent-high: var(--ba-accent);
+	--sl-color-accent-low: #312860;
+
+	/* Surfaces. Sidebar and nav sit on the card, content on the ground. */
+	/* Body text is subtext1, one step off the ink, so headings still lead. */
+	--sl-color-text: var(--sl-color-gray-1);
+	--sl-color-text-accent: var(--sl-color-accent-high);
+	--sl-color-text-invert: var(--ba-accent-on);
+	--sl-color-bg: var(--ba-ground);
+	--sl-color-bg-nav: var(--ba-card);
+	--sl-color-bg-sidebar: var(--ba-card);
+	--sl-color-bg-inline-code: var(--ba-wash);
+	/* Filled buttons and the active sidebar item sit on the accent itself. */
+	--sl-color-bg-accent: var(--ba-accent);
+
+	/* Rules */
+	--sl-color-hairline-light: var(--ba-wash-line);
+	--sl-color-hairline: var(--ba-line);
+	--sl-color-hairline-shade: #11111b;
+	--sl-color-backdrop-overlay: rgba(17, 17, 27, 0.72);
+
+	/* Semantic hues, Mocha. Asides and badges use these. */
+	--sl-color-blue: #89b4fa;
+	--sl-color-blue-high: #b8d4fd;
+	--sl-color-blue-low: #1e3a5f;
+	--sl-color-green: #a6e3a1;
+	--sl-color-green-high: #c9f0c6;
+	--sl-color-green-low: #24422a;
+	--sl-color-orange: #fab387;
+	--sl-color-orange-high: #fcd2b8;
+	--sl-color-orange-low: #4a3220;
+	--sl-color-purple: #cba6f7;
+	--sl-color-purple-high: #ddc9fb;
+	--sl-color-purple-low: #312860;
+	--sl-color-red: #f38ba8;
+	--sl-color-red-high: #f8bdcd;
+	--sl-color-red-low: #4d2333;
+}
+
+/* ---- Light: Catppuccin Latte. ---- */
+
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+	--ba-ground: #eff1f5;
+	--ba-card: #ffffff;
+	--ba-line: #ccd0da;
+	--ba-ink: #4c4f69;
+	--ba-muted: #6c6f85;
+	--ba-accent: #8839ef;
+	--ba-accent-on: #eff1f5;
+	--ba-wash: #e6e9ef;
+	--ba-wash-line: #dce0e8;
+
+	--sl-color-white: var(--ba-ink);
+	--sl-color-gray-1: #5c5f77;
+	--sl-color-gray-2: var(--ba-muted);
+	--sl-color-gray-3: #7c7f93;
+	--sl-color-gray-4: #8c8fa1;
+	--sl-color-gray-5: #acb0be;
+	--sl-color-gray-6: #ccd0da;
+	--sl-color-gray-7: #e6e9ef;
+	--sl-color-black: var(--ba-ground);
+
+	/* -high is darkened mauve so link text clears 4.5:1 on the ground. */
+	--sl-color-accent: var(--ba-accent);
+	--sl-color-accent-high: #6c1fc4;
+	--sl-color-accent-low: #dcd0f4;
+
+	/* #5c5f77 on the ground is 5.3:1; the muted #6c6f85 is only 4.3:1. */
+	--sl-color-text: var(--sl-color-gray-1);
+	--sl-color-text-accent: var(--sl-color-accent-high);
+	--sl-color-text-invert: var(--ba-accent-on);
+	--sl-color-bg: var(--ba-ground);
+	--sl-color-bg-nav: var(--ba-card);
+	--sl-color-bg-sidebar: var(--ba-card);
+	--sl-color-bg-inline-code: var(--ba-wash);
+	--sl-color-bg-accent: var(--ba-accent);
+
+	--sl-color-hairline-light: var(--ba-line);
+	--sl-color-hairline: var(--ba-wash-line);
+	--sl-color-hairline-shade: var(--ba-wash-line);
+	--sl-color-backdrop-overlay: rgba(76, 79, 105, 0.55);
+
+	--sl-color-blue: #1e66f5;
+	--sl-color-blue-high: #12408f;
+	--sl-color-blue-low: #d5e0fb;
+	--sl-color-green: #40a02b;
+	--sl-color-green-high: #26611a;
+	--sl-color-green-low: #d9ecd4;
+	--sl-color-orange: #fe640b;
+	--sl-color-orange-high: #8f3806;
+	--sl-color-orange-low: #fce0cd;
+	--sl-color-purple: #8839ef;
+	--sl-color-purple-high: #6c1fc4;
+	--sl-color-purple-low: #dcd0f4;
+	--sl-color-red: #d20f39;
+	--sl-color-red-high: #7d0922;
+	--sl-color-red-low: #f9d3da;
+}
+
+/* ---- Type roles on the page. ---- */
+
+/* Display face carries every heading and the splash hero title. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.hero h1,
+.site-title {
+	font-family: var(--ba-font-display);
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+/* Machine-flavored text: inline code, code blocks, keyboard keys, file names. */
+code,
+kbd,
+samp,
+pre,
+.expressive-code {
+	font-family: var(--ba-font-mono);
+}
+
+/* Inline code reads as a token, not as a link. */
+:not(pre) > code {
+	color: var(--sl-color-white);
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.25rem;
+	padding: 0.1em 0.35em;
+}
+
+/* Code block frames sit on the card, inside the brand's rule color. */
+.expressive-code .frame pre {
+	background: var(--ba-card);
+	border: 1px solid var(--sl-color-hairline);
+}
+
+/* ---- Blocks that run wider than the column. ----
+
+   A clipped line looks like the end of the line. Every block that scrolls
+   sideways gets two affordances: a bar thick enough to see, and a fade at
+   the edge the content continues past. The fade is two background layers.
+   The card-colored cover scrolls with the content (`local`), so it sits at
+   the far end of the text; the fade is pinned to the box (`scroll`). While
+   text remains to the right the fade shows; once it is scrolled to, the
+   cover hides the fade. No script, and nothing shows on a block that fits. */
+
+/* Only the -webkit- pseudo-elements are used. Chromium ignores them on any
+   element that also sets `scrollbar-width` or `scrollbar-color`, and its
+   default there is an overlay bar that fades out, which is no affordance at
+   all. A styled bar takes its 8px and stays. */
+.expressive-code .frame pre::-webkit-scrollbar,
+.ba-file pre::-webkit-scrollbar,
+.ba-walk .ba-file pre::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+.expressive-code .frame pre::-webkit-scrollbar-thumb,
+.ba-file pre::-webkit-scrollbar-thumb,
+.ba-walk .ba-file pre::-webkit-scrollbar-thumb {
+	background: var(--sl-color-accent);
+	border-radius: 4px;
+}
+
+.expressive-code .frame pre,
+.ba-file pre {
+	background-color: var(--ba-card);
+	background-image:
+		/* the cover, carried by the content */
+		linear-gradient(var(--ba-card), var(--ba-card)),
+		/* the edge rule and the wash under it, pinned to the box */
+		linear-gradient(var(--sl-color-accent), var(--sl-color-accent)),
+		linear-gradient(
+			to left,
+			color-mix(in srgb, var(--sl-color-accent) 22%, transparent),
+			transparent
+		);
+	background-position: right center;
+	background-size: 2.5rem 100%, 2px 100%, 2.5rem 100%;
+	background-repeat: repeat-y;
+	background-attachment: local, scroll, scroll;
+}
+
+/* ---- Chrome. ---- */
+
+/* Card icons cycle through orange, green, red and blue by default. The brand
+   keeps status hues out of decoration, so every card badge is the accent. */
+.card:nth-child(n) {
+	--sl-card-border: var(--sl-color-accent);
+	--sl-card-bg: var(--sl-color-accent-low);
+}
+
+/* The header lockup is an image; give it room and keep it from stretching. */
+.site-title img {
+	max-height: 2rem;
+	width: auto;
+}
+
+/* The splash hero mark should not outgrow its column on a phone. */
+.hero > img,
+.hero .hero-html svg {
+	max-height: 14rem;
+}
+
+/* ---- Home page. The splash template's own hero is unused; Lockup.astro
+   carries the name and the one-line pitch, and Walkthrough.astro carries
+   the proof under it. ---- */
+
+.ba-hero {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.5rem 0 0;
+}
+
+.ba-lockup {
+	width: min(26rem, 100%);
+	height: auto;
+}
+
+/* Starlight's :root is its dark mode, so the dark lockup is the default. */
+.ba-lockup--light {
+	display: none;
+}
+:root[data-theme='light'] .ba-lockup--light {
+	display: block;
+}
+:root[data-theme='light'] .ba-lockup--dark {
+	display: none;
+}
+
+.ba-sentence {
+	margin: 0;
+	max-width: 46rem;
+	text-align: center;
+	font-size: clamp(1.05rem, 0.9rem + 0.7vw, 1.4rem);
+	line-height: 1.45;
+	color: var(--sl-color-white);
+}
+
+/* ---- The story block. Three short cards between the pitch and the
+   walkthrough: who it is for, what it is, why it holds. They are cards and
+   not prose so the three fit one band on a wide screen and the walkthrough
+   stays close to the top. ---- */
+
+.ba-story {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1rem;
+	margin-top: 1.5rem;
+}
+
+/* The splash template puts a top margin on every sibling in the flow, which
+   pushed the second and third card below the first. The grid owns the gap. */
+.ba-story__card {
+	margin-top: 0;
+	padding: 1rem 1.1rem;
+	border: 1px solid var(--ba-line);
+	border-radius: 0.5rem;
+	background: var(--ba-card);
+}
+
+.ba-story__card h2 {
+	margin: 0 0 0.4rem;
+	font-size: 1rem;
+	line-height: 1.3;
+	color: var(--sl-color-white);
+}
+
+.ba-story__card p {
+	margin: 0;
+	font-size: 0.9rem;
+	line-height: 1.55;
+	color: var(--sl-color-gray-2);
+}
+
+.ba-story__card strong {
+	color: var(--sl-color-white);
+}
+
+@media (max-width: 50rem) {
+	.ba-story {
+		grid-template-columns: 1fr;
+		gap: 0.6rem;
+	}
+}
+
+/* The one line that hands the reader to the walkthrough. */
+.ba-lead-in {
+	margin: 1.75rem auto 0.75rem;
+	text-align: center;
+	font-size: 1rem;
+	color: var(--sl-color-gray-2);
+}
+
+.ba-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.75rem;
+	padding-bottom: 0.5rem;
+}
+
+.ba-button {
+	display: inline-block;
+	padding: 0.6rem 1.25rem;
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.35rem;
+	font-weight: 600;
+	text-decoration: none;
+	color: var(--sl-color-text-accent);
+}
+.ba-button--filled {
+	background: var(--sl-color-bg-accent);
+	color: var(--sl-color-text-invert);
+}
+.ba-button:hover {
+	text-decoration: underline;
+}
+
+/* ---- The walkthrough. Twelve steps, a rail of pills, a tree that grows,
+   and one content pane. Every step is in the page; the script shows one at
+   a time, so with no script step 1 stands alone and the rail and the
+   controls, which would do nothing, are not drawn. ---- */
+
+.ba-walk {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: start;
+	gap: 0.75rem;
+	width: 100%;
+	margin: 1.25rem 0 0;
+	text-align: left;
+}
+@media (min-width: 62rem) {
+	.ba-walk {
+		/* A file body is 80 characters wide and the option ladder is longer.
+		   The band steps outside the prose column so both fit, and stays
+		   inside the viewport with a gutter either side. */
+		--ba-walk-width: min(76rem, calc(100vw - 4rem));
+		width: var(--ba-walk-width);
+		margin-inline: calc((100% - var(--ba-walk-width)) / 2);
+		grid-template-columns: 11rem minmax(0, 1fr);
+		grid-template-rows: auto 1fr;
+	}
+	/* Back, Next and the counter sit under the pills they step through. The
+	   panels take the second column and both of its rows. */
+	.ba-walk__rail {
+		grid-area: 1 / 1;
+	}
+	.ba-walk__controls-rail {
+		grid-area: 2 / 1;
+	}
+	.ba-walk__stage {
+		grid-area: 1 / 2 / span 2;
+	}
+}
+
+/* Past 75rem the band is at its full width, so the rail can carry the longest
+   step title without the file body paying for it. */
+@media (min-width: 75rem) {
+	.ba-walk {
+		grid-template-columns: 13.5rem minmax(0, 1fr);
+	}
+}
+
+/* Starlight puts a top margin on every sibling inside prose. The walkthrough
+   sets its own spacing, so clear it and start again. */
+.ba-walk :is(div, section, ul, ol, li, dl, dt, dd, p, pre, figure, figcaption, h3, h4, h5) {
+	margin-top: 0;
+}
+
+/* The ticker's rows carry `display: flex`, which outranks the user agent's
+   rule for the hidden attribute. Playback hides rows with that attribute, so
+   say it here once rather than in every rule that sets a display. */
+.ba-walk [hidden] {
+	display: none !important;
+}
+
+.ba-walk :is(button, a, pre, [tabindex]):focus-visible {
+	outline: 2px solid var(--sl-color-accent);
+	outline-offset: 2px;
+}
+
+/* ---- The rail. A column of numbered pills beside the panel on a wide
+   screen, a scrolling row of bare numbers on a phone. ---- */
+
+.ba-walk__rail {
+	display: flex;
+	flex-direction: row;
+	/* Twelve pills do not fit one phone row. They wrap onto a second rather
+	   than scrolling sideways: a scrolling row cut the last visible number in
+	   half and gave no sign that the rest were there. Every step is on the
+	   screen at once now, and nothing is clipped. */
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding-bottom: 0.25rem;
+}
+@media (min-width: 62rem) {
+	.ba-walk__rail {
+		flex-direction: column;
+		flex-wrap: nowrap;
+		padding-bottom: 0;
+	}
+}
+
+.ba-walk__pill {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 0.5rem;
+	font-family: var(--ba-font-body);
+	font-size: 0.82rem;
+	text-align: left;
+	color: var(--sl-color-gray-2);
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 0.35rem;
+	padding: 0.2rem 0.4rem;
+	cursor: pointer;
+}
+.ba-walk__pill:hover {
+	background: var(--ba-wash);
+	color: var(--sl-color-white);
+}
+.ba-walk__pill-number {
+	display: inline-grid;
+	place-items: center;
+	flex: none;
+	width: 1.55rem;
+	height: 1.55rem;
+	/* The body face, not the mono one: at this size the mono zero reads as
+	   an eight, and a step number is not machine text. */
+	font-family: var(--ba-font-body);
+	font-size: 0.76rem;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 999px;
+}
+.ba-walk__pill-title {
+	white-space: nowrap;
+}
+@media (max-width: 61.99rem) {
+	.ba-walk__pill-title {
+		display: none;
+	}
+}
+
+/* ---- The panels. One per step, all in the page. ---- */
+
+.ba-walk__step {
+	display: none;
+	/* A fragment scrolls the step to the top of the window. The rail and the
+	   controls sit above it there, and the site header floats over it, so
+	   leave both their room. */
+	scroll-margin-top: 10rem;
+}
+@media (min-width: 62rem) {
+	.ba-walk__step {
+		scroll-margin-top: 5rem;
+	}
+}
+.ba-walk__step[data-step='1'],
+.ba-walk__step:target {
+	display: grid;
+	gap: 0.75rem;
+}
+/* With no script the URL fragment selects the step, so a pill and a Back or
+   Next link work on their own. Step 1 stands down once another is targeted. */
+.ba-walk__stage:has(.ba-walk__step:target) .ba-walk__step[data-step='1']:not(:target) {
+	display: none;
+}
+.ba-walk.is-live .ba-walk__step {
+	display: none;
+	/* A fragment scrolls the step to the top of the window. The rail and the
+	   controls sit above it there, and the site header floats over it, so
+	   leave both their room. */
+	scroll-margin-top: 10rem;
+}
+@media (min-width: 62rem) {
+	.ba-walk__step {
+		scroll-margin-top: 5rem;
+	}
+}
+.ba-walk.is-live .ba-walk__step.is-current {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.ba-walk__panes {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: start;
+	gap: 0.75rem;
+}
+@media (min-width: 62rem) {
+	/* The rail is twelve pills tall. Holding the two panes to one height
+	   fills the band beside it and keeps the page from resizing under the
+	   reader on every step. A step that shows no file sizes itself. */
+	/* 16rem holds the deepest row the tree draws with its `exec` and `new`
+	   tags on one line. Below that the row wraps. */
+	.ba-walk__panes[data-layout='panes'] {
+		grid-template-columns: 16rem minmax(0, 1fr);
+		align-items: stretch;
+	}
+	/* The tree is two rows on step 1 and fourteen on step 9. It grows to its
+	   content rather than holding a box of air. The content pane carries the
+	   steady height, so the page does not resize on every step. */
+	.ba-walk__tree {
+		align-self: start;
+		max-height: 26rem;
+	}
+	.ba-walk__content {
+		min-height: 17rem;
+	}
+	.ba-walk__rows {
+		max-height: none;
+	}
+	.ba-walk__ticker {
+		max-height: 22rem;
+	}
+}
+
+/* ---- The tree. It accumulates; the file the step shows is lit. ---- */
+
+.ba-walk__tree {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+	background: var(--ba-card);
+	overflow: hidden;
+}
+
+.ba-walk__pane-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.74rem;
+	font-weight: 600;
+	color: var(--sl-color-gray-1);
+	background: var(--ba-wash);
+	border-bottom: 1px solid var(--sl-color-hairline);
+	padding: 0.35rem 0.6rem;
+}
+
+.ba-walk__rows {
+	list-style: none;
+	padding: 0.4rem 0.3rem;
+	max-height: 40vh;
+	overflow: auto;
+}
+@media (min-width: 62rem) {
+	.ba-walk__rows {
+		flex: 1 1 auto;
+	}
+}
+
+.ba-walk__row {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.76rem;
+	line-height: 1.7;
+	color: var(--sl-color-gray-3);
+	border-radius: 0.2rem;
+	padding: 0 0.4rem 0 calc(0.4rem + var(--depth) * 0.8rem);
+}
+.ba-walk__row.is-file {
+	color: var(--sl-color-gray-2);
+}
+.ba-walk__row.is-new {
+	color: var(--sl-color-white);
+}
+.ba-walk__row.is-lit {
+	background: var(--sl-color-accent-low);
+	color: var(--sl-color-white);
+}
+.ba-walk__row-name {
+	overflow-wrap: anywhere;
+}
+.ba-walk__new {
+	font-family: var(--ba-font-mono);
+	font-size: 0.6rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-text-accent);
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.2rem;
+	padding: 0 0.25rem;
+	white-space: nowrap;
+}
+
+/* Steps that show no file give the pane its full width and say what the
+   folder holds in one line. */
+.ba-walk__summary {
+	align-self: start;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.85rem;
+	color: var(--sl-color-gray-2);
+	background: var(--ba-card);
+	border: 1px solid var(--sl-color-hairline);
+	border-left: 3px solid var(--sl-color-accent);
+	border-radius: 0.35rem;
+}
+.ba-walk__summary strong {
+	font-family: var(--ba-font-mono);
+	color: var(--sl-color-white);
+}
+
+/* ---- The content pane. The file viewer is the explorers' own. ---- */
+
+/* The pane fills the band beside the rail, so a six-line file and a
+   twenty-line one leave the page the same shape. */
+.ba-walk__content {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.ba-walk__content > * {
+	flex: 1 1 auto;
+}
+
+.ba-walk .ba-file {
+	display: flex;
+	flex-direction: column;
+	margin: 0 !important;
+}
+.ba-walk .ba-file pre {
+	flex: 1 1 auto;
+	max-height: none;
+}
+/* The `bot assembly check` rows carry an option ladder no phone fits and no desktop
+   column fits either. They wrap rather than scroll, so the whole ladder is
+   on screen; a continuation line is indented under the row it belongs to. */
+.ba-walk .ba-walk__file--wrap pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+/* The check rows are one long row each, so a continuation line is indented
+   under the row it belongs to and the command line stays flush left. */
+.ba-walk [data-check] pre {
+	padding-left: calc(0.6rem + 2ch);
+	text-indent: -2ch;
+}
+.ba-walk .ba-file figcaption {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+}
+.ba-walk__file-name {
+	font-weight: 600;
+	color: var(--sl-color-gray-1);
+	overflow-wrap: anywhere;
+}
+/* The step's own title, beside the path the pane shows. */
+.ba-walk__file-note {
+	flex: none;
+	font-family: var(--ba-font-body);
+	font-size: 0.74rem;
+	color: var(--sl-color-gray-3);
+}
+.ba-walk__pane-count {
+	flex: none;
+	font-weight: 400;
+	color: var(--sl-color-gray-3);
+}
+.ba-walk__line.is-dim {
+	opacity: 0.45;
+}
+.ba-walk__line.is-prompt {
+	color: var(--sl-color-text-accent);
+}
+
+/* The option ladder is the same seven options on all five rows. A script
+   folds it to `options=…` and one control opens every row at once. With no
+   script it stays open, because nothing would open it. */
+.ba-walk__opts-fold {
+	display: none;
+}
+.ba-walk__file.is-folded .ba-walk__opts {
+	display: none;
+}
+.ba-walk__file.is-folded .ba-walk__opts-fold {
+	display: inline;
+	color: var(--sl-color-gray-3);
+}
+.ba-walk__fold {
+	flex: none;
+	margin-left: auto;
+	font-family: var(--ba-font-body);
+	font-size: 0.72rem;
+	color: var(--sl-color-text-accent);
+	background: none;
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.25rem;
+	padding: 0 0.4rem;
+	cursor: pointer;
+}
+
+/* ---- The run. Stage cards fill as the record's events play. ---- */
+
+.ba-walk__run {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+	background: var(--ba-card);
+	overflow: hidden;
+}
+.ba-walk__cmd {
+	padding: 0.45rem 0.6rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.78rem;
+	color: var(--sl-color-white);
+	background: var(--ba-wash);
+	border-bottom: 1px solid var(--sl-color-hairline);
+	overflow-wrap: anywhere;
+}
+.ba-walk__cmd code {
+	font-size: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+}
+
+.ba-walk__ticker {
+	display: grid;
+	gap: 0.4rem;
+	padding: 0.55rem 0.6rem;
+	max-height: 26rem;
+	overflow-y: auto;
+}
+.ba-walk__card {
+	border: 1px solid var(--sl-color-hairline);
+	border-left: 3px solid var(--sl-color-accent);
+	border-radius: 0.3rem;
+	padding: 0.35rem 0.5rem;
+}
+.ba-walk__card-head {
+	margin-bottom: 0.2rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: var(--sl-color-white);
+	overflow-wrap: anywhere;
+}
+.ba-walk__events {
+	list-style: none;
+	padding: 0;
+	display: grid;
+	gap: 0.1rem;
+}
+.ba-walk__event,
+.ba-walk__ticker-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.1rem 0.35rem;
+	min-width: 0;
+}
+.ba-walk__ev {
+	font-family: var(--ba-font-mono);
+	font-size: 0.74rem;
+	color: var(--sl-color-gray-1);
+}
+.ba-walk__event.is-turns .ba-walk__ev {
+	color: var(--sl-color-gray-3);
+}
+.ba-walk__exit {
+	font-family: var(--ba-font-mono);
+	font-size: 0.62rem;
+	letter-spacing: 0.04em;
+	border: 1px solid;
+	border-radius: 0.2rem;
+	padding: 0 0.3rem;
+	white-space: nowrap;
+}
+.ba-walk__exit.is-pass {
+	color: var(--sl-color-green-high);
+	border-color: var(--sl-color-green);
+}
+.ba-walk__exit.is-fail {
+	color: var(--sl-color-red-high);
+	border-color: var(--sl-color-red);
+}
+/* An evidence sentence draws on one row. The record holds the whole of it. */
+.ba-walk__detail {
+	flex: 1 1 100%;
+	min-width: 0;
+	font-size: 0.72rem;
+	color: var(--sl-color-gray-3);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+@media (min-width: 62rem) {
+	.ba-walk__detail {
+		flex: 1 1 12rem;
+	}
+}
+.ba-walk__ticker-line.is-end .ba-walk__ev {
+	color: var(--sl-color-white);
+	font-weight: 600;
+}
+
+.ba-walk__playbar {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.4rem 0.6rem;
+	background: var(--ba-wash);
+	border-top: 1px solid var(--sl-color-hairline);
+}
+.ba-walk__skip {
+	font-family: var(--ba-font-body);
+	font-size: 0.78rem;
+	color: var(--sl-color-text-accent);
+	background: none;
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.25rem;
+	padding: 0.15rem 0.6rem;
+	cursor: pointer;
+}
+.ba-walk__status {
+	font-family: var(--ba-font-mono);
+	font-size: 0.72rem;
+	color: var(--sl-color-gray-2);
+}
+
+/* ---- The sealed record. ---- */
+
+.ba-walk__sealed {
+	display: grid;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	background: var(--ba-card);
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+}
+.ba-walk__sealed .ba-facts {
+	margin-bottom: 0 !important;
+}
+.ba-walk__sealed-head {
+	padding-top: 0.5rem;
+	border-top: 1px solid var(--sl-color-hairline);
+	font-family: var(--ba-font-body);
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--sl-color-gray-2);
+}
+.ba-walk__entries {
+	list-style: none;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.8rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.76rem;
+	color: var(--sl-color-gray-1);
+}
+.ba-walk__entries code {
+	font-size: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	color: inherit;
+}
+.ba-walk__note {
+	font-size: 0.76rem;
+	color: var(--sl-color-gray-3);
+}
+.ba-walk__sealed-more {
+	font-size: 0.85rem;
+}
+
+/* ---- What the step says, and the controls under it. ---- */
+
+.ba-walk__say {
+	display: grid;
+	gap: 0.35rem;
+}
+.ba-walk__title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 1.05rem;
+}
+.ba-walk__title:focus {
+	outline: none;
+}
+.ba-walk__title-number {
+	display: inline-grid;
+	place-items: center;
+	flex: none;
+	width: 1.7rem;
+	height: 1.7rem;
+	font-family: var(--ba-font-body);
+	font-size: 0.82rem;
+	font-weight: 400;
+	color: var(--sl-color-text-accent);
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 999px;
+}
+.ba-walk__blurb {
+	max-width: 46rem;
+	font-size: 0.92rem;
+	line-height: 1.6;
+	color: var(--sl-color-gray-1);
+}
+.ba-walk__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1.25rem;
+	font-size: 0.85rem;
+}
+
+.ba-walk__controls-rail {
+	display: grid;
+}
+/* One set of controls is drawn at a time. Which one is the live step's is
+   settled by the rules Walkthrough.astro writes. */
+.ba-walk__controls {
+	display: none;
+	grid-auto-flow: column;
+	justify-content: start;
+	align-items: center;
+	gap: 0.6rem;
+}
+@media (min-width: 62rem) {
+	/* The column is 13.5rem wide, so the counter takes its own line above
+	   the two buttons rather than squeezing between them. */
+	.ba-walk__controls {
+		grid-auto-flow: row;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+		padding-top: 0.6rem;
+		border-top: 1px solid var(--sl-color-hairline);
+	}
+	.ba-walk__count {
+		order: -1;
+		grid-column: 1 / -1;
+		text-align: left;
+	}
+	.ba-walk__nav {
+		padding: 0.35rem 0.5rem;
+	}
+}
+.ba-walk__nav {
+	font-family: var(--ba-font-body);
+	font-size: 0.88rem;
+	font-weight: 600;
+	color: var(--sl-color-text-accent);
+	background: none;
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.35rem;
+	padding: 0.4rem 0.9rem;
+	cursor: pointer;
+}
+.ba-walk__nav {
+	text-align: center;
+	text-decoration: none;
+}
+.ba-walk__nav.is-off {
+	color: var(--sl-color-gray-4);
+	border-color: var(--sl-color-hairline);
+}
+.ba-walk__nav:hover:not(.is-off) {
+	background: var(--ba-wash);
+}
+.ba-walk__count {
+	font-family: var(--ba-font-body);
+	font-size: 0.82rem;
+	color: var(--sl-color-gray-2);
+	text-align: center;
+}
+
+/* A new file and a new event arrive rather than appear. Nothing moves for a
+   reader who asked for less motion; the script also drops the playback pace
+   and draws every event at once. */
+@media (prefers-reduced-motion: no-preference) {
+	.ba-walk__row.is-new,
+	.ba-walk [data-play] {
+		animation: ba-walk-in 200ms ease-out both;
+	}
+}
+@keyframes ba-walk-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.25rem);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* Below the walkthrough: a lead line under each section heading, and the
+   two-column lists of benefits and principles. */
+
+.ba-lead {
+	margin-top: -0.5rem;
+	color: var(--sl-color-gray-2);
+}
+
+.ba-list {
+	list-style: none;
+	padding: 0;
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 50rem) {
+	.ba-list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+.ba-list li {
+	margin: 0;
+	padding-left: 0.9rem;
+	border-left: 2px solid var(--sl-color-accent);
+}
+.ba-list strong {
+	display: block;
+	color: var(--sl-color-white);
+}
+
+/* The three lanes are one row on a wide screen and one column on a phone.
+   Starlight's own grid fits two, which orphans the third. */
+@media (min-width: 62rem) {
+	main:has(.ba-hero) .card-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+/* The lockup is the home page's title, so the splash heading panel is hidden
+   from sight. The lockup image carries the same name for a screen reader. */
+main:has(.ba-hero) > .content-panel:first-child {
+	display: none;
+}
+main:has(.ba-hero) > .content-panel {
+	border-top: 0;
+}
+
+/* ---- Corpus explorers. Two panes on a wide screen, one on a phone. Every
+   color is a brand role; the explorers introduce none of their own. ---- */
+
+.ba-explorer {
+	margin: 1.5rem 0;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.5rem;
+	background: var(--ba-card);
+	overflow: hidden;
+}
+
+/* Past 75rem the band is at its full width, so the rail can carry the longest
+   step title without the file body paying for it. */
+@media (min-width: 75rem) {
+	.ba-walk {
+		grid-template-columns: 13.5rem minmax(0, 1fr);
+	}
+}
+
+/* Starlight puts a top margin on every sibling inside prose. Inside the
+   explorer the layout sets its own spacing, so clear it and start again. */
+.ba-explorer :is(div, section, article, header, ul, ol, li, dl, dt, dd, p, pre, figure, figcaption, h3) {
+	margin-top: 0;
+}
+.ba-explorer script {
+	display: none;
+}
+
+.ba-explorer__bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 0.75rem;
+	padding: 0.6rem 0.75rem;
+	background: var(--ba-wash);
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.ba-explorer__label {
+	font-family: var(--ba-font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-2);
+}
+
+.ba-explorer__select,
+.ba-explorer__search {
+	flex: 1 1 12rem;
+	min-width: 0;
+	max-width: 22rem;
+	font-family: var(--ba-font-mono);
+	font-size: 0.85rem;
+	color: var(--sl-color-white);
+	background: var(--ba-card);
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.3rem;
+	padding: 0.35rem 0.5rem;
+}
+
+/* The native select keeps its menu and its keyboard behavior; only the
+   closed control is restyled, and the caret is drawn from two gradients so
+   it takes the theme's ink instead of a baked-in color. */
+.ba-explorer__select {
+	appearance: none;
+	/* The label carries the case name and its shape, so the control takes
+	   the row and the invocation reads under it. */
+	flex: 1 1 20rem;
+	max-width: 40rem;
+	padding-right: 1.75rem;
+	cursor: pointer;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--sl-color-gray-2) 50%),
+		linear-gradient(135deg, var(--sl-color-gray-2) 50%, transparent 50%);
+	background-position: right 0.85rem center, right 0.55rem center;
+	background-size: 0.3rem 0.3rem;
+	background-repeat: no-repeat;
+}
+
+.ba-explorer__select:focus-visible,
+.ba-explorer__search:focus-visible,
+.ba-tree__item:focus-visible,
+.ba-group summary:focus-visible {
+	outline: 2px solid var(--sl-color-accent);
+	outline-offset: 2px;
+}
+
+.ba-explorer__command,
+.ba-explorer__count {
+	font-family: var(--ba-font-mono);
+	font-size: 0.8rem;
+	color: var(--sl-color-gray-2);
+	background: none;
+	border: 0;
+	padding: 0;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+.ba-explorer__command {
+	flex: 1 0 100%;
+}
+
+.ba-explorer__panes {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 62rem) {
+	.ba-explorer__panes {
+		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	}
+}
+
+.ba-pane {
+	min-width: 0;
+	padding: 0.75rem;
+	border-top: 1px solid var(--sl-color-hairline);
+}
+@media (min-width: 62rem) {
+	.ba-pane + .ba-pane {
+		border-left: 1px solid var(--sl-color-hairline);
+	}
+}
+
+/* The check output is short for a one-stage case and the file body is long,
+   so the two columns used to end a screenful apart. Side by side, each pane
+   is a column and its scrolling region takes the slack, so both ends meet. */
+@media (min-width: 62rem) {
+	.ba-pane {
+		display: flex;
+		flex-direction: column;
+		min-height: 26rem;
+	}
+	.ba-file {
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
+		min-height: 0;
+	}
+	.ba-file pre {
+		flex: 1 1 auto;
+		max-height: 32rem;
+	}
+	.ba-stages {
+		flex: 1 1 auto;
+		max-height: 42rem;
+	}
+}
+
+.ba-pane__head {
+	margin: 0 0 0.5rem !important;
+	font-family: var(--ba-font-mono);
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-2);
+}
+.ba-pane__head:not(:first-child) {
+	margin-top: 1.1rem !important;
+}
+
+/* ---- The file tree and the case lists. ---- */
+
+.ba-tree {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 16rem;
+	overflow-y: auto;
+}
+.ba-tree li {
+	margin: 0;
+}
+
+.ba-tree__item {
+	display: block;
+	width: 100%;
+	text-align: left;
+	font-family: var(--ba-font-mono);
+	font-size: 0.8rem;
+	line-height: 1.6;
+	color: var(--sl-color-gray-1);
+	background: none;
+	border: 0;
+	border-radius: 0.25rem;
+	padding: 0.1rem 0.4rem;
+	cursor: pointer;
+}
+.ba-tree__item:hover {
+	background: var(--ba-wash);
+}
+.ba-tree__item[aria-pressed='true'] {
+	background: var(--sl-color-accent-low);
+	color: var(--sl-color-white);
+}
+.ba-tree__dir {
+	color: var(--sl-color-gray-3);
+}
+.ba-tree__name {
+	color: inherit;
+}
+/* The template puts a break opportunity after every slash and none inside a
+   file name, so normal wrapping breaks a path only where it has a slash. */
+.ba-tree__dir,
+.ba-tree__name {
+	overflow-wrap: normal;
+	word-break: normal;
+}
+.ba-tree__item .ba-tag {
+	margin-left: 0.4rem;
+}
+.ba-tree__item--fault .ba-tree__name {
+	color: var(--sl-color-red);
+	font-weight: 600;
+}
+
+.ba-tag {
+	display: inline-block;
+	font-family: var(--ba-font-mono);
+	font-size: 0.62rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-2);
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.2rem;
+	padding: 0 0.3rem;
+	white-space: nowrap;
+}
+
+/* ---- The file body. ---- */
+
+.ba-file {
+	margin: 0.75rem 0 0 !important;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+	overflow: hidden;
+}
+.ba-file figcaption {
+	font-family: var(--ba-font-mono);
+	font-size: 0.72rem;
+	color: var(--sl-color-gray-2);
+	background: var(--ba-wash);
+	border-bottom: 1px solid var(--sl-color-hairline);
+	padding: 0.3rem 0.6rem;
+	overflow-wrap: anywhere;
+}
+.ba-file pre {
+	margin: 0;
+	padding: 0.6rem;
+	max-height: 22rem;
+	overflow: auto;
+	font-family: var(--ba-font-mono);
+	font-size: 0.78rem;
+	line-height: 1.55;
+	color: var(--sl-color-gray-1);
+	white-space: pre;
+	tab-size: 2;
+	/* The viewer shows a file's bytes. The mono face joins `---` into one
+	   long rule, which is the wrong three characters for a YAML fence, so
+	   every ligature and contextual substitution is off here. */
+	font-variant-ligatures: none;
+	font-feature-settings: 'liga' 0, 'clig' 0, 'calt' 0, 'dlig' 0;
+}
+
+/* ---- The check output. ---- */
+
+.ba-stages {
+	display: grid;
+	gap: 0.6rem;
+	max-height: 38rem;
+	overflow-y: auto;
+	/* The same edge the code blocks carry, turned to the bottom: a rule and
+	   a wash while stages remain below, covered once the list is scrolled
+	   to its end. */
+	background-image:
+		linear-gradient(var(--ba-card), var(--ba-card)),
+		linear-gradient(var(--sl-color-accent), var(--sl-color-accent)),
+		linear-gradient(
+			to top,
+			color-mix(in srgb, var(--sl-color-accent) 18%, transparent),
+			transparent
+		);
+	background-position: center bottom;
+	background-size: 100% 1.75rem, 100% 2px, 100% 1.75rem;
+	background-repeat: repeat-x;
+	background-attachment: local, scroll, scroll;
+}
+
+.ba-stage {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+	padding: 0.5rem 0.6rem;
+}
+.ba-stage__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 0 0 0.35rem;
+}
+.ba-stage__name {
+	font-family: var(--ba-font-mono);
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--sl-color-white);
+	background: none;
+	border: 0;
+	padding: 0;
+	overflow-wrap: anywhere;
+}
+
+.ba-facts {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	align-items: baseline;
+	gap: 0.05rem 0.6rem;
+	margin: 0 0 0.4rem !important;
+	font-size: 0.76rem;
+}
+.ba-facts dt {
+	font-family: var(--ba-font-mono);
+	color: var(--sl-color-gray-3);
+}
+.ba-facts dd {
+	margin: 0;
+	min-width: 0;
+}
+.ba-facts code,
+.ba-options code {
+	font-family: var(--ba-font-mono);
+	font-size: 0.76rem;
+	background: none;
+	border: 0;
+	padding: 0;
+	color: var(--sl-color-gray-1);
+	overflow-wrap: anywhere;
+}
+
+.ba-options {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.1rem;
+}
+.ba-options li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.4rem;
+	margin: 0;
+}
+.ba-option__name {
+	min-width: 7.5rem;
+	color: var(--sl-color-gray-3) !important;
+}
+.ba-option__value {
+	color: var(--sl-color-white) !important;
+}
+.ba-rung {
+	font-family: var(--ba-font-mono);
+	font-size: 0.62rem;
+	letter-spacing: 0.04em;
+	color: var(--sl-color-text-accent);
+	border: 1px solid var(--sl-color-accent);
+	border-radius: 0.2rem;
+	padding: 0 0.3rem;
+	white-space: nowrap;
+}
+
+/* ---- Refusals. ---- */
+
+.ba-groups {
+	max-height: 30rem;
+	overflow-y: auto;
+}
+
+.ba-group {
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+.ba-group summary {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.3rem 0.2rem;
+	cursor: pointer;
+}
+.ba-group__code {
+	font-family: var(--ba-font-mono);
+	font-size: 0.8rem;
+	color: var(--sl-color-white);
+	background: none;
+	border: 0;
+	padding: 0;
+	overflow-wrap: anywhere;
+}
+/* A case is named for the mistake; the group is named for the code the
+   runtime reports. Where they differ, say so once under the header. */
+.ba-group__note {
+	margin: 0 0 0.3rem 0.2rem !important;
+	font-size: 0.7rem;
+	line-height: 1.4;
+	color: var(--sl-color-gray-3);
+}
+
+.ba-group .ba-tree {
+	max-height: none;
+	padding-left: 1rem;
+	margin: 0 0 0.3rem;
+}
+
+.ba-refusals {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.5rem;
+}
+.ba-refusals li {
+	margin: 0;
+	border-left: 2px solid var(--sl-color-red);
+	padding-left: 0.6rem;
+}
+.ba-refusal__line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.5rem;
+	margin: 0;
+}
+.ba-refusal__code {
+	font-family: var(--ba-font-mono);
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: var(--sl-color-red);
+	background: none;
+	border: 0;
+	padding: 0;
+}
+.ba-refusal__path {
+	font-family: var(--ba-font-mono);
+	font-size: 0.78rem;
+	color: var(--sl-color-gray-1);
+	background: none;
+	border: 0;
+	padding: 0;
+	overflow-wrap: anywhere;
+}
+.ba-refusal__repair {
+	margin: 0.15rem 0 0 !important;
+	font-size: 0.82rem;
+	line-height: 1.5;
+	color: var(--sl-color-gray-2);
+}
+
+/* Stacked on a phone, the mistake list is long enough to push the refusal
+   off the screen, so the result comes first and the list reads under it. */
+@media (max-width: 61.99rem) {
+	.ba-explorer--refusal .ba-pane--result {
+		order: -1;
+		border-top: 0;
+	}
+	.ba-explorer--refusal .ba-pane:not(.ba-pane--result) {
+		border-top: 1px solid var(--sl-color-hairline);
+	}
+}
+
+/* The runtime reference pages open on a line that says the page documents
+   one implementation, not the format. Markdown gives it as a whole-paragraph
+   italic, which reads as a lede; as a bordered note it reads as a caveat. */
+.sl-markdown-content > p:first-child > em:only-child {
+	display: block;
+	font-style: normal;
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: var(--sl-color-gray-2);
+	background: var(--ba-wash);
+	border-inline-start: 2px solid var(--sl-color-accent);
+	border-radius: 0 0.35rem 0.35rem 0;
+	padding: 0.6rem 0.8rem;
+}
+
+/* At 400px the header collapses its links away, so the splash page carries
+   its own footer with the repository and the license. */
+.ba-footer {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.4rem 1.25rem;
+	margin-top: 2.5rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--sl-color-hairline);
+	font-size: 0.85rem;
+	color: var(--sl-color-gray-2);
+	text-align: center;
+}
+
+/* The active sidebar item (the review found it heavier in dark than in
+   light). Both modes get the same construction: a wash panel, accent text,
+   and an accent edge. Neither mode fills with the accent itself, which is a
+   pastel in Mocha and a deep purple in Latte and so never weighed the same. */
+:root .sidebar-content a[aria-current='page'],
+:root .sidebar-content a[aria-current='page']:hover,
+:root .sidebar-content a[aria-current='page']:focus {
+	background-color: var(--ba-wash);
+	color: var(--sl-color-text-accent);
+	font-weight: 600;
+	border-inline-start: 2px solid var(--sl-color-accent);
+}
+
+/* No post is published yet, so the blog carries no visible link. The plugin
+   adds an RSS icon to the social row whenever a feed is built; this hides it.
+   Delete this block when the first post publishes. */
+.social-icons a[href$='/blog/rss.xml'] {
+	display: none;
+}

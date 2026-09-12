@@ -1,0 +1,178 @@
+#!/bin/sh
+# spec — the top rung of the gate ladder: does the work match what was asked?
+#
+# This repository's product is the specification, and specification/CHANGELOG.md
+# states the rule in its own second paragraph: "A ticket that changes
+# `specification/` writes its entry here." Nothing enforced it, so between
+# 2026-08-12 and 2026-08-16 six spec-changing tickets landed with no entry and
+# the changelog quietly stopped being a record of what changed.
+#
+# Enforced per branch, not per commit, though the changelog says "in the same
+# commit": a build flow commits five times and only one of them is the right
+# place for the entry. The branch is the unit a ticket lands as, so the branch
+# is the unit the rule can be checked against.
+set -eu
+
+case $0 in
+*/spec) REPO=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) ;;
+*) REPO=$(git rev-parse --show-toplevel) ;;
+esac
+cd -- "$REPO"
+
+# Published chapters may point anywhere in the repository, but every local
+# target must exist. Conformance assemblies are inputs, not publication prose.
+node - "$REPO" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+
+const repo = process.argv[2];
+const specification = path.join(repo, "specification");
+const markdownFiles = (directory) =>
+  fs.readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => path.join(directory, entry.name));
+const conformanceReadme = path.join(specification, "conformance", "README.md");
+const documents = [
+  ...markdownFiles(specification),
+  ...markdownFiles(path.join(specification, "elements")),
+  ...(fs.existsSync(conformanceReadme) ? [conformanceReadme] : []),
+].sort();
+const link = /!?\[[^\]\n]*\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^\n)]*\)))?\s*\)/gu;
+
+for (const source of documents) {
+  const markdown = fs.readFileSync(source, "utf8");
+  for (const match of markdown.matchAll(link)) {
+    const authoredTarget = match[1];
+    const target = authoredTarget.startsWith("<")
+      ? authoredTarget.slice(1, -1)
+      : authoredTarget;
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(target) || target.startsWith("#")) continue;
+
+    const targetPath = target.split("#", 1)[0];
+    const resolved = path.resolve(path.dirname(source), targetPath);
+    const repositoryPath = path.relative(repo, resolved);
+    const leavesRepository = repositoryPath === ".." ||
+      repositoryPath.startsWith(`..${path.sep}`) || path.isAbsolute(repositoryPath);
+    if (leavesRepository || !fs.existsSync(resolved)) {
+      console.error(
+        `spec link: ${path.relative(repo, source)} targets missing repository path ${authoredTarget}`,
+      );
+      process.exitCode = 1;
+    }
+  }
+}
+NODE
+
+# Record event names and their top-level fields are a sealed vocabulary. Derive
+# it from the TypeScript types on every pass, including code-only branches.
+node - "$REPO/bot/src/record-events.ts" "$REPO/specification/elements/record.md" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+
+function refuse(message) {
+  console.error(`record vocabulary: ${message}`);
+  process.exitCode = 1;
+}
+
+try {
+  const sourcePath = process.argv[2];
+  const specificationPath = process.argv[3];
+  const repo = path.dirname(path.dirname(path.dirname(sourcePath)));
+  const ts = require(path.join(repo, "bot/node_modules/typescript"));
+  const program = ts.createProgram([sourcePath], {
+    allowImportingTsExtensions: true,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    noEmit: true,
+    resolveJsonModule: true,
+    strict: true,
+    target: ts.ScriptTarget.ESNext,
+  });
+  const checker = program.getTypeChecker();
+  const source = program.getSourceFile(sourcePath);
+  if (source === undefined) throw new Error(`cannot read ${sourcePath}`);
+
+  const declarations = source.statements.filter(
+    (statement) => ts.isTypeAliasDeclaration(statement) && statement.name.text === "RecordEvent",
+  );
+  if (declarations.length !== 1) {
+    throw new Error("expected exactly one RecordEvent type alias in bot/src/record-events.ts");
+  }
+  const declaration = declarations[0];
+  const recordType = checker.getTypeFromTypeNode(declaration.type);
+  const constituents = recordType.isUnion() ? recordType.types : [recordType];
+  if (constituents.length === 0) throw new Error("RecordEvent has no constituents");
+
+  const code = new Map();
+  for (const constituent of constituents) {
+    const eventType = checker.getTypeOfPropertyOfType(constituent, "event");
+    if (eventType === undefined || (eventType.flags & ts.TypeFlags.StringLiteral) === 0) {
+      throw new Error(`a RecordEvent constituent has no single literal event discriminator: ${checker.typeToString(constituent)}`);
+    }
+    if (checker.getIndexTypeOfType(constituent, ts.IndexKind.String) !== undefined ||
+        checker.getIndexTypeOfType(constituent, ts.IndexKind.Number) !== undefined) {
+      throw new Error(`event ${eventType.value} has a top-level property whose name is not static`);
+    }
+    const fields = code.get(eventType.value) ?? new Set();
+    for (const property of checker.getPropertiesOfType(constituent)) {
+      const name = property.getName();
+      if (name.startsWith("__@")) {
+        throw new Error(`event ${eventType.value} has a top-level property whose name is not static`);
+      }
+      fields.add(name);
+    }
+    code.set(eventType.value, fields);
+  }
+
+  const lines = fs.readFileSync(specificationPath, "utf8").split(/\r?\n/u);
+  const header = lines.findIndex((line) => /^\|\s*Event\s*\|\s*Top-level fields\s*\|\s*$/u.test(line));
+  if (header < 0 || !/^\|\s*:?-+:?\s*\|\s*:?-+:?\s*\|\s*$/u.test(lines[header + 1] ?? "")) {
+    throw new Error("specification/elements/record.md has no Event / Top-level fields table");
+  }
+
+  const documented = new Map();
+  for (let index = header + 2; index < lines.length && lines[index].trimStart().startsWith("|"); index += 1) {
+    const row = /^\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|\s*$/u.exec(lines[index]);
+    if (row === null || !/^[a-z0-9_]+$/u.test(row[1])) {
+      throw new Error(`malformed record vocabulary row at record.md:${index + 1}`);
+    }
+    if (documented.has(row[1])) throw new Error(`event ${row[1]} has more than one vocabulary row`);
+    const fields = row[2].split(",").map((field) => /^\s*`([^`]+)`\s*$/u.exec(field)?.[1]);
+    if (fields.length === 0 || fields.some((field) => field === undefined)) {
+      throw new Error(`malformed field list for event ${row[1]} at record.md:${index + 1}`);
+    }
+    documented.set(row[1], new Set(fields));
+  }
+
+  for (const [event, fields] of code) {
+    for (const field of fields) {
+      if (!documented.get(event)?.has(field)) refuse(`event ${event} field ${field} is missing from the specification`);
+    }
+  }
+  for (const [event, fields] of documented) {
+    for (const field of fields) {
+      if (!code.get(event)?.has(field)) refuse(`event ${event} field ${field} is stale in the specification`);
+    }
+  }
+} catch (error) {
+  refuse(error instanceof Error ? error.message : String(error));
+}
+NODE
+
+# The base is the merge point with main. On main itself the range is empty and
+# the changelog rule has nothing to say, which is what makes it safe in the
+# green-main gate as well as in a flight.
+base=$(git merge-base origin/main HEAD 2>/dev/null) || exit 0
+changed=$(git diff --name-only "$base"..HEAD -- specification/)
+[ -n "$changed" ] || exit 0
+
+if printf '%s\n' "$changed" | grep -qv '^specification/CHANGELOG\.md$' &&
+	! printf '%s\n' "$changed" | grep -q '^specification/CHANGELOG\.md$'; then
+	echo "refusing: this branch changes the specification but not its changelog." >&2
+	echo "" >&2
+	printf '%s\n' "$changed" | sed 's/^/  /' >&2
+	echo "" >&2
+	echo "specification/CHANGELOG.md is where a reader finds out what changed and" >&2
+	echo "why. Add a dated entry naming this ticket and what it ruled, newest first." >&2
+	exit 1
+fi

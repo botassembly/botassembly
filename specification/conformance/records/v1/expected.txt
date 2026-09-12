@@ -1,0 +1,13 @@
+outcome  0/success
+assembly  review
+flow  main
+wall time  1s
+stage      verdict     input     output     total
+01-review  success  input: 1  output: 1  total: 2
+total               input: 1  output: 1  total: 2
+2026-08-22T00:00:00.000Z  run_start  -  2026-08-22T00-00-00-a001, review/main from request.txt, 4 bytes via argument, bot 0.0.1
+2026-08-22T00:00:00.100Z  stage_start  01-review/1  read nothing, inherited root
+2026-08-22T00:00:00.200Z  turn  01-review/1  input: 1,  output: 1,  total: 2,  stop: stop, faux-1 via faux
+2026-08-22T00:00:00.300Z  check  01-review/1  output passed
+2026-08-22T00:00:00.400Z  stage_end  01-review/1  exit 0, success, agent report: sealed stages/01-review/1/1/output.txt
+2026-08-22T00:00:01.000Z  run_end  -  exit 0, success

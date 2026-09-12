@@ -1,0 +1,15 @@
+#!/bin/sh
+# Refuse a digest that is missing a section or a bullet. The gate's own words
+# are what reaches the agent on a send-back, so they say what to fix.
+set -eu
+for heading in "## Title" "## Notes" "## Tags"; do
+	if ! grep -qF "$heading" "$1"; then
+		echo "The digest is missing its $heading section. Add it."
+		exit 1
+	fi
+done
+bullets=$(grep -c '^-' "$1" || true)
+if [ "$bullets" -lt 3 ]; then
+	echo "The digest carries $bullets bullets under ## Notes and needs all three."
+	exit 1
+fi

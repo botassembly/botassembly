@@ -1,0 +1,29 @@
+intelligences:
+  command:
+    provider: example-provider
+    model: command-model
+    reasoning: max
+  task:
+    provider: example-provider
+    model: task-model
+    reasoning: xhigh
+  stage:
+    provider: example-provider
+    model: stage-model
+    reasoning: high
+  container:
+    provider: example-provider
+    model: container-model
+    reasoning: medium
+  flow:
+    provider: example-provider
+    model: flow-model
+    reasoning: low
+  assembly:
+    provider: example-provider
+    model: assembly-model
+    reasoning: minimal
+  default:
+    provider: faux
+    model: faux-1
+    reasoning: medium

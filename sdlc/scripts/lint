@@ -1,0 +1,50 @@
+#!/bin/sh
+# lint — the first rung of the gate ladder. Exits 0 when the code is clean.
+#
+# This repo's checks live in bot/Makefile; the ladder is make check's,
+# split into its static rungs here and its test rung in `test`.
+set -eu
+
+# The repo is this script's own home when invoked as a file — prepare and
+# the template tests run it from arbitrary working directories, and cwd
+# resolution here once made a test suite run itself recursively (the
+# 2026-08-06 storm). Only a gate piping it into sh ($0 names no file)
+# falls back to the working tree, which is exactly the tree it judges.
+case $0 in
+*/lint) REPO=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) ;;
+*) REPO=$(git rev-parse --show-toplevel) ;;
+esac
+
+# Reentrancy sentinel, scoped to the repo: a check for THIS repo already
+# running above us means some path is recursive — fail loudly instead of
+# forking a storm (2026-08-06). A different repo (a test fixture) is fine.
+if [ "${SDLC_IN_CHECK-}" = "$REPO" ]; then
+	echo "refusing: a check for $REPO is already running above us (recursion)" >&2
+	exit 2
+fi
+export SDLC_IN_CHECK="$REPO"
+
+# Keep generated specification pages in step before Bot's static rungs.
+node "$REPO/docs/scripts/generate-specification.mjs"
+node "$REPO/scripts/check-size-decision.mjs"
+node "$REPO/scripts/check-public-tree.mjs" "$REPO"
+node "$REPO/scripts/check-case-collisions.mjs" "$REPO"
+
+# Every public example resolves. An example no check executes is
+# documentation pretending to be code (the examples program issue).
+sh "$REPO/sdlc/scripts/examples"
+
+# A finished ticket leaves sdlc/tickets/. A live ticket with a completion
+# record is drift the success script left behind (173 of them by 2026-09-06).
+for ticket in "$REPO"/sdlc/tickets/*.md; do
+	[ -e "$ticket" ] || continue
+	id=$(basename "$ticket" | cut -c1-4)
+	for record in "$REPO"/sdlc/records/"$id"-*.md; do
+		[ -e "$record" ] || continue
+		echo "lint: $ticket has a completion record; move it to sdlc/tickets/archive/" >&2
+		exit 1
+	done
+done
+
+# every static rung of bot's own ladder — make check minus the tests
+exec make -C "$REPO/bot" lint catch-budget typecheck knip cycles ratchet pinned-deps

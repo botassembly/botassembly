@@ -1,0 +1,483 @@
+---
+// The home page walkthrough. Twelve steps build one real assembly a file at a
+// time, run it, and open the record it wrote. Every byte on screen comes from
+// docs/src/data/walkthrough.json, which the build extracts from examples/ and
+// from a checked event record, so nothing here is retyped and a missing file fails the
+// build. Every step is rendered server-side; the script only shows one at a
+// time, so with scripting off step 1 stands complete on its own.
+import data from '../data/walkthrough.json';
+
+const files = new Map(data.files.map((file) => [file.path, file]));
+
+/** Path list to indented rows. A chain of lone directories collapses to one. */
+function treeRows(paths) {
+	const root = { children: new Map(), files: [] };
+	for (const path of paths) {
+		const segments = path.split('/');
+		let node = root;
+		for (const segment of segments.slice(0, -1)) {
+			if (!node.children.has(segment)) node.children.set(segment, { children: new Map(), files: [] });
+			node = node.children.get(segment);
+		}
+		node.files.push({ name: segments.at(-1), path });
+	}
+	const rows = [];
+	const walk = (node, depth, prefix) => {
+		// Files before folders, the way a listing reads.
+		for (const file of node.files) rows.push({ depth, kind: 'file', ...file });
+		for (const [name, child] of node.children) {
+			const parts = [name];
+			let current = child;
+			// A directory holding one directory and no files reads as one row.
+			while (current.files.length === 0 && current.children.size === 1) {
+				const [only, next] = [...current.children][0];
+				parts.push(only);
+				current = next;
+			}
+			rows.push({ depth, name: `${parts.join('/')}/`, kind: 'dir' });
+			walk(current, depth + 1, prefix);
+		}
+	};
+	walk(root, 0, '');
+	return rows;
+}
+
+/** The path a pane names is the one inside the assembly, never the folder the
+    assembly sits in. */
+const inside = (path) => path.replace(`${data.assembly}/`, '');
+
+const steps = data.steps.map((step) => {
+	const shown = step.kind === 'file' ? files.get(step.show) : undefined;
+	return {
+		...step,
+		hash: `step-${String(step.number)}-${step.id}`,
+		fileCount: step.tree.length,
+		showPath: step.kind === 'file' ? inside(step.show) : undefined,
+		// The pane's caption names the assembly, so the row that repeats it goes
+		// and everything under it moves out one level.
+		rows: treeRows(step.tree)
+			.slice(1)
+			.map((row) => ({
+				...row,
+				depth: row.depth - 1,
+				isNew: row.kind === 'file' && step.added.includes(row.path),
+				isLit: row.kind === 'file' && row.path === step.show,
+				executable: row.kind === 'file' ? (files.get(row.path)?.executable ?? false) : false,
+			})),
+		shown,
+		linkText: step.githubIsFile ? 'this file on GitHub' : 'this folder on GitHub',
+	};
+});
+
+const count = steps.length;
+/* The fragment picks the step when no script runs, so a pill and a Back or
+   Next link work on their own. Correlating a targeted step with its own pill
+   and its own controls takes one selector per step, which is why the rules
+   that draw the live step are written here and not in the stylesheet. */
+const pill = (step) => `.ba-walk__pill[data-pill="${String(step)}"]`;
+const bar = (step) => `.ba-walk__controls[data-controls="${String(step)}"]`;
+
+/** Every way a step is the live one: the fragment names it, nothing is named
+    and it is the first, or the script has marked it. */
+const whenLive = (node, marked) =>
+	[
+		...steps.map(
+			(step) =>
+				`.ba-walk:not(.is-live):has(.ba-walk__step[data-step="${String(step.number)}"]:target) ${node(step.number)}`,
+		),
+		`.ba-walk:not(.is-live):not(:has(.ba-walk__step:target)) ${node(1)}`,
+		marked,
+	].join(',\n');
+
+const targetCss = `
+${whenLive(bar, '.ba-walk.is-live .ba-walk__controls.is-current')} {
+	display: grid;
+}
+${whenLive(pill, '.ba-walk.is-live .ba-walk__pill[aria-current="step"]')} {
+	color: var(--sl-color-white);
+	background: var(--sl-color-accent-low);
+	border-color: var(--sl-color-accent);
+}
+${whenLive(
+	(step) => `${pill(step)} .ba-walk__pill-number`,
+	'.ba-walk.is-live .ba-walk__pill[aria-current="step"] .ba-walk__pill-number',
+)} {
+	background: var(--sl-color-bg-accent);
+	color: var(--sl-color-text-invert);
+	border-color: var(--sl-color-accent);
+}
+`;
+
+const number = (value) => value.toLocaleString('en-US');
+const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
+---
+
+<style is:inline set:html={targetCss}></style>
+
+<section class="ba-walk" data-walkthrough aria-label="How an assembly is built, step by step">
+	<nav class="ba-walk__rail" aria-label="Walkthrough steps" data-rail>
+		{steps.map((step) => (
+			<a
+				class="ba-walk__pill"
+				href={`#${step.hash}`}
+				data-pill={String(step.number)}
+			>
+				<span class="ba-walk__pill-number">{step.number}</span>
+				<span class="ba-walk__pill-title">{step.title}</span>
+			</a>
+		))}
+	</nav>
+
+	<div class="ba-walk__controls-rail">
+		{steps.map((step) => (
+			<div class="ba-walk__controls" data-controls={String(step.number)}>
+				{step.number > 1 ? (
+					<a class="ba-walk__nav" href={`#${steps[step.number - 2].hash}`} data-go={String(step.number - 1)}>
+						&larr; Back
+					</a>
+				) : (
+					<span class="ba-walk__nav is-off">&larr; Back</span>
+				)}
+				<span class="ba-walk__count">{step.number} of {count}</span>
+				{step.number < count ? (
+					<a class="ba-walk__nav" href={`#${steps[step.number].hash}`} data-go={String(step.number + 1)}>
+						Next &rarr;
+					</a>
+				) : (
+					<span class="ba-walk__nav is-off">Next &rarr;</span>
+				)}
+			</div>
+		))}
+	</div>
+
+	<div class="ba-walk__stage">
+		{steps.map((step) => (
+			<section
+				class="ba-walk__step"
+				id={step.hash}
+				aria-label={`Step ${step.number} of ${count}, ${step.title}`}
+				data-step={String(step.number)}
+				data-hash={step.hash}
+				data-layout={step.layout}
+			>
+				<div class="ba-walk__panes" data-layout={step.layout}>
+					{step.layout === 'panes' ? (
+						<section class="ba-walk__tree" aria-label="The assembly so far">
+							<h4 class="ba-walk__pane-head">
+								<span class="ba-walk__pane-path">{data.assembly}/</span>
+								<span class="ba-walk__pane-count">
+									{step.fileCount} {step.fileCount === 1 ? 'file' : 'files'}
+								</span>
+							</h4>
+							<ul class="ba-walk__rows">
+								{step.rows.map((row) => (
+									<li
+										class:list={[
+											'ba-walk__row',
+											`is-${row.kind}`,
+											row.isNew && 'is-new',
+											row.isLit && 'is-lit',
+										]}
+										style={`--depth: ${String(row.depth)}`}
+									>
+										<span class="ba-walk__row-name">{row.name}</span>
+										{row.executable && <span class="ba-tag">exec</span>}
+										{row.isNew && <span class="ba-walk__new">new</span>}
+									</li>
+								))}
+							</ul>
+						</section>
+					) : (
+						<p class="ba-walk__summary">
+							<strong>{data.assembly}/</strong> now holds {data.banner.files} files:
+							one flow, {data.banner.stageFiles} stage files, a skill, a schema, two
+							gates, and three hooks. A run walks {data.banner.stagesWalked} of the
+							stages, because the choice takes one arm and declines the other.
+						</p>
+					)}
+
+					<section class="ba-walk__content" aria-label="What the step shows">
+						{step.kind === 'file' && (
+							<figure class:list={['ba-file', 'ba-walk__file', step.shown.wrap && 'ba-walk__file--wrap']}>
+								<figcaption>
+									<span class="ba-walk__file-name">{step.showPath}</span>
+									<span class="ba-walk__file-note">{step.title}</span>
+								</figcaption>
+								<pre tabindex="0"><code>{step.shown.lines.map((line, index) => (
+									<span
+										class:list={['ba-walk__line', step.focus && (index < step.focus.start || index >= step.focus.end) && 'is-dim']}
+									>{line}{'\n'}</span>
+								))}</code></pre>
+							</figure>
+						)}
+
+						{step.kind === 'check' && (
+							<figure class="ba-file ba-walk__file ba-walk__file--wrap" data-check>
+								<figcaption>
+									<span class="ba-walk__file-name">$ {data.check.command}</span>
+									<button
+										type="button"
+										class="ba-walk__fold"
+										data-fold
+										aria-expanded="true"
+									>show every option</button>
+								</figcaption>
+								<pre tabindex="0"><code>{data.check.rows.map((row) => (
+									<span class="ba-walk__line">{row.head}{'  '}<span
+										class="ba-walk__opts"
+									>{row.options}</span><span class="ba-walk__opts-fold">options=&hellip;</span>{'\n'}</span>
+								))}<span class="ba-walk__line is-prompt">$ echo $?{'\n'}</span><span class="ba-walk__line">{data.check.exit}{'\n'}</span></code></pre>
+							</figure>
+						)}
+
+						{step.kind === 'run' && (
+							<div class="ba-walk__run" data-run>
+								<p class="ba-walk__cmd"><code>$ {data.runCommand}</code></p>
+								<div class="ba-walk__ticker" data-ticker>
+									<p class="ba-walk__ticker-line">
+										<span class="ba-walk__ev">run_start</span>
+										<span class="ba-walk__detail">
+											{data.record.run} &middot; flow {data.record.flow} &middot;{' '}
+											{data.record.request.name}, {data.record.request.bytes} bytes
+										</span>
+									</p>
+									{data.record.stages.map((stage) => (
+										<section class="ba-walk__card" data-play data-events={String(stage.events)}>
+											<h5 class="ba-walk__card-head">{stage.stage}</h5>
+											<ul class="ba-walk__events">
+												{stage.rows.map((row) => (
+													<li
+														class:list={['ba-walk__event', `is-${row.kind}`]}
+														data-play
+														data-events={String(row.events)}
+													>
+														{row.kind === 'turns' ? (
+															<span class="ba-walk__ev">
+																{stage.turns} turns &middot; {number(stage.tokens)} tokens
+															</span>
+														) : (
+															<span class="ba-walk__ev">{row.label}</span>
+														)}
+														{typeof row.exit === 'number' && (
+															<span class:list={['ba-walk__exit', exitClass(row.exit)]}>exit {row.exit}</span>
+														)}
+														{row.detail && <span class="ba-walk__detail">{row.detail}</span>}
+													</li>
+												))}
+											</ul>
+										</section>
+									))}
+									<p class="ba-walk__ticker-line is-end" data-play data-events={String(data.record.tail)}>
+										<span class="ba-walk__ev">run_end</span>
+										<span class:list={['ba-walk__exit', exitClass(data.record.exit)]}>
+											exit {data.record.exit}
+										</span>
+										<span class="ba-walk__detail">{data.record.cause}</span>
+									</p>
+								</div>
+								<p class="ba-walk__playbar">
+									<button type="button" class="ba-walk__skip" data-skip hidden>Skip to the end</button>
+									<span
+										class="ba-walk__status"
+										role="status"
+										aria-live="polite"
+										data-status
+										data-events={String(data.record.events)}
+									></span>
+								</p>
+							</div>
+						)}
+
+						{step.kind === 'record' && (
+							<div class="ba-walk__sealed">
+								<dl class="ba-facts">
+									<dt>run</dt><dd><code>{data.record.run}</code></dd>
+									<dt>flow</dt><dd><code>{data.record.flow}</code></dd>
+									<dt>events</dt><dd>{data.record.events} lines of <code>record.jsonl</code></dd>
+									<dt>stages</dt><dd>{data.record.stages.length}, every one exit 0</dd>
+									<dt>exit</dt><dd><span class="ba-walk__exit is-pass">exit {data.record.exit}</span> {data.record.cause}</dd>
+								</dl>
+								<h5 class="ba-walk__sealed-head">A run folder holds</h5>
+								<ul class="ba-walk__entries">
+									{data.sealed.entries.map((entry) => (<li><code>{entry}</code></li>))}
+								</ul>
+								<h5 class="ba-walk__sealed-head">The memo it wrote</h5>
+								<ul class="ba-walk__entries">
+									{data.sealed.headings.map((heading) => (<li>## {heading}</li>))}
+								</ul>
+								<p class="ba-walk__note">
+									This repository publishes the event record used here. Complete run folders and
+									raw provider sessions stay local because tool output can contain sensitive values.
+								</p>
+								<p class="ba-walk__sealed-more">
+									<a href={step.github}>Read the example record &nearr;</a>
+								</p>
+							</div>
+						)}
+					</section>
+				</div>
+
+				<div class="ba-walk__say">
+					<h3 class="ba-walk__title" tabindex="-1" data-title>
+						<span class="ba-walk__title-number">{step.number}</span> {step.title}
+					</h3>
+					<p class="ba-walk__blurb">
+						{step.blurb.map((part) => (part.code ? <code>{part.text}</code> : <>{part.text}</>))}
+					</p>
+					<p class="ba-walk__links">
+						<a href={step.spec.href}>{step.spec.label}</a>
+						<a href={step.github}>{step.linkText} &nearr;</a>
+					</p>
+				</div>
+			</section>
+		))}
+	</div>
+</section>
+
+<script>
+	/** One row every 140 ms. Slow enough to read, short enough to sit through. */
+	const PACE = 140;
+
+	for (const root of document.querySelectorAll('[data-walkthrough]')) {
+		const rail = root.querySelector('[data-rail]');
+		const pills = [...root.querySelectorAll('[data-pill]')];
+		const panels = [...root.querySelectorAll('[data-step]')];
+		const controls = [...root.querySelectorAll('[data-controls]')];
+		const total = panels.length;
+		const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+		const run = root.querySelector('[data-run]');
+		const played = run ? [...run.querySelectorAll('[data-play]')] : [];
+		const skip = run?.querySelector('[data-skip]');
+		const status = run?.querySelector('[data-status]');
+		const ticker = run?.querySelector('[data-ticker]');
+		let timer;
+		let drawn = 0;
+
+		function settle() {
+			clearInterval(timer);
+			timer = undefined;
+			for (const node of played) node.hidden = false;
+			if (skip) skip.hidden = true;
+			if (ticker) ticker.scrollTop = ticker.scrollHeight;
+			if (status) status.textContent = `${status.dataset.events} events in record.jsonl`;
+			drawn = Number(status?.dataset.events ?? 0);
+		}
+
+		function play() {
+			clearInterval(timer);
+			if (still.matches || played.length === 0) return settle();
+			for (const node of played) node.hidden = true;
+			if (skip) skip.hidden = false;
+			drawn = 0;
+			if (status) status.textContent = `0 of ${status.dataset.events} events`;
+			let index = 0;
+			timer = setInterval(() => {
+				played[index].hidden = false;
+				drawn += Number(played[index].dataset.events ?? 0);
+				if (status) status.textContent = `${String(drawn)} of ${status.dataset.events} events`;
+				index += 1;
+				// Follow the newest row inside the ticker. Scrolling the box
+				// itself never moves the page under the reader.
+				if (ticker) ticker.scrollTop = ticker.scrollHeight;
+				if (index >= played.length) settle();
+			}, PACE);
+		}
+
+		skip?.addEventListener('click', settle);
+
+		// The option ladder repeats on every check row. With a script it starts
+		// folded and one control opens all five. With no script it stays open,
+		// because nothing would open it.
+		const check = root.querySelector('[data-check]');
+		const fold = check?.querySelector('[data-fold]');
+		function setFold(folded) {
+			check.classList.toggle('is-folded', folded);
+			fold.setAttribute('aria-expanded', String(!folded));
+			fold.textContent = folded ? 'show every option' : 'fold the options';
+		}
+		if (check && fold) {
+			setFold(true);
+			fold.addEventListener('click', () => setFold(!check.classList.contains('is-folded')));
+		}
+
+		function show(step, { focus = 'none', hash = true } = {}) {
+			const target = Math.min(Math.max(step, 1), total);
+			for (const panel of panels) {
+				panel.classList.toggle('is-current', Number(panel.dataset.step) === target);
+			}
+			// Back, Next and the counter belong to the step they move from, so
+			// one set is drawn at a time, in the rail beside the pills.
+			for (const bar of controls) {
+				bar.classList.toggle('is-current', Number(bar.dataset.controls) === target);
+			}
+			for (const [index, pill] of pills.entries()) {
+				const selected = index + 1 === target;
+				pill.tabIndex = selected ? 0 : -1;
+				if (selected) pill.setAttribute('aria-current', 'step');
+				else pill.removeAttribute('aria-current');
+			}
+			const panel = panels[target - 1];
+			const pill = pills[target - 1];
+			if (hash) history.replaceState(null, '', `#${panel.dataset.hash}`);
+			// The rail scrolls sideways on a phone. Centring the live pill puts
+			// all of it on screen, and moving the rail's own scroll never moves
+			// the page.
+			rail.scrollLeft = pill.offsetLeft - (rail.clientWidth - pill.offsetWidth) / 2;
+			// A keyboard reader stays in the rail, so the next arrow press works.
+			// A reader who clicked Back or Next meets the panel instead.
+			if (focus === 'rail') pill.focus({ preventScroll: true });
+			if (focus === 'panel') panel.querySelector('[data-title]').focus({ preventScroll: true });
+			if (run) {
+				if (panel.contains(run)) play();
+				else clearInterval(timer);
+			}
+			return target;
+		}
+
+		let current = 1;
+		const go = (step, options) => {
+			current = show(step, options);
+		};
+
+		for (const pill of pills) {
+			pill.addEventListener('click', (event) => {
+				event.preventDefault();
+				go(Number(pill.dataset.pill), { focus: 'rail' });
+			});
+		}
+		for (const link of root.querySelectorAll('[data-go]')) {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				go(Number(link.dataset.go), { focus: 'panel' });
+			});
+		}
+
+		root.addEventListener('keydown', (event) => {
+			if (event.altKey || event.ctrlKey || event.metaKey) return;
+			// A file body scrolls sideways with the same keys. Leave it alone.
+			if (event.target instanceof Element && event.target.closest('pre')) return;
+			const keys = { ArrowLeft: current - 1, ArrowRight: current + 1, Home: 1, End: total };
+			const step = keys[event.key];
+			if (step === undefined) return;
+			event.preventDefault();
+			go(step, { focus: 'rail' });
+		});
+
+		const fromHash = () => {
+			const hash = window.location.hash.slice(1);
+			const panel = panels.find((candidate) => candidate.dataset.hash === hash);
+			return panel ? Number(panel.dataset.step) : undefined;
+		};
+
+		root.classList.add('is-live');
+		go(fromHash() ?? 1, { hash: false });
+		window.addEventListener('hashchange', () => {
+			const step = fromHash();
+			if (step !== undefined) go(step, { hash: false });
+		});
+		still.addEventListener('change', () => {
+			if (run && panels[current - 1].contains(run)) play();
+		});
+	}
+</script>

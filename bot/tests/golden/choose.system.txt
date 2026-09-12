@@ -1,0 +1,23 @@
+# Purpose
+
+Protect the quality of published work.
+
+# Instructions
+
+Choose the safest response.
+
+- `patch` — correct a small, isolated problem
+- `revert` — restore the last known good version
+
+# Slots
+
+Address files through the slot names, not through the paths they resolve to.
+
+- `$PWD` — the tree where you work.
+- `$INPUT` — a directory containing the named input files.
+- `$TMP` — empty scratch space for this task; write working files here and nowhere else.
+- `$SKILLS` — capabilities available to read on demand.
+
+# Tools
+
+Use the available tools to inspect inputs, do the work, and record required decisions.

@@ -1,0 +1,2 @@
+{"code":"key-unknown","path":"ASSEMBLY.md","message":"Remove the retired key model; define the choice in the home intelligences table and name it with --intelligence."}
+{"code":"frontmatter-invalid","path":"flows/change/01-read.md","message":"Fix the YAML frontmatter at line 3, column 1."}

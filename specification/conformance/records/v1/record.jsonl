@@ -1,0 +1,6 @@
+{"record":1,"runtime":"0.0.1","ts":"2026-08-22T00:00:00.000Z","event":"run_start","run":"2026-08-22T00-00-00-a001","assembly":"review","assembly_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","flow":"main","request":{"path":"request.txt","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":4,"via":"argument"},"future_note":"An additive field is ignored."}
+{"ts":"2026-08-22T00:00:00.100Z","event":"stage_start","stage":"01-review","retry":1,"received":[],"options":[]}
+{"ts":"2026-08-22T00:00:00.200Z","event":"turn","stage":"01-review","retry":1,"provider":"faux","model":"faux-1","input":1,"output":1,"cache_read":0,"cache_write":0,"total":2,"stop":"stop"}
+{"ts":"2026-08-22T00:00:00.300Z","event":"check","stage":"01-review","retry":1,"check":"output","exit":0,"capture":"stages/01-review/1/1/checks/output.txt"}
+{"ts":"2026-08-22T00:00:00.400Z","event":"stage_end","stage":"01-review","retry":1,"exit":0,"cause":"success","output":{"path":"stages/01-review/1/1/output.txt","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"sealed":true,"judged":true}
+{"ts":"2026-08-22T00:00:01.000Z","event":"run_end","exit":0,"cause":"success","future_detail":{"one":1}}

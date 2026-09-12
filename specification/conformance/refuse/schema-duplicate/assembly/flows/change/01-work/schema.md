@@ -1,0 +1,5 @@
+---
+verdict: str
+---
+
+## Shape

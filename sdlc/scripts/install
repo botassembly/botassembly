@@ -1,0 +1,8 @@
+#!/bin/sh
+# install — prepare this project's dependencies in the prepared tree.
+#
+# `prepare` invokes this script with that tree as its working directory; do not
+# derive it from $0, which names the copied script inside that tree.
+set -eu
+
+exec make -C bot install

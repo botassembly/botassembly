@@ -1,0 +1,13 @@
+---
+title: Explore a Refusal
+description: Every mistake the conformance corpus says a runtime must refuse, grouped by code, with the tree at fault and the repair.
+tableOfContents: false
+---
+
+import RefusalExplorer from '../../../components/RefusalExplorer.astro';
+
+Refusal is a property of the format, not a feature of one runtime. Every mistake below is a case the corpus says a runtime must refuse, grouped by the [code](/specification/refusals/) it must report. Pick one and you get the tree that causes it, the file at fault in red, the line a runtime must print, and what the specification says went wrong.
+
+The corpus asserts the code and the path, never the sentence. That is what lets two runtimes be checked against each other without binding either to the other's prose.
+
+<RefusalExplorer />

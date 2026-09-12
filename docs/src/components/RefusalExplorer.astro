@@ -1,0 +1,253 @@
+---
+// Refusal explorer. Every refuse case in the conformance corpus, grouped by
+// the code it asserts. Picking a mistake shows the tree that causes it, the
+// file at fault, the refusal line a runtime must print, and the repair the
+// specification names for that code.
+import corpus from '../data/corpus.json';
+import { baseName, directorySegments } from './paths.mjs';
+
+const cases = corpus.cases
+	.filter((entry) => entry.kind === 'refuse')
+	.map((entry) => ({
+		id: entry.id,
+		invocation: entry.invocation,
+		files: entry.files,
+		faults: entry.faults,
+		codes: entry.codes,
+	}));
+
+const groups = [...new Set(cases.flatMap((entry) => entry.codes))]
+	.sort()
+	.map((code) => ({
+		code,
+		repair: corpus.codes[code],
+		cases: cases.filter((entry) => entry.codes[0] === code),
+	}))
+	.map((group) => ({
+		...group,
+		// A case is named for the mistake an author made, the code for what
+		// the runtime reports. They part company often enough to say so.
+		renamed: group.cases.some((entry) => !entry.id.startsWith(group.code)),
+	}))
+	.filter((group) => group.cases.length > 0);
+
+// A fault path names a file or the folder that holds it. Mark both.
+const atFault = (entry, path) =>
+	entry.faults.some(
+		(fault) => path === `assembly/${fault.path}` || path.startsWith(`assembly/${fault.path}/`),
+	);
+
+const payload = JSON.stringify({ cases, codes: corpus.codes });
+const first = groups[0].cases[0];
+const firstFile =
+	first.files.find((file) => atFault(first, file.path) && typeof file.text === 'string') ??
+	first.files.find((file) => typeof file.text === 'string') ??
+	first.files[0];
+---
+
+<div class="ba-explorer ba-explorer--refusal" data-refusal-explorer>
+	<script type="application/json" data-explorer-data set:html={payload} is:inline />
+
+	<div class="ba-explorer__bar">
+		<label class="ba-explorer__label" for="ba-refusal-search">Search</label>
+		<input
+			id="ba-refusal-search"
+			class="ba-explorer__search"
+			type="search"
+			placeholder="a code or a case name"
+			data-search
+		/>
+		<span class="ba-explorer__count" data-count>{cases.length} mistakes</span>
+	</div>
+
+	<div class="ba-explorer__panes">
+		<section class="ba-pane" aria-label="Mistakes by refusal code">
+			<h3 class="ba-pane__head">Mistakes</h3>
+			<div class="ba-groups" data-groups>
+				{groups.map((group) => (
+					<details class="ba-group" open={group.code === groups[0].code}>
+						<summary>
+							<code class="ba-group__code">{group.code}</code>
+							<span class="ba-tag">{group.cases.length}</span>
+						</summary>
+						{group.renamed && (
+							<p class="ba-group__note">
+								code the runtime reports · case names are the corpus's own
+							</p>
+						)}
+						<ul class="ba-tree">
+							{group.cases.map((entry) => (
+								<li>
+									<button
+										type="button"
+										class="ba-tree__item"
+										data-case={entry.id}
+										aria-pressed={entry.id === first.id ? 'true' : 'false'}
+									>
+										<span class="ba-tree__name">{entry.id}</span>
+									</button>
+								</li>
+							))}
+						</ul>
+					</details>
+				))}
+			</div>
+		</section>
+
+		<section class="ba-pane ba-pane--result" aria-label="What the runtime refuses and how to repair it">
+			<h3 class="ba-pane__head">The refusal</h3>
+			<ul class="ba-refusals" data-refusals>
+				{first.faults.map((fault) => (
+					<li>
+						<p class="ba-refusal__line">
+							<code class="ba-refusal__code">{fault.code}</code>
+							<code class="ba-refusal__path">{fault.path}</code>
+						</p>
+						<p class="ba-refusal__repair">{corpus.codes[fault.code]}</p>
+					</li>
+				))}
+			</ul>
+			<h3 class="ba-pane__head">The assembly at fault</h3>
+			<ul class="ba-tree" data-tree>
+				{first.files.map((file) => (
+					<li>
+						<button
+							type="button"
+							class:list={[
+								'ba-tree__item',
+								atFault(first, file.path) && 'ba-tree__item--fault',
+							]}
+							data-path={file.path}
+							aria-pressed={file.path === firstFile.path ? 'true' : 'false'}
+						>
+							<span class="ba-tree__dir">{directorySegments(file.path).map((segment) => (<>{segment}<wbr /></>))}</span>
+							<span class="ba-tree__name">{baseName(file.path)}</span>
+							{file.executable && <span class="ba-tag">exec</span>}
+						</button>
+					</li>
+				))}
+			</ul>
+			<figure class="ba-file">
+				<figcaption data-file-name>{firstFile.path}</figcaption>
+				<pre tabindex="0" data-file-body>{firstFile.text ?? ''}</pre>
+			</figure>
+		</section>
+	</div>
+</div>
+
+<script>
+	import { baseName, directorySegments } from './paths.mjs';
+
+	for (const root of document.querySelectorAll('[data-refusal-explorer]')) {
+		const { cases, codes } = JSON.parse(root.querySelector('[data-explorer-data]').textContent);
+		const groupsNode = root.querySelector('[data-groups]');
+		const search = root.querySelector('[data-search]');
+		const count = root.querySelector('[data-count]');
+		const refusals = root.querySelector('[data-refusals]');
+		const tree = root.querySelector('[data-tree]');
+		const fileName = root.querySelector('[data-file-name]');
+		const fileBody = root.querySelector('[data-file-body]');
+
+		const element = (name, className, text) => {
+			const node = document.createElement(name);
+			if (className) node.className = className;
+			if (text !== undefined) node.textContent = text;
+			return node;
+		};
+
+		let current = cases[0];
+
+		function faulty(entry, path) {
+			return entry.faults.some(
+				(fault) => path === `assembly/${fault.path}` || path.startsWith(`assembly/${fault.path}/`),
+			);
+		}
+
+		function showFile(entry, path) {
+			const file = entry.files.find((candidate) => candidate.path === path) ?? entry.files[0];
+			fileName.textContent = file.path;
+			if (typeof file.text === 'string') {
+				fileBody.textContent = file.text;
+			} else if (file.omitted === 'link') {
+				fileBody.textContent = `symbolic link to ${file.link}`;
+			} else if (file.omitted === 'bytes') {
+				fileBody.textContent = `not UTF-8. First bytes: ${file.bytes}`;
+			} else {
+				fileBody.textContent = `${file.size} bytes, contents not shipped`;
+			}
+			for (const button of tree.querySelectorAll('[data-path]')) {
+				button.setAttribute('aria-pressed', String(button.dataset.path === file.path));
+			}
+		}
+
+		function showCase(id) {
+			const entry = cases.find((candidate) => candidate.id === id) ?? cases[0];
+			current = entry;
+
+			refusals.replaceChildren();
+			for (const fault of entry.faults) {
+				const item = element('li');
+				const line = element('p', 'ba-refusal__line');
+				line.append(element('code', 'ba-refusal__code', fault.code));
+				line.append(element('code', 'ba-refusal__path', fault.path));
+				item.append(line);
+				item.append(element('p', 'ba-refusal__repair', codes[fault.code] ?? ''));
+				refusals.append(item);
+			}
+
+			tree.replaceChildren();
+			for (const file of entry.files) {
+				const li = element('li');
+				const button = element('button', 'ba-tree__item');
+				button.type = 'button';
+				button.dataset.path = file.path;
+				if (faulty(entry, file.path)) button.classList.add('ba-tree__item--fault');
+				const dir = element('span', 'ba-tree__dir');
+				for (const segment of directorySegments(file.path)) {
+					dir.append(segment, document.createElement('wbr'));
+				}
+				button.append(dir);
+				button.append(element('span', 'ba-tree__name', baseName(file.path)));
+				if (file.executable) button.append(element('span', 'ba-tag', 'exec'));
+				button.addEventListener('click', () => showFile(entry, file.path));
+				li.append(button);
+				tree.append(li);
+			}
+
+			const opening =
+				entry.files.find((file) => faulty(entry, file.path) && typeof file.text === 'string') ??
+				entry.files.find((file) => typeof file.text === 'string') ??
+				entry.files[0];
+			showFile(entry, opening.path);
+
+			for (const button of groupsNode.querySelectorAll('[data-case]')) {
+				button.setAttribute('aria-pressed', String(button.dataset.case === entry.id));
+			}
+		}
+
+		for (const button of groupsNode.querySelectorAll('[data-case]')) {
+			button.addEventListener('click', () => showCase(button.dataset.case));
+		}
+
+		search.addEventListener('input', () => {
+			const needle = search.value.trim().toLowerCase();
+			let shown = 0;
+			for (const group of groupsNode.querySelectorAll('.ba-group')) {
+				const code = group.querySelector('.ba-group__code').textContent.toLowerCase();
+				let matches = 0;
+				for (const button of group.querySelectorAll('[data-case]')) {
+					const id = button.dataset.case.toLowerCase();
+					const hit = needle === '' || code.includes(needle) || id.includes(needle);
+					button.parentElement.hidden = !hit;
+					if (hit) matches += 1;
+				}
+				group.hidden = matches === 0;
+				if (needle !== '') group.open = matches > 0;
+				shown += matches;
+			}
+			count.textContent = `${shown} ${shown === 1 ? 'mistake' : 'mistakes'}`;
+		});
+
+		showCase(current.id);
+	}
+</script>

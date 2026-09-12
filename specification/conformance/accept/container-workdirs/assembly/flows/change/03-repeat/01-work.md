@@ -1,0 +1,5 @@
+---
+workdir: ./loop
+---
+
+Work again.

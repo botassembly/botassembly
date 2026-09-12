@@ -1,0 +1,4 @@
+intelligences:
+  quick:
+    model: quick-model
+    reasoning: low

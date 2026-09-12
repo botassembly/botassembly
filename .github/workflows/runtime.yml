@@ -1,0 +1,28 @@
+name: runtime
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.22.0"
+          cache: npm
+          cache-dependency-path: bot/package-lock.json
+      - run: npm ci
+        working-directory: bot
+      - run: test "$(id -u)" -ne 0
+      - run: git cat-file -e 'HEAD^{commit}' || exit 1; commit=$(git cat-file commit HEAD) || exit 1; header=$(printf '%s\n' "$commit" | sed -n '2p') || exit 1; case "$header" in parent\ *) git rev-parse --verify HEAD^ >/dev/null 2>&1;; author\ *) true;; *) exit 1;; esac
+      - run: make check

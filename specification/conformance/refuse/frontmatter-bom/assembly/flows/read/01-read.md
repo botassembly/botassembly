@@ -1,0 +1,4 @@
+﻿---
+{}
+---
+Read the input.

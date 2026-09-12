@@ -1,0 +1,4 @@
+intelligences:
+  coder:
+    hard: { provider: example-provider, model: hard-model, reasoning: xhigh }
+    quick: { provider: example-provider, model: quick-model, reasoning: low }

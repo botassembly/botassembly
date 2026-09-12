@@ -1,0 +1,54 @@
+{
+  "name": "bot",
+  "private": true,
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./inspection": "./src/public-inspection.ts",
+    "./one-run": "./src/one-run.ts",
+    "./record-lines": "./src/record-lines.ts",
+    "./session": "./src/session.ts"
+  },
+  "bin": {
+    "bot": "src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.22"
+  },
+  "scripts": {
+    "lint": "eslint . && node scripts/check-lint-rules.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "node scripts/run-coverage.mjs",
+    "knip": "knip --no-config-hints",
+    "cycles": "madge --circular --extensions ts src",
+    "ratchet": "node ../sdlc/scripts/ratchet.mjs",
+    "check:catch-budget": "node scripts/check-catch-budget.mjs",
+    "check:pinned-deps": "node scripts/check-pinned-deps.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.85.1",
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "ajv": "8.20.0",
+    "proper-lockfile": "4.1.2",
+    "yaml": "2.9.0"
+  },
+  "bundleDependencies": [
+    "@earendil-works/pi-agent-core",
+    "@earendil-works/pi-ai",
+    "@earendil-works/pi-coding-agent"
+  ],
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "@types/proper-lockfile": "4.1.4",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.8.0",
+    "knip": "6.31.0",
+    "madge": "8.0.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.11"
+  }
+}
