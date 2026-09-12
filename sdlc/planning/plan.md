@@ -12,7 +12,7 @@ The [direction decision](decisions/2026-09-08-ideal-state-direction.md), [post-c
 
 ## Next work
 
-Work one reviewed ticket at a time from the alpha plan. Tickets 0263 through 0266 isolated tests from operator authentication, classified every starting issue, restored the specification checker to the complete gate, and replaced runtime-derived public evidence with digest-pinned synthetic fixtures. The next ticket adds known-secret detection to local and hosted publication checks.
+Work one reviewed ticket at a time from the alpha plan. Tickets 0263 through 0266 isolated tests from operator authentication, classified every starting issue, restored the specification checker to the complete gate, and replaced runtime-derived public evidence with digest-pinned synthetic fixtures. Ticket 0268 repaired a concurrent installation race found by ticket 0267's hosted gate. Ticket 0267 now resumes the known-secret detection sequence.
 
 Security work continues before runtime contract repair: add known-secret detection, make file, Bash, and subflow-control authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
 
