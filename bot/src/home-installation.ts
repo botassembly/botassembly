@@ -9,6 +9,7 @@ import { errorCode } from "./model.ts";
 import { jsonValue } from "./schema-check.ts";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const LINK_SETTLED = new Error("The installation link count settled during its read.");
 
 export class HomeInstallationError extends Error {
   readonly exit: 3 | 4 | 5;
@@ -32,6 +33,7 @@ export interface InstallationDependencies {
   createHome?: (entry: string) => Promise<void>;
   afterHomeObservation?: (path: string) => Promise<void>;
   afterRecordObservation?: (path: string) => Promise<void>;
+  afterRecordOpenObservation?: (path: string) => Promise<void>;
   requireFeasible?: (installationId: string) => void;
   interrupt?: (phase: "before-link" | "after-link" | "before-temporary-remove" | "before-home-sync") => Promise<void>;
 }
@@ -56,7 +58,17 @@ function sameObject(left: BigIntStats, right: BigIntStats): boolean {
 
 function sameSnapshot(left: BigIntStats, right: BigIntStats): boolean {
   return sameObject(left, right) && left.size === right.size && left.mode === right.mode && left.uid === right.uid
-    && left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
+    && left.gid === right.gid && left.nlink === right.nlink && left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
+}
+
+function sameRecordData(left: BigIntStats, right: BigIntStats): boolean {
+  return sameObject(left, right) && left.size === right.size && left.mode === right.mode
+    && left.uid === right.uid && left.gid === right.gid && left.mtimeNs === right.mtimeNs;
+}
+
+function singleLinkRemoved(initial: BigIntStats, after: BigIntStats, named: BigIntStats): boolean {
+  const linkSettled = initial.nlink === 2n && after.nlink === 1n && named.nlink === 1n;
+  return linkSettled && sameRecordData(initial, after) && after.ctimeNs >= initial.ctimeNs && sameSnapshot(after, named);
 }
 
 function exactObject(value: unknown, keys: readonly string[]): value is object {
@@ -203,10 +215,30 @@ async function openRecord(path: string): Promise<FileHandle> {
         changed ? "record-changed" : "record-unreadable", reason); });
 }
 
-async function stableRecord(home: HeldHome, initial: BigIntStats, after: BigIntStats, named: BigIntStats): Promise<boolean> {
-  return sameSnapshot(initial, after) && sameSnapshot(initial, named) && await stableHome(home); }
+async function stableRecord(
+  home: HeldHome, initial: BigIntStats, after: BigIntStats, named: BigIntStats,
+): Promise<"stable" | "link-settled" | "changed"> {
+  if (!await stableHome(home)) return "changed";
+  if (sameSnapshot(initial, after) && sameSnapshot(initial, named)) return "stable";
+  return singleLinkRemoved(initial, after, named) ? "link-settled" : "changed";
+}
 
-async function readHeld(home: HeldHome, dependencies: InstallationDependencies = {}): Promise<InstallationReading> {
+async function afterRecordOpen(dependencies: InstallationDependencies, path: string): Promise<void> {
+  await dependencies.afterRecordOpenObservation?.(path);
+}
+
+async function requireStableRecord(
+  home: HeldHome, initial: BigIntStats, after: BigIntStats, named: BigIntStats, recognizeLinkSettlement: boolean,
+): Promise<void> {
+  const stability = await stableRecord(home, initial, after, named);
+  if (stability === "stable") return;
+  if (stability === "link-settled" && recognizeLinkSettlement) throw LINK_SETTLED;
+  throw failure("The installation record changed during its read.", "record-changed");
+}
+
+async function readHeld(
+  home: HeldHome, dependencies: InstallationDependencies = {}, recognizeLinkSettlement = false,
+): Promise<InstallationReading> {
   if (!await stableHome(home)) throw failure("The Bot home changed during installation reading.", "home-changed");
   const path = join(home.entryPath, "installation.json");
   const named = await observePath(path, dependencies.afterRecordObservation);
@@ -223,16 +255,24 @@ async function readHeld(home: HeldHome, dependencies: InstallationDependencies =
     if (!sameObject(named, observed) || !secureRecord(observed)) {
       throw failure("The installation record changed while it was opened.", "record-changed");
     }
+    await afterRecordOpen(dependencies, path);
     const bytes = await exactRead(descriptor, Number(observed.size));
     const [after, finalNamed] = await Promise.all([descriptor.stat({ bigint: true }), lstat(path, { bigint: true })])
       .catch((reason: unknown): never => { throw failure("The installation record changed during its read.", "record-changed", reason); });
-    if (!await stableRecord(home, observed, after, finalNamed)) throw failure("The installation record changed during its read.", "record-changed");
+    await requireStableRecord(home, observed, after, finalNamed, recognizeLinkSettlement);
     const installationId = parseRecord(bytes);
     dependencies.requireFeasible?.(installationId);
     return { initialized: true, installationId };
   } finally {
     await descriptor.close();
   }
+}
+
+async function readInitializerHeld(home: HeldHome, dependencies: InstallationDependencies): Promise<InstallationReading> {
+  return readHeld(home, dependencies, true).catch((reason: unknown) => {
+    if (reason === LINK_SETTLED) return readHeld(home, dependencies);
+    throw reason;
+  });
 }
 
 export async function readInstallation(path: string, dependencies: InstallationDependencies = {}): Promise<InstallationReading> {
@@ -312,7 +352,7 @@ function publicationError(linked: boolean, operationFailure: unknown, finalizati
 async function initializeHeld(
   home: HeldHome, dependencies: InstallationDependencies, publication: { mayHaveCompleted: boolean },
 ): Promise<Extract<InstallationReading, { initialized: true }>> {
-  const existing = await readHeld(home, dependencies);
+  const existing = await readInitializerHeld(home, dependencies);
   if (existing.initialized) return existing;
   await (dependencies.syncParent ?? ((parent) => parent.sync()))(home.parent.handle)
     .catch((reason: unknown): never => { throw failure("The Bot home parent could not be synchronized before identity publication.", "parent-sync-failed", reason); });
@@ -328,7 +368,7 @@ async function initializeHeld(
   const finalized = await finalizeCandidate(home, temporary, attempt.linked, dependencies);
   const failed = publicationError(attempt.linked, attempt.operationFailure, finalized[0]);
   if (failed !== undefined) throw failed;
-  const winner = await readHeld(home, dependencies);
+  const winner = await readInitializerHeld(home, dependencies);
   if (!winner.initialized) throw failure("Installation publication produced no readable winner.", "publication-missing");
   return winner;
 }

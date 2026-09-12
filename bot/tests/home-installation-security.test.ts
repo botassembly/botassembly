@@ -1,11 +1,12 @@
-import { spawn } from "node:child_process";
-import { chmod, chown, cp, mkdir, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { chmod, chown, cp, link, mkdir, readFile, readdir, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { initializeInstallation, readInstallation } from "../src/home-installation.ts";
 import { tempRoots } from "./cli-boundary.ts";
+import { launchInitializer, type ChildHarnessResult } from "./home-initializer-harness.ts";
 
 const roots = tempRoots();
 afterEach(() => roots.cleanup());
@@ -101,32 +102,87 @@ test.each(["home", "record"] as const)("a copied home with broad %s mode is reje
     .toBe(part === "home" ? 0o755 : 0o644);
 });
 
-function child(home: string) {
+function child(home: string, role?: "winner" | "loser") {
   const file = fileURLToPath(new URL("./home-initializer-child.ts", import.meta.url));
-  const running = spawn(process.execPath, [file, home], { stdio: ["ignore", "pipe", "pipe", "ipc"] });
-  if (running.stdout === null || running.stderr === null) throw new Error("The identity child has no output pipes.");
-  let stdout = "", stderr = "";
-  running.stdout.on("data", (bytes: Buffer) => { stdout += bytes.toString(); });
-  running.stderr.on("data", (bytes: Buffer) => { stderr += bytes.toString(); });
-  const ready = new Promise<void>((resolve) => { running.once("message", () => { resolve(); }); });
-  const settled = new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
-    running.once("exit", (code) => { resolve({ code, stdout, stderr }); });
-  });
-  return { process: running, ready, settled };
+  const arguments_ = role === undefined ? [file, home] : [file, home, role];
+  return launchInitializer({ executable: process.execPath, arguments: arguments_, botHome: home });
+}
+
+function expectSuccess(result: ChildHarnessResult): void {
+  expect(result).toMatchObject({ exit: { present: true, code: 0, signal: null }, close: { present: true, code: 0, signal: null },
+    stdout: { bytes: 77, overflow: false }, stderr: { bytes: 0, overflow: false } });
+  expect(result.reason).toBeUndefined(); expect(result.diagnostic).toBeUndefined();
 }
 
 test("two barrier-synchronized processes initialize one absent home", async () => {
   const { root } = await roots.scratch("bot-home-process-race-");
   const home = join(root, "home"), first = child(home), second = child(home);
   await Promise.all([first.ready, second.ready]);
-  first.process.send("release"); second.process.send("release");
-  const results = await Promise.all([first.settled, second.settled]);
-  expect(results.map(({ code }) => code)).toEqual([0, 0]);
-  expect(results.map(({ stderr }) => stderr)).toEqual(["", ""]);
-  const ids = results.map(({ stdout }) => (JSON.parse(stdout) as { installationId: string }).installationId);
-  expect(ids[1]).toBe(ids[0]);
-  expect(JSON.parse(await readFile(join(home, "installation.json"), "utf8"))).toMatchObject({ data: { id: ids[0] } });
+  first.release(); second.release();
+  const results = await Promise.all([first.result, second.result]);
+  results.forEach(expectSuccess);
+  const stored = JSON.parse(await readFile(join(home, "installation.json"), "utf8")) as { data: { id: string } };
+  const expectedHash = createHash("sha256").update(`${JSON.stringify({ initialized: true, installationId: stored.data.id })}\n`).digest("hex");
+  expect(results.map((result) => result.stdout.sha256)).toEqual([expectedHash, expectedHash]);
   expect((await readdir(home)).filter((name) => name !== "installation.json")).toEqual([]);
+});
+
+test("a concurrent initializer accepts the winner's final hard-link settlement", async () => {
+  const { root } = await roots.scratch("bot-home-publication-settlement-");
+  const home = await secureHome(root, "home");
+  const winner = child(home, "winner");
+  await winner.ready;
+  const loser = child(home, "loser");
+  await loser.ready;
+  winner.release();
+  const winnerResult = await winner.result;
+  loser.release();
+  const loserResult = await loser.result;
+  expectSuccess(winnerResult); expectSuccess(loserResult);
+  expect(loserResult.stdout.sha256).toBe(winnerResult.stdout.sha256);
+  expect((await stat(join(home, "installation.json"))).nlink).toBe(1);
+  expect((await readdir(home)).filter((name) => name !== "installation.json")).toEqual([]);
+});
+
+test("an initializer discards an unrelated two-to-one link read before one strict reread", async () => {
+  const { root } = await roots.scratch("bot-home-unrelated-link-");
+  const home = await secureHome(root, "home");
+  const expected = await initializeInstallation(home);
+  const record = join(home, "installation.json"), unrelated = join(root, "unrelated-link");
+  await link(record, unrelated);
+  let observations = 0;
+  await expect(initializeInstallation(home, {
+    afterRecordOpenObservation: async () => { observations += 1; if (observations === 1) await unlink(unrelated); },
+  })).resolves.toEqual(expected);
+  expect(observations).toBe(2);
+});
+
+test("a second link instability during the strict initializer reread is rejected", async () => {
+  const { root } = await roots.scratch("bot-home-second-link-change-");
+  const home = await secureHome(root, "home");
+  await initializeInstallation(home);
+  const record = join(home, "installation.json"), first = join(root, "first-link"), second = join(root, "second-link");
+  await link(record, first);
+  let observations = 0;
+  await expect(initializeInstallation(home, { afterRecordOpenObservation: async () => {
+    observations += 1;
+    if (observations === 1) await unlink(first);
+    else await link(record, second);
+  } })).rejects.toMatchObject({ causeCode: "record-changed", published: false });
+  expect(observations).toBe(2);
+});
+
+test("an ordinary read rejects the same two-to-one link transition without rereading", async () => {
+  const { root } = await roots.scratch("bot-home-read-link-change-");
+  const home = await secureHome(root, "home");
+  await initializeInstallation(home);
+  const record = join(home, "installation.json"), unrelated = join(root, "unrelated-link");
+  await link(record, unrelated);
+  let observations = 0;
+  await expect(readInstallation(home, { afterRecordOpenObservation: async () => {
+    observations += 1; await unlink(unrelated);
+  } })).rejects.toMatchObject({ causeCode: "record-changed", published: false });
+  expect(observations).toBe(1);
 });
 
 test("the shared identity fixture attributes its prerequisite to ticket 0055", async () => {
