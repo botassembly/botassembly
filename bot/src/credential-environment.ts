@@ -1,0 +1,69 @@
+// Auth resolution reads bot's snapshot, not the world (ticket 0139 leg 3).
+// This is the set of names the pinned built-in pi-ai providers ask
+// AuthContext.env() for, plus secret companions their provider clients consume.
+// Authentication, child scrubbing, and known-secret assignment recognition
+// share this registry, so none can drift by carrying a private copy.
+const PI_CREDENTIAL_ENVIRONMENT_NAMES = [
+  "AI_GATEWAY_API_KEY", "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_OAUTH_TOKEN",
+  "ANT_LING_API_KEY",
+  "AWS_ACCESS_KEY_ID", "AWS_BEARER_TOKEN_BEDROCK",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN", "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+  "AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+  "AWS_PROFILE",
+  "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+  "AWS_WEB_IDENTITY_TOKEN_FILE",
+  "AZURE_OPENAI_API_KEY",
+  "BASETEN_API_KEY",
+  "CEREBRAS_API_KEY",
+  "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_KEY",
+  "CLOUDFLARE_GATEWAY_ID",
+  "COPILOT_GITHUB_TOKEN",
+  "DEEPSEEK_API_KEY",
+  "FIREWORKS_API_KEY",
+  "GCLOUD_PROJECT",
+  "GEMINI_API_KEY",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "GOOGLE_CLOUD_API_KEY",
+  "GOOGLE_CLOUD_LOCATION",
+  "GOOGLE_CLOUD_PROJECT",
+  "GROQ_API_KEY",
+  "HF_TOKEN",
+  "KIMI_API_KEY",
+  "MINIMAX_API_KEY",
+  "MINIMAX_CN_API_KEY",
+  "MISTRAL_API_KEY",
+  "MOONSHOT_API_KEY",
+  "NVIDIA_API_KEY",
+  "OPENAI_API_KEY",
+  "OPENCODE_API_KEY",
+  "OPENROUTER_API_KEY",
+  "QWEN_TOKEN_PLAN_API_KEY",
+  "QWEN_TOKEN_PLAN_CN_API_KEY",
+  "RADIUS_API_KEY",
+  "TOGETHER_API_KEY",
+  "XAI_API_KEY",
+  "XIAOMI_API_KEY",
+  "XIAOMI_TOKEN_PLAN_AMS_API_KEY", "XIAOMI_TOKEN_PLAN_CN_API_KEY",
+  "XIAOMI_TOKEN_PLAN_SGP_API_KEY",
+  "ZAI_API_KEY",
+  "ZAI_CODING_CN_API_KEY",
+] as const;
+
+const EXPLICIT_SECRET_NAMES = new Set<string>([
+  "AWS_ACCESS_KEY_ID",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "COPILOT_GITHUB_TOKEN",
+  "HF_TOKEN",
+]);
+
+function secretBearing(name: string): boolean {
+  return name.endsWith("_API_KEY") || name.endsWith("_AUTH_TOKEN") || name.endsWith("_OAUTH_TOKEN") || EXPLICIT_SECRET_NAMES.has(name);
+}
+
+export const CREDENTIAL_ENVIRONMENT_NAMES: ReadonlySet<string> = new Set(PI_CREDENTIAL_ENVIRONMENT_NAMES);
+export const SECRET_CREDENTIAL_ENVIRONMENT_NAMES: ReadonlySet<string> = new Set(PI_CREDENTIAL_ENVIRONMENT_NAMES.filter(secretBearing));

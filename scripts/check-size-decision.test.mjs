@@ -55,7 +55,13 @@ function decision(start, end, overrides = {}) {
 }
 
 function check(root) {
-	return spawnSync(process.execPath, [checker, root], { encoding: 'utf8' });
+	const stdout = join(root, '.size-decision.stdout');
+	const stderr = join(root, '.size-decision.stderr');
+	return spawnSync('sh', ['-c', '"$1" "$2" "$3" >"$4" 2>"$5"; status=$?; cat "$4"; cat "$5" >&2; exit "$status"',
+		'check-size-decision', process.execPath, checker, root, stdout, stderr], {
+		encoding: 'utf8',
+		env: { HOME: root, LANG: 'C.UTF-8', PATH: process.env.PATH ?? '' },
+	});
 }
 
 test('unchanged and lowered working ceilings need no decision', async () => {
@@ -89,6 +95,19 @@ test('an untracked current ticket can justify a working increase', async () => {
 	const root = await fixture();
 	await ceiling(root, 11);
 	await put(root, 'sdlc/tickets/drafts/0030-size-decision.md', decision(10, 11));
+	assert.equal(check(root).status, 0);
+});
+
+test('a changed direct active ticket alone can justify a working increase', async () => {
+	const root = await fixture();
+	await put(root, 'sdlc/tickets/0030-size-decision.md', decision(10, 11));
+	git(root, 'add', '.');
+	git(root, 'commit', '-qm', 'add an unchanged active decision');
+	await ceiling(root, 11);
+	await put(root, 'sdlc/tickets/README.md', decision(10, 11));
+	assert.equal(check(root).status, 1);
+
+	await put(root, 'sdlc/tickets/0030-size-decision.md', `${decision(10, 11)}\nCurrent work.\n`);
 	assert.equal(check(root).status, 0);
 });
 

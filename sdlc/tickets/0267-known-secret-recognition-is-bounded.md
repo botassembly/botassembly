@@ -57,6 +57,15 @@ None. This is the first of five tickets that implement alpha outcome 5. Later ti
 
 Credential formats change. Generic assignments can reject harmless examples. A detector that returns source text can leak the value through logs. Binary and resource handling can turn a security check into an unbounded gate. This ticket deliberately leaves repository and Git semantics for separate review.
 
+## Size decision
+
+- Starting production size: 18086 nonblank lines
+- Ending production size: 18344 nonblank lines
+- Simpler approach tried: Keep the environment list inside `credentials.ts`, export it, and add recognition beside existing hashing and UTF-8 helpers.
+- Why insufficient alternatives were rejected: Exporting from `credentials.ts` would make the detector load the credential store and provider runtime. The existing hashing helpers belong to record writing or file-copy boundaries, and the existing UTF-8 helpers truncate or parse specialized inputs. None owns bounded secret recognition. The implementation shares the small environment registry and keeps detection local in one dependency-free module.
+- Production code deleted: 47 lines that held the private environment-name registry in `credentials.ts`.
+- Accepted cost: 258 net nonblank production lines add the shared registry, byte-bounded provider and PEM recognition, exact assignment parsing, bounded disclosure-free results, stable ordering, and safe label formatting. The duplication search covered `credentials.ts`, `record.ts`, `record-line-stream.ts`, `run-start.ts`, `gate-feedback.ts`, `home-installation.ts`, and the other existing SHA-256 call sites. They provide primitives or domain-specific behavior, not this contract.
+
 ## Complexity
 
 - Contract score: 2
@@ -73,4 +82,5 @@ Credential formats change. Generic assignments can reject harmless examples. A d
 ## Review
 
 - Design review: accepted after three rejection rounds. The first design combined detection, Git states, exceptions, hosted history, and integration and could not prove shallow hosted history. The split design then made rule boundaries, overlap, assignment grammar, PEM bytes, refusal results, formatting, and registry drift exact. Final review corrected one overlap false negative and the reach score before acceptance.
-- Code review: pending
+- Implementation evidence: The first complete-gate run exposed that `check-size-decision.mjs` admitted current drafts and completion records but omitted direct accepted tickets. A red regression proved an unchanged active decision and `sdlc/tickets/README.md` cannot authorize a raise while a changed direct active ticket can. The checker now admits only numbered Markdown files directly beneath `sdlc/tickets/`, retains the draft and record paths, and the test harness preserves child diagnostics under Node's test runner.
+- Code review: accepted after one rejection. The first test matrix omitted five excluded configuration names. The accepted remediation derives every excluded name from the shared-registry set difference and proves all four assignment forms remain unrecognized. Review found no detector, disclosure, bound, formatter, registry, or size-check defect.

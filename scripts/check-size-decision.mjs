@@ -10,6 +10,7 @@ const relativeConfig = 'sdlc/ratchet.json';
 const decisionRoots = [
 	'sdlc/planning/bot-contraction/tickets',
 	'sdlc/planning/bot-contraction/records',
+	'sdlc/tickets',
 	'sdlc/tickets/drafts',
 	'sdlc/records',
 ];

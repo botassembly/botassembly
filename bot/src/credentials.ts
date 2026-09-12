@@ -14,6 +14,7 @@ import type { DriverClock } from "./process.ts";
 import { providerRetryEvent, type StageIdentity } from "./record-events.ts";
 import { prettyJson, type RecordWriter } from "./record.ts";
 import { boundedText } from "./new-command-result.ts";
+import { CREDENTIAL_ENVIRONMENT_NAMES } from "./credential-environment.ts";
 
 const LOCK_ATTEMPTS = 51; // 50 sleeps x 20ms = a 1s budget, 6.8x the worst hold measured under full-suite load (worst 147ms, median 105ms, 41 samples, 2026-08-06, ticket 0160).
 const LOCK_RETRY_MS = 20; // The budget is bought with attempts, not delay: every measured acquire landed within one poll of release, and a coarser sleep would slow the common contended case to buy the same ceiling.
@@ -102,58 +103,6 @@ export function fileCredentialStore(path: string, clock: DriverClock): Credentia
   };
 }
 
-// Auth resolution reads bot's snapshot, not the world (ticket 0139 leg 3).
-// This is the set of names the pinned built-in pi-ai providers ask
-// AuthContext.env() for, plus secret companions their provider clients consume.
-// Keeping recognition and child scrubbing on this registry means a new ambient
-// credential cannot reach a provider without leaving every stage environment.
-const CREDENTIAL_ENVIRONMENT_NAMES = new Set([
-  "AI_GATEWAY_API_KEY", "ANTHROPIC_API_KEY",
-  "ANTHROPIC_AUTH_TOKEN",
-  "ANTHROPIC_OAUTH_TOKEN",
-  "ANT_LING_API_KEY",
-  "AWS_ACCESS_KEY_ID", "AWS_BEARER_TOKEN_BEDROCK",
-  "AWS_CONTAINER_AUTHORIZATION_TOKEN", "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
-  "AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
-  "AWS_PROFILE",
-  "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-  "AWS_WEB_IDENTITY_TOKEN_FILE",
-  "AZURE_OPENAI_API_KEY",
-  "BASETEN_API_KEY",
-  "CEREBRAS_API_KEY",
-  "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_KEY",
-  "CLOUDFLARE_GATEWAY_ID",
-  "COPILOT_GITHUB_TOKEN",
-  "DEEPSEEK_API_KEY",
-  "FIREWORKS_API_KEY",
-  "GCLOUD_PROJECT",
-  "GEMINI_API_KEY",
-  "GOOGLE_APPLICATION_CREDENTIALS",
-  "GOOGLE_CLOUD_API_KEY",
-  "GOOGLE_CLOUD_LOCATION",
-  "GOOGLE_CLOUD_PROJECT",
-  "GROQ_API_KEY",
-  "HF_TOKEN",
-  "KIMI_API_KEY",
-  "MINIMAX_API_KEY",
-  "MINIMAX_CN_API_KEY",
-  "MISTRAL_API_KEY",
-  "MOONSHOT_API_KEY",
-  "NVIDIA_API_KEY",
-  "OPENAI_API_KEY",
-  "OPENCODE_API_KEY",
-  "OPENROUTER_API_KEY",
-  "QWEN_TOKEN_PLAN_API_KEY",
-  "QWEN_TOKEN_PLAN_CN_API_KEY",
-  "RADIUS_API_KEY",
-  "TOGETHER_API_KEY",
-  "XAI_API_KEY",
-  "XIAOMI_API_KEY",
-  "XIAOMI_TOKEN_PLAN_AMS_API_KEY", "XIAOMI_TOKEN_PLAN_CN_API_KEY",
-  "XIAOMI_TOKEN_PLAN_SGP_API_KEY",
-  "ZAI_API_KEY",
-  "ZAI_CODING_CN_API_KEY",
-]);
 // Pi's default auth context reads ambient `process.env` for provider key names
 // and probes for credential FILES on its own — the Vertex
 // path checks `~/.config/gcloud/application_default_credentials.json` — so
