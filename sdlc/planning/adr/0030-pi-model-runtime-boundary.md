@@ -2,6 +2,8 @@
 
 **Status:** accepted · **Date:** 2026-09-10 · **Decision owner:** Ian Maurer · **Implements:** Ticket 0242
 
+**Amended 2026-09-12:** Ian approved replacing the accepted `models.json` compatibility boundary before `0.1.0`. The release plan requires a current-owner regular file under a private directory, mode `0600`, no symbolic link, and no group write. The existing implementation remains an acknowledged gap until release-plan outcome 10 lands. Same-account command execution and path races remain accepted limits.
+
 ## Decision
 
 Bot will use Pi's public `ModelRuntime` as its provider, model, availability, request-preparation, and authentication boundary. Bot imports `ModelRuntime` and `getAgentDir` only from the package root of `@earendil-works/pi-coding-agent`. Bot will not deep-import the unexported `AuthStorage` or any other private path. Bot will not use the public `readStoredCredential` because that one-off reader does not join the live store's locked access path.

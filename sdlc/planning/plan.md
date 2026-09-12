@@ -14,7 +14,7 @@ The [direction decision](decisions/2026-09-08-ideal-state-direction.md), [post-c
 
 Work one reviewed ticket at a time from the alpha plan. The first ticket isolates all tests from the operator's Pi authentication. The second classifies every current issue from landed evidence and promotes only confirmed release defects. The third repairs the specification gate and puts it inside the complete local and hosted check.
 
-Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and settle the executable Pi configuration boundary.
+Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
 
 Correctness work then repairs whole-run consumption totals, FANOUT options, descent depth, and current authentication and model qualification. Release work binds documentation publication to the complete gate, publishes the security and concurrency contract, prepares one exact `0.1.0` candidate, qualifies that commit from a clean clone, and tags that same commit only after Ian authorizes publication.
 
@@ -30,9 +30,9 @@ The draft directory is empty by decision.
 
 An observed unresolved problem belongs in `sdlc/issues/`. A selected change with a supported outcome and proof belongs in `sdlc/tickets/`. This project does not keep speculative implementation drafts.
 
-## Decision required
+## Settled configuration decision
 
-ADR 0030 currently permits an owner-controlled symbolic link and group-writable target for `models.json`. The alpha plan recommends requiring a current-owner regular file under a mode-`0700` directory, with file mode `0600`, no link, and no group write. That closes a path into configuration-backed command execution and can reject shared Pi configurations. Ian must choose before that ticket becomes ready.
+Ian approved requiring a current-owner regular `models.json` under a mode-`0700` directory, with file mode `0600`, no link, and no group write. This closes a path into configuration-backed command execution and can require an operator to copy shared Pi configuration into a private file. The implementation ticket will amend ADR 0030's former compatibility boundary.
 
 ## Later work
 

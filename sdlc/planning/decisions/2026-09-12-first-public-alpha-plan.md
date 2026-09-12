@@ -23,7 +23,7 @@ Work proceeds in this order. Each numbered outcome gets its own reviewed ticket.
 7. **Give model-backed choices explicit authority.** A `CHOOSE` body cannot receive unrestricted file and Bash tools merely because the stage-only access key does not apply to it. The format and runtime define its narrow tool set and prove that undeclared file and command calls cannot dispatch.
 8. **Confine model-selected subflow file input.** A model-supplied `input-file` must pass the caller's declared read boundary before Bot reads it. Absolute and linked paths outside the admitted slots fail without exposing their contents.
 9. **Give Bot-created assembly processes a minimal starting environment.** Agent commands, hooks, and gates start with a defined minimum plus slots and explicitly declared values. They do not inherit the caller environment minus a list of recognized names. Descendants inherit that starting environment unless their trusted parent changes it. Tests plant known provider names and unrelated secret names across every Bot-created assembly process. Pi authentication commands remain a separate operator-configuration path.
-10. **Settle executable Pi configuration privacy.** The recommended choice requires command-capable `models.json` to be a current-owner regular file under a private directory, with mode `0600`, no symbolic link, and no group write. Unsafe configuration refuses before command execution. This reverses ADR 0030's accepted owner-controlled link and group boundary, so implementation waits for Ian's choice recorded below.
+10. **Enforce executable Pi configuration privacy.** Command-capable `models.json` must be a current-owner regular file under a private directory, with mode `0600`, no symbolic link, and no group write. Unsafe configuration refuses before command execution. Ian approved this reversal of ADR 0030's owner-controlled link and group boundary on 2026-09-12.
 11. **Report the whole run's consumption.** Run totals include every authorized child record. Readers either report the complete total or label a partial total without implying whole-run cost.
 12. **Align FANOUT options.** The parser, resolved check reading, specification, documentation, and conformance cases agree on which options a fan-out accepts and how children inherit them.
 13. **Align descent depth.** Authored `max-depth` cannot exceed the runtime call-chain ceiling. Checking names the supported maximum and conformance proves the boundary.
@@ -36,12 +36,20 @@ Work proceeds in this order. Each numbered outcome gets its own reviewed ticket.
 
 Tickets 6 through 9 intentionally break assemblies that relied on ambient authority. These changes belong before the first advertised compatibility point. Ian can overturn them. The alternative keeps current assemblies working and leaves prompt-injected stages able to discover unrelated credentials. The recommendation is to accept all four changes.
 
-Ticket 10 needs an explicit choice because ADR 0030 accepted the current Pi-compatible boundary:
+Ian settled ticket 10's choice on 2026-09-12. ADR 0030 had accepted the current Pi-compatible boundary:
 
 - **Require private, non-linked `models.json` (recommended).** This closes the group-write and link paths into command execution. It can reject an operator's shared or linked Pi configuration and require a private copy.
 - **Keep Pi's current compatibility boundary.** Existing shared and linked configuration keeps working. A group member or replaced owner-controlled target can change a command Bot later runs with the operator's authority.
 
-The security cost of the compatibility choice is larger than the convenience of shared configuration before a first release. The plan recommends the private-file choice. Same-account command execution and path races remain accepted limits unless a later isolation design changes the mechanism.
+Ian chose the private, non-linked file boundary. The implementation may require an operator to make a private copy of shared Pi configuration. Same-account command execution and path races remain accepted limits unless a later isolation design changes the mechanism. Ian can overturn this choice before its ticket lands. A later reversal must address the command-injection path that the private boundary closes.
+
+## Ticket count and execution
+
+The repository currently carries 209 tickets: 208 completed and ticket 0263 ready. This plan defines 19 base release tickets. Ticket 0263 is the first. The other 18 outcomes remain ordered plan entries until the preceding evidence needed to shape each ticket exists. Issue reconciliation may add release tickets when current evidence confirms a defect.
+
+Work proceeds through one active ticket at a time. Each ticket receives independent design review before implementation, red-green proof for behavior changes, independent code review, remediation of every accepted finding, the focused checks named by the ticket, and the complete repository gate. A completed ticket is recorded, committed, and pushed before the next ticket becomes active. This keeps no draft queue while preserving review independence.
+
+The first three tickets establish a trustworthy foundation: isolate tests from operator authentication, classify the issue ledger, and restore the specification check to the mandatory gate. Tickets 4 through 10 close publication and command-authority risks. Tickets 11 through 16 align runtime behavior and public claims. Tickets 17 through 19 prepare, qualify, and publish the exact `0.1.0` commit. The final publication still requires Ian's authorization.
 
 ## Draft disposition
 
