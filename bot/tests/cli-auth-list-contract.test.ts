@@ -2,12 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CredentialInfo, CredentialStore, Provider } from "@earendil-works/pi-ai";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
 import { mapping } from "../src/model.ts";
 import { configuredAuthListRuntime, configuredModelRuntime, type AuthListRuntime } from "../src/model-runtime.ts";
+import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 interface Invocation { code: number; out: string; err: string }
 interface FixtureRuntime {
@@ -244,7 +245,7 @@ test("a fresh configured auth list reads public metadata once without credential
   };
   const factory = async (options: Parameters<typeof ModelRuntime.create>[0]): Promise<ModelRuntime> => {
     counts.constructions += 1;
-    const runtime = await ModelRuntime.create({ ...options, credentials: store, modelsPath: null });
+    const runtime = await nativeModelRuntime({ ...options, credentials: store, modelsPath: null });
     const refresh = runtime.refresh.bind(runtime);
     runtime.refresh = (held) => { counts.refreshes += 1; return refresh(held); };
     return runtime;

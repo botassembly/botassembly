@@ -11,7 +11,8 @@ import {
   type JsonlSessionMetadata,
 } from "@earendil-works/pi-agent-core";
 import { Type, createModels, fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai";
-import { ModelRuntime, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { nativeModelRuntimeIsConstructor } from "./support/native-model-runtime.ts";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -58,7 +59,7 @@ test("the pinned Pi public harness and session surface works together", async ()
 });
 
 test("the pinned coding-agent package exposes the audited public model surface", () => {
-  expect(ModelRuntime).toBeTypeOf("function");
+  expect(nativeModelRuntimeIsConstructor()).toBe(true);
   expect(getAgentDir).toBeTypeOf("function");
 });
 

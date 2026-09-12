@@ -17,7 +17,7 @@
     "node": ">=22.22"
   },
   "scripts": {
-    "lint": "eslint . && node scripts/check-lint-rules.mjs",
+    "lint": "eslint . && node scripts/check-lint-rules.mjs && node --test scripts/check-test-model-runtime-boundary.node.mjs && node scripts/check-test-model-runtime-boundary.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "node scripts/run-coverage.mjs",

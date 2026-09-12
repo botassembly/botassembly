@@ -2,13 +2,13 @@ import { chmod, link, mkdir, mkdtemp, readFile, rename as realRename, rm, writeF
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxProvider, type Provider } from "@earendil-works/pi-ai";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
 import { fileCredentialStore } from "../src/credentials.ts";
 import { mapping } from "../src/model.ts";
 import { manualClock } from "./manual-clock.ts";
+import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 const injected = vi.hoisted(() => ({
   source: "", destination: "", sourceDir: "", agentDir: "", temporary: "", committed: false,
@@ -374,7 +374,7 @@ function provider(id: string): Provider {
 }
 
 test("a public Pi login waits on import's destination lock and observes only complete bytes", async () => {
-  const where = await place(), runtime = await ModelRuntime.create({ authPath: where.destination, modelsPath: null, refreshOnCreate: false });
+  const where = await place(), runtime = await nativeModelRuntime({ authPath: where.destination, modelsPath: null, refreshOnCreate: false });
   const base = provider("concurrent-login"), configured: Provider = { ...base, auth: { apiKey: {
     name: "Concurrent key", resolve: () => Promise.resolve(undefined),
     login: () => Promise.resolve({ type: "api_key", key: "login-secret" }),
@@ -401,7 +401,7 @@ test("a public Pi login waits on import's destination lock and observes only com
 test("an expired OAuth refresh waits on import's destination lock and sees a complete map", async () => {
   const expired = `{"oauth":{"type":"oauth","refresh":"${SECRET}","access":"old","expires":0}}`;
   const where = await place(undefined, expired);
-  const runtime = await ModelRuntime.create({ authPath: where.destination, modelsPath: null, refreshOnCreate: false });
+  const runtime = await nativeModelRuntime({ authPath: where.destination, modelsPath: null, refreshOnCreate: false });
   const base = provider("oauth"), configured: Provider = { ...base, auth: { oauth: {
     name: "OAuth", login: () => Promise.reject(new Error("unused")),
     refresh: () => Promise.resolve({ type: "oauth", refresh: "new", access: "new-access", expires: 4_102_444_800_000 }),

@@ -5,7 +5,9 @@ import { ESLint } from "eslint";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
+import { credentialPath, resolveHome } from "../src/invocation.ts";
 
 const roots: string[] = [];
 
@@ -25,6 +27,21 @@ test("the suite gives every test an isolated checkout-owned temp root", async ()
   const root = await mkdtemp(join(tmpdir(), "bot-test-temp-"));
   roots.push(root);
   expect(await realpath(dirname(root))).toBe(temporary);
+});
+
+test("the suite keeps default home, Bot configuration, and Pi paths beneath its temporary root", () => {
+  const temporary = tmpdir();
+  for (const path of [
+    process.env["HOME"],
+    process.env["XDG_CONFIG_HOME"],
+    resolveHome(process.cwd(), undefined, process.env),
+    credentialPath(process.env),
+    getAgentDir(),
+  ]) {
+    expect(path).toBeDefined();
+    expect(relative(temporary, path ?? "").startsWith("..")).toBe(false);
+  }
+  expect(getAgentDir()).toBe(process.env["PI_CODING_AGENT_DIR"]);
 });
 
 test("lint rejects a test that names the host temp directory", async () => {

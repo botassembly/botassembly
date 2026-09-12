@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxProvider, ModelsError, type Provider } from "@earendil-works/pi-ai";
-import { CredentialSynchronizationError, ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { CredentialSynchronizationError, type ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { lock } from "proper-lockfile";
 import { afterEach, expect, test, vi } from "vitest";
 import { main, processBoundary, type CliBoundary } from "../src/cli.ts";
@@ -11,6 +11,7 @@ import { CLI_CONTRACTS } from "../src/cli-contract.ts";
 import { configuredAuthLogoutRuntime } from "../src/model-runtime.ts";
 import { mapping } from "../src/model.ts";
 import { inertText } from "../src/new-command-result.ts";
+import { isNativeModelRuntime, nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 interface Invocation { code: number; out: string; err: string }
 interface LogoutBoundary extends CliBoundary { signal?: AbortSignal }
@@ -266,7 +267,7 @@ test("cancellation and catalog, runtime, and storage failures are fixed and secr
   const root = await mkdtemp(join(tmpdir(), "bot-auth-logout-corrupt-")); roots.push(root);
   const agentDir = join(root, "agent"), authPath = join(agentDir, "auth.json");
   await mkdir(agentDir, { mode: 0o700 }); await writeFile(authPath, `{${SECRET}`, { mode: 0o600 });
-  const runtime = await ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false });
+  const runtime = await nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false });
   runtime.registerNativeProvider(selected);
   const corrupt = fixture([selected], [selected.id]);
   corrupt.value.authPath = authPath; corrupt.value.authLogoutRuntime = () => Promise.resolve(runtime);
@@ -308,10 +309,10 @@ test("two Pi runtime instances serialize concurrent same-provider login and logo
   await mkdir(agentDir, { mode: 0o700 });
   const held = fixture([]);
   const [loggingIn, loggingOut] = await Promise.all([
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
     configuredAuthLogoutRuntime({ agentDir, env: {}, clock: held.value.clock }),
   ]);
-  expect(loggingOut).toBeInstanceOf(ModelRuntime);
+  expect(isNativeModelRuntime(loggingOut)).toBe(true);
   let loginStarted = (): void => undefined, releaseLogin = (): void => undefined;
   const started = new Promise<void>((resolve) => { loginStarted = resolve; });
   const release = new Promise<void>((resolve) => { releaseLogin = resolve; });
@@ -342,10 +343,10 @@ test("Pi serializes current logout behind a same-provider expired OAuth refresh"
   await mkdir(agentDir, { mode: 0o700 });
   const held = fixture([]);
   const [refreshing, loggingOut] = await Promise.all([
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
     configuredAuthLogoutRuntime({ agentDir, env: {}, clock: held.value.clock }),
   ]);
-  expect(loggingOut).toBeInstanceOf(ModelRuntime);
+  expect(isNativeModelRuntime(loggingOut)).toBe(true);
   let refreshStarted = (): void => undefined, releaseRefresh = (): void => undefined;
   const started = new Promise<void>((resolve) => { refreshStarted = resolve; });
   const release = new Promise<void>((resolve) => { releaseRefresh = resolve; });
@@ -382,7 +383,7 @@ test("the production Pi logout runtime waits through an eleven-second Pi file lo
   await mkdir(agentDir, { mode: 0o700 });
   await writeFile(authPath, JSON.stringify({ anthropic: { type: "api_key", key: SECRET } }), { mode: 0o600 });
   const held = fixture([]), runtime = await configuredAuthLogoutRuntime({ agentDir, env: {}, clock: held.value.clock });
-  expect(runtime).toBeInstanceOf(ModelRuntime);
+  expect(isNativeModelRuntime(runtime)).toBe(true);
   const release = await lock(authPath, { realpath: false });
   let settled = false;
   const pending = runtime.logout("anthropic").then(() => ({ ok: true as const }), (reason: unknown) => ({ ok: false as const, reason }));

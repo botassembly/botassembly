@@ -1,10 +1,11 @@
-import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ModelRuntime, type CreateModelRuntimeOptions } from "@earendil-works/pi-coding-agent";
+import type { CreateModelRuntimeOptions, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { configuredModelRuntime, type ModelRuntimeFactory } from "../src/model-runtime.ts";
 import type { DriverClock } from "../src/process.ts";
+import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 const metadata = vi.hoisted(() => ({ agent: "", auth: "", link: "", target: "", ownerUid: 0, foreignUid: 1 }));
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -60,10 +61,15 @@ function input(agent: string, credentials: string, factory?: ModelRuntimeFactory
   };
 }
 
+function factoryRuntime(options: CreateModelRuntimeOptions): Promise<ModelRuntime> {
+  if (options.authPath === undefined) throw new Error("configured runtime supplied no test authentication path");
+  return nativeModelRuntime({ ...options, authPath: options.authPath });
+}
+
 test("runtime creation loads no missing model file, performs one offline refresh, and never starts a stream", async () => {
   const held = await agentRoot("bot-model-runtime-missing-");
   let options: CreateModelRuntimeOptions | undefined;
-  const native = await ModelRuntime.create({ modelsPath: null, refreshOnCreate: false });
+  const native = await nativeModelRuntime({ authPath: join(held.root, "empty-auth.json"), modelsPath: null, refreshOnCreate: false });
   const refresh = vi.spyOn(native, "refresh");
   const stream = vi.spyOn(native, "streamSimple");
   const runtime = await configuredModelRuntime(input(held.agent, held.credentials, (supplied) => {
@@ -79,13 +85,31 @@ test("runtime creation loads no missing model file, performs one offline refresh
   expect(stream).not.toHaveBeenCalled();
 });
 
+test("a native runtime derives no credential state from an operator-home canary", async () => {
+  const checkout = await realpath(process.cwd());
+  const operator = await mkdtemp(join(checkout, ".bot-operator-canary-"));
+  roots.push(operator);
+  const operatorAgent = join(operator, ".pi", "agent");
+  await mkdir(operatorAgent, { recursive: true, mode: 0o700 });
+  await writeFile(join(operatorAgent, "auth.json"), JSON.stringify({
+    openai: { type: "api_key", key: "operator-canary-must-not-load" },
+  }), { mode: 0o600 });
+  expect(join(operator, ".pi", "agent").startsWith(tmpdir())).toBe(false);
+  vi.stubEnv("HOME", operator);
+  vi.stubEnv("PI_CODING_AGENT_DIR", operatorAgent);
+
+  const held = await agentRoot("bot-model-runtime-canary-"), authPath = join(held.agent, "auth.json");
+  const runtime = await nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false });
+  expect(await runtime.listCredentials()).toEqual([]);
+});
+
 test("an existing Pi auth store requires an owner-only real file and directory", async () => {
   const held = await agentRoot("bot-model-runtime-auth-trust-");
   const auth = join(held.agent, "auth.json");
   let calls = 0;
   const factory: ModelRuntimeFactory = (options) => {
     calls += 1;
-    return ModelRuntime.create(options);
+    return factoryRuntime(options);
   };
   await chmod(held.agent, 0o755);
   await expect(configuredModelRuntime(input(held.agent, held.credentials, factory))).rejects.toThrow(/0700/u);
@@ -106,7 +130,7 @@ test("a corrupt Pi auth store fails through Pi's public reader before ordinary r
   await writeFile(join(held.agent, "auth.json"), '{"openai":', { mode: 0o600 });
   let refreshes = 0;
   await expect(configuredModelRuntime(input(held.agent, held.credentials, async (options) => {
-    const native = await ModelRuntime.create(options);
+    const native = await factoryRuntime(options);
     vi.spyOn(native, "refresh").mockImplementation(() => { refreshes += 1; return Promise.resolve({ aborted: false, errors: new Map() }); });
     return native;
   }))).rejects.toThrow(/auth\.json/iu);
@@ -123,7 +147,7 @@ test.each([0, 1_000])("a foreign-owned Pi auth file fails for effective uid %i",
   try {
     await expect(configuredModelRuntime(input(held.agent, held.credentials, (options) => {
       calls += 1;
-      return ModelRuntime.create(options);
+      return factoryRuntime(options);
     }))).rejects.toThrow(/not owned by the current user/u);
   } finally {
     owner.mockRestore();
@@ -169,7 +193,7 @@ test("world-writable agent and model paths fail before the runtime factory is ca
   let calls = 0;
   const factory: ModelRuntimeFactory = (options) => {
     calls += 1;
-    return ModelRuntime.create(options);
+    return factoryRuntime(options);
   };
   await chmod(held.agent, 0o702);
   await expect(configuredModelRuntime(input(held.agent, held.credentials, factory))).rejects.toThrow(held.agent);
@@ -193,7 +217,7 @@ test("a foreign-owned agent directory fails before the runtime factory is called
   try {
     await expect(configuredModelRuntime(input(held.agent, held.credentials, (options) => {
       calls += 1;
-      return ModelRuntime.create(options);
+      return factoryRuntime(options);
     }))).rejects.toThrow(/not owned by the current user/u);
   } finally {
     owner.mockRestore();
@@ -213,7 +237,7 @@ test.each([0, 1_000])("a foreign-owned resolved model file fails for effective u
   try {
     await expect(configuredModelRuntime(input(held.agent, held.credentials, (options) => {
       calls += 1;
-      return ModelRuntime.create(options);
+      return factoryRuntime(options);
     }))).rejects.toThrow(/not owned by the current user/u);
   } finally {
     owner.mockRestore();
@@ -227,7 +251,7 @@ test("unreadable and non-regular model paths fail before the runtime factory is 
   let calls = 0;
   const factory: ModelRuntimeFactory = (options) => {
     calls += 1;
-    return ModelRuntime.create(options);
+    return factoryRuntime(options);
   };
   await writeFile(models, '{"providers":{}}', { mode: 0o000 });
   await expect(configuredModelRuntime(input(held.agent, held.credentials, factory))).rejects.toThrow();
@@ -245,7 +269,7 @@ test("corrupt configuration reports Pi's validation error before the ordinary re
   let native: ModelRuntime | undefined;
   let refreshes = 0;
   await expect(configuredModelRuntime(input(held.agent, held.credentials, async (options) => {
-    native = await ModelRuntime.create(options);
+    native = await factoryRuntime(options);
     vi.spyOn(native, "refresh").mockImplementation(() => { refreshes += 1; return Promise.resolve({ aborted: false, errors: new Map() }); });
     return native;
   }))).rejects.toThrow(/Failed to parse models\.json/u);
@@ -259,7 +283,7 @@ test("schema-invalid configuration reports Pi's validation error before the ordi
   let native: ModelRuntime | undefined;
   let refreshes = 0;
   await expect(configuredModelRuntime(input(held.agent, held.credentials, async (options) => {
-    native = await ModelRuntime.create(options);
+    native = await factoryRuntime(options);
     vi.spyOn(native, "refresh").mockImplementation(() => { refreshes += 1; return Promise.resolve({ aborted: false, errors: new Map() }); });
     return native;
   }))).rejects.toThrow(/Pi model runtime failed/u);

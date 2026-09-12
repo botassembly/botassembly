@@ -53,4 +53,4 @@ The current test can read plaintext provider credentials into a test process. Th
 ## Review
 
 - Design review: accepted after one rejection. The accepted design uses one typed helper that requires `authPath` or `credentials`, rejects direct and aliased native construction elsewhere, isolates default resolution under the suite root, and proves credential state rather than an unobservable absence of file opens.
-- Code review: pending
+- Code review: accepted after two rejection rounds. The first review found assignment, computed-property, bound-call, dynamic-import, and unscanned-extension escapes. The second found more value-acquisition forms and a scope false positive. The accepted guard forbids value-level acquisition of Pi's `ModelRuntime` outside one typed helper, covers all eight Vitest source extensions, permits type-only use, and proves hostile imports, re-exports, aliases, and loaders. A final review accepted the Node-only harness rename after the complete gate exposed Vitest collecting its former `.test.mjs` name.

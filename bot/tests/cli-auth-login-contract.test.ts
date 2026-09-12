@@ -2,12 +2,13 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxProvider, ModelsError, type AuthInteraction, type Credential, type Provider } from "@earendil-works/pi-ai";
-import { CredentialSynchronizationError, ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { CredentialSynchronizationError, type ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
 import { mapping } from "../src/model.ts";
 import { inertText } from "../src/new-command-result.ts";
+import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 interface Invocation { code: number; out: string; err: string }
 interface LoginBoundary extends CliBoundary { signal?: AbortSignal }
@@ -273,7 +274,7 @@ test("a real Pi API-key login persists exact bytes with private directory and fi
   const root = await mkdtemp(join(tmpdir(), "bot-auth-login-api-key-")); roots.push(root);
   const agentDir = join(root, "agent"), authPath = join(agentDir, "auth.json");
   await mkdir(agentDir, { mode: 0o700 });
-  const runtime = await ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false });
+  const runtime = await nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false });
   const base = loginProvider("persisted");
   const provider: Provider = { ...base, auth: { apiKey: { name: "Fixture key", resolve: () => Promise.resolve(undefined),
     login: async (interaction) => ({ type: "api_key", key: await interaction.prompt({
@@ -347,8 +348,8 @@ test("a real Pi auth lock serializes login behind an expired OAuth refresh for t
   const agentDir = join(root, "agent"), authPath = join(agentDir, "auth.json");
   await mkdir(agentDir, { mode: 0o700 });
   const [refreshing, loggingIn] = await Promise.all([
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
   ]);
   let refreshStarted = (): void => undefined, releaseRefresh = (): void => undefined;
   const started = new Promise<void>((resolve) => { refreshStarted = resolve; });

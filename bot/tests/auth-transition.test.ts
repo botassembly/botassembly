@@ -1,6 +1,6 @@
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { main } from "../src/cli.ts";
 import { configuredAuthListRuntime, configuredModelRuntime, configuredProviderCatalog } from "../src/model-runtime.ts";
@@ -8,6 +8,7 @@ import { fileCredentialStore } from "../src/credentials.ts";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai";
 import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 import { realBoundary, runsIn, tempRoots, writes } from "./cli-boundary.ts";
+import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 const roots = tempRoots();
 afterEach(() => { vi.unstubAllEnvs(); return roots.cleanup(); });
@@ -135,7 +136,7 @@ test("concurrent Pi runtime mutations refresh each other's stored credentials", 
   const agentDir = join(root, "agent");
   await mkdir(agentDir, { mode: 0o700 });
   const options = { authPath: join(agentDir, "auth.json"), modelsPath: null, refreshOnCreate: false } as const;
-  const [first, second] = await Promise.all([ModelRuntime.create(options), ModelRuntime.create(options)]);
+  const [first, second] = await Promise.all([nativeModelRuntime(options), nativeModelRuntime(options)]);
   const interaction = (key: string) => ({ prompt: () => Promise.resolve(key), notify: () => undefined });
   await Promise.all([
     first.login("openai", "api_key", interaction("first-key")),
@@ -167,8 +168,8 @@ test.each(["run", "resume"] as const)("an expired OAuth refresh during a real %s
     if (donor === undefined) throw new Error("fixture created no donor run");
   }
   const [runtime, concurrent] = await Promise.all([
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
-    ModelRuntime.create({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
+    nativeModelRuntime({ authPath, modelsPath: null, refreshOnCreate: false }),
   ]);
   let refreshStarted = (): void => undefined;
   const started = new Promise<void>((resolve) => { refreshStarted = resolve; });
@@ -247,6 +248,6 @@ test("the retired store cannot authenticate an actual run while environment auth
   expect(await (await runtime()).checkAuth("openai")).toBeUndefined();
 
   vi.stubEnv("OPENAI_API_KEY", SECRET);
-  const environmentRuntime = await ModelRuntime.create({ authPath: join(held.root, "environment-auth.json"), modelsPath: null, refreshOnCreate: false });
+  const environmentRuntime = await nativeModelRuntime({ authPath: join(held.root, "environment-auth.json"), modelsPath: null, refreshOnCreate: false });
   expect(await environmentRuntime.checkAuth("openai")).toMatchObject({ source: "OPENAI_API_KEY" });
 });
