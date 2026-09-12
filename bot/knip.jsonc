@@ -5,5 +5,7 @@
   // mkfifo: ticket 0011's fuzz regressions create named pipes (a POSIX
   // coreutils binary; Node has no mkfifo API) to prove the reader refuses
   // a fifo instead of blocking on it. Test-only; src/ never invokes it.
-  "ignoreBinaries": ["mkfifo"]
+  // make: the specification-gate proof runs the repository's root check in a
+  // private fixture. The runtime never invokes it.
+  "ignoreBinaries": ["make", "mkfifo"]
 }

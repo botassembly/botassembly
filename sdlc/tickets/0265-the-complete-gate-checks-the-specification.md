@@ -45,4 +45,4 @@ A test that calls the live repository can mutate or recursively check its own wo
 ## Review
 
 - Design review: accepted after one rejection. The first design named the wrong specification chapter, routed a score of five to the wrong implementation level, and left the record mutation ambiguous. The accepted design links to `auth.md`, selects level 2, and requires one documented field absent from `RecordEvent`.
-- Code review: pending
+- Code review: accepted. The real root Makefile and specification checker run inside disposable repositories, while only unrelated lint and runtime-test rungs are stubbed. The missing-link and stale-field mutations both fail through `make check` with their own checker diagnostics.

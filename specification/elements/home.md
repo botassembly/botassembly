@@ -42,7 +42,7 @@ that is in — a login belongs to the operator, where a home is a workspace, and
 repeating a login per project is not a thing a person should have to do. They
 live in `auth.json` under Pi's resolved agent directory, whose default is
 `~/.pi/agent/auth.json`, with the directory at mode `0700` and the file at mode `0600`; `--home` does not move them and no
-bot-named variable points at them ([authentication](/reference/auth/)).
+bot-named variable points at them ([authentication](auth.md)).
 
 ## What is in it
 

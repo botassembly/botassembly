@@ -7,6 +7,7 @@ import { afterEach, expect, test } from "vitest";
 
 const roots: string[] = [];
 const scriptSource = await readFile(new URL("../../sdlc/scripts/spec", import.meta.url), "utf8");
+const makefileSource = await readFile(new URL("../../Makefile", import.meta.url), "utf8");
 const typescriptSource = fileURLToPath(new URL("../node_modules/typescript", import.meta.url));
 
 const constructors = `
@@ -66,6 +67,94 @@ async function fixture(): Promise<string> {
 function runSpec(root: string) {
   return spawnSync(join(root, "sdlc/scripts/spec"), [], { cwd: root, encoding: "utf8" });
 }
+
+async function makeFixture(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "bot-spec-gate-"));
+  roots.push(root);
+  await Promise.all([
+    mkdir(join(root, "bot/src"), { recursive: true }),
+    mkdir(join(root, "bot/node_modules"), { recursive: true }),
+    mkdir(join(root, "sdlc/scripts"), { recursive: true }),
+    mkdir(join(root, "specification/elements"), { recursive: true }),
+  ]);
+  await Promise.all([
+    writeFile(join(root, "Makefile"), makefileSource),
+    writeFile(join(root, "bot/src/record-events.ts"), constructors),
+    symlink(typescriptSource, join(root, "bot/node_modules/typescript"), "dir"),
+    writeFile(join(root, "sdlc/scripts/spec"), scriptSource),
+    writeFile(join(root, "sdlc/scripts/lint"), "#!/bin/sh\nexit 0\n"),
+    writeFile(join(root, "sdlc/scripts/test"), "#!/bin/sh\nexit 0\n"),
+    writeFile(join(root, "specification/elements/home.md"), "# Home\n"),
+    writeFile(join(root, "specification/elements/record.md"), recordSpecification),
+    writeFile(join(root, "specification/CHANGELOG.md"), "# Changelog\n"),
+  ]);
+  await Promise.all([
+    chmod(join(root, "sdlc/scripts/spec"), 0o755),
+    chmod(join(root, "sdlc/scripts/lint"), 0o755),
+    chmod(join(root, "sdlc/scripts/test"), 0o755),
+  ]);
+
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
+  git("init", "-q");
+  git("config", "user.email", "spec-test@example.invalid");
+  git("config", "user.name", "Spec Test");
+  git("add", ".");
+  git("commit", "-qm", "fixture");
+  git("update-ref", "refs/remotes/origin/main", "HEAD");
+  git("checkout", "-qb", "ticket");
+  return root;
+}
+
+function runCheck(root: string) {
+  const target = "check";
+  return spawnSync("make", [target], {
+    cwd: root,
+    env: { ...process.env, SDLC_IN_CHECK: undefined },
+    encoding: "utf8",
+  });
+}
+
+test("the root check invokes the specification gate once", async () => {
+  const root = await makeFixture();
+  const result = spawnSync("make", ["-n", "check"], { cwd: root, encoding: "utf8" });
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout.split("\n").filter((line) => line.includes("sh sdlc/scripts/spec"))).toHaveLength(1);
+});
+
+test("the root check rejects a missing specification link", async () => {
+  const root = await makeFixture();
+  await Promise.all([
+    writeFile(join(root, "specification/elements/home.md"), "# Home\n\nSee [auth](missing.md).\n"),
+    writeFile(join(root, "specification/CHANGELOG.md"), "# Changelog\n\nCorrected the home link.\n"),
+  ]);
+  execFileSync("git", ["add", "."], { cwd: root });
+  execFileSync("git", ["commit", "-qm", "break link"], { cwd: root });
+
+  const result = runCheck(root);
+
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain(
+    "spec link: specification/elements/home.md targets missing repository path missing.md",
+  );
+});
+
+test("the root check rejects a documented record field absent from RecordEvent", async () => {
+  const root = await makeFixture();
+  await Promise.all([
+    writeFile(
+      join(root, "specification/elements/record.md"),
+      recordSpecification.replace("`optional` |", "`optional`, `documented_only` |"),
+    ),
+    writeFile(join(root, "specification/CHANGELOG.md"), "# Changelog\n\nDocumented a record field.\n"),
+  ]);
+  execFileSync("git", ["add", "."], { cwd: root });
+  execFileSync("git", ["commit", "-qm", "break vocabulary"], { cwd: root });
+
+  const result = runCheck(root);
+
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain("record vocabulary: event alpha field documented_only is stale in the specification");
+});
 
 test("the spec gate rejects a constructor field added without documentation", async () => {
   const root = await fixture();

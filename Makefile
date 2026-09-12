@@ -16,6 +16,7 @@ help:
 	@echo '  make smoke         the LIVE ladder — costs money, run deliberately'
 
 check:
+	sh sdlc/scripts/spec
 	sh sdlc/scripts/lint
 	sh sdlc/scripts/test
 

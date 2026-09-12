@@ -22,12 +22,13 @@ function assertRootCheck(source) {
 	});
 	assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 	assert.deepEqual(result.stdout.trim().split('\n'), [
+		'sh sdlc/scripts/spec',
 		'sh sdlc/scripts/lint',
 		'sh sdlc/scripts/test',
 	]);
 }
 
-test('the root complete check runs project lint before project tests', () => {
+test('the root complete check runs specification, project lint, and project tests', () => {
 	assertRootCheck(process.env);
 });
 

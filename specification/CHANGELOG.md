@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-12
+
+Ticket 0265 corrects the authentication contract link in the home specification and adds the specification checker to the complete offline `make check` gate. The gate now rejects missing local specification links and record-event vocabulary drift before the project checks run.
+
 ## 2026-09-11
 
 Ticket 0259 adds `bot auth logout PROVIDER` to the current command surface. It validates the exact provider before the retired-store warning, then calls a dedicated Pi runtime without a racy existence preflight. That runtime uses the live authentication path, no model file, no creation refresh, and disabled model network. Pi owns parsing, its long-wait file lock, deletion, and typed post-delete synchronization. Success reports only the canonical provider and completed settlement. A typed post-delete synchronization failure preserves that result and exits 5.
