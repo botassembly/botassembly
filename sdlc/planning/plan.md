@@ -12,7 +12,7 @@ The [direction decision](decisions/2026-09-08-ideal-state-direction.md), [post-c
 
 ## Next work
 
-Work one reviewed ticket at a time from the alpha plan. Ticket 0263 isolated all tests from the operator's Pi authentication. Ticket 0264 classified every starting issue from landed evidence and promoted only confirmed release defects. The next ticket repairs the specification gate and puts it inside the complete local and hosted check.
+Work one reviewed ticket at a time from the alpha plan. Tickets 0263 through 0265 isolated tests from operator authentication, classified every starting issue, and restored the specification checker to the complete local and hosted gate. The next ticket removes runtime-derived evidence from the public tree and replaces documentation needs with reviewed synthetic fixtures.
 
 Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make file, Bash, and subflow-control authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
 
