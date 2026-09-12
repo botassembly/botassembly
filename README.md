@@ -19,34 +19,15 @@ data/
   request-routine.txt
 ```
 
-One command wrote the record below, from [`examples/`](examples/) in this repository.
+Run the assembly from [`examples/`](examples/) in this repository.
 
 ```sh
 bot run start ./triage/triage @data/request-urgent.txt
 ```
 
-## The record it wrote
+## The record it leaves locally
 
-```text
-{"event":"run_start","run":"2026-09-11T17-55-02-443e","flow":"triage",
- "request":{"path":"request.txt","sha256":"ef114556…","bytes":93}}
-{"event":"stage_start","stage":"01-classify","options":[{"name":"model",
- "value":"gemini-3.5-flash-lite","rung":"assembly"}]}
-{"event":"turn","stage":"01-classify","input":1458,"output":18,
- "total":1476}
-{"event":"check","stage":"01-classify","check":"checklist","exit":0}
-{"event":"check","stage":"01-classify","check":"schema","exit":0}
-{"event":"chose","stage":"02-route","chose":"urgent",
- "declined":["routine"],"reason":"the priority is urgent …"}
-{"event":"check","stage":"03-verify","check":"gate",
- "file":"flows/triage/03-verify/gate/01-blocker","exit":0}
-{"event":"check","stage":"03-verify","check":"gate",
- "file":"flows/triage/03-verify/gate/02-sections","exit":0}
-{"event":"stage_end","stage":"03-verify","exit":0,"cause":"success"}
-{"event":"run_end","exit":0,"cause":"success"}
-```
-
-Those are eight of the record's 89 lines. Read the checked example in [`examples/triage-record.jsonl`](examples/triage-record.jsonl). Raw run folders stay local because provider sessions can contain sensitive environment values.
+Bot writes an ordered `record.jsonl` inside the run folder. It records stage outcomes, checks, usage, and the final exit. Use `bot run events RUN` to read it. Run records and provider sessions stay local because requests, outputs, tool results, and inherited values can contain sensitive material. The website walkthrough labels its authored record display as synthetic.
 
 ## Install
 

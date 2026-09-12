@@ -201,8 +201,10 @@ test("the held capture boundary rejects a path replaced during its read", async 
 test("record integrity failures use exit 5 while absent selection uses exit 1", async () => {
   const capture = "stages/01-a/1/1/checks/gate.txt", home = await fixture([check("01-a", 1, "gate", capture, 0)]);
   const record = join(home, "runs", RUN, "record.jsonl"), original = await readFile(record);
-  for (const bytes of [Buffer.from("not-json\n"), Buffer.from([0xff, 0x0a]), Buffer.from('{"record":999,"event":"run_start"}\n'),
-    Buffer.from('{"record":1,"event":"run_start","ts":"2026-09-08T14:00:00.000Z","run":"wrong"}\n'), Buffer.alloc(1_048_577, 0x78)]) {
+  const startLine = (fields: Record<string, unknown>): Buffer =>
+    Buffer.from(`${JSON.stringify({ ...fields, event: "run_start" })}\n`);
+  for (const bytes of [Buffer.from("not-json\n"), Buffer.from([0xff, 0x0a]), startLine({ record: 999 }),
+    startLine({ record: 1, ts: "2026-09-08T14:00:00.000Z", run: "wrong" }), Buffer.alloc(1_048_577, 0x78)]) {
     await writeFile(record, bytes);
     const held = await invokeCliBytes(["run", "check", RUN, "gate", "--json"], { home });
     expect(held.code).toBe(5);

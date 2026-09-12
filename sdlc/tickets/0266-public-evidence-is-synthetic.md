@@ -53,4 +53,4 @@ Names alone miss copied records. Broad token matching can reject ordinary docume
 ## Review
 
 - Design review: accepted after one rejection. The first design missed the provider-produced output, left the old publication decision in force, did not explicitly establish conformance-fixture provenance, and allowed weak fixture and structural boundaries. The accepted design deletes both provider artifacts, supersedes the decision, pins exact fixture digests, and defines Bot plus both Pi session shapes with bypass mutations.
-- Code review: pending
+- Code review: accepted after one rejection. The first implementation scanned only selected public paths, so neutral filenames, unrelated directories, tests, conformance siblings, historical records, and case changes could bypass it. The accepted implementation structurally inspects every tracked UTF-8 file, preserves generic binary assets, rejects case variants, and narrows four test fixtures that previously embedded recognizable record bytes.

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { GITHUB_REPO, steps } from './walkthrough-steps.mjs';
+import { EVIDENCE_SOURCE, GITHUB_REPO, steps } from './walkthrough-steps.mjs';
 
 const run = promisify(execFile);
 const docs = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -162,8 +162,10 @@ test('the bot assembly check paste is the five stage rows the assembly resolves 
 });
 
 test('the record opens, closes, and plays its stages in run order', () => {
-	assert.equal(data.record.lines, 89);
-	assert.equal(data.record.events, 89);
+	assert.equal(data.record.synthetic, true);
+	assert.match(data.record.notice, /Authored illustration/u);
+	assert.equal(data.record.lines, 22);
+	assert.equal(data.record.events, 22);
 	assert.equal(data.record.exit, 0);
 	assert.equal(data.record.flow, 'triage');
 	assert.deepEqual(
@@ -183,10 +185,25 @@ test('the record opens, closes, and plays its stages in run order', () => {
 		.rows.filter((row) => (row.label ?? '').startsWith('gate '))
 		.map((row) => row.label);
 	assert.deepEqual(gates, ['gate 01-blocker', 'gate 02-sections']);
-	for (const stage of data.record.stages) {
-		assert.ok(stage.turns > 0, `${stage.stage} counted no turns`);
-		assert.ok(stage.rows.some((row) => row.kind === 'turns'), `${stage.stage} draws no turn row`);
-	}
+});
+
+test('the walkthrough evidence is visibly synthetic and contains no measured run facts', async () => {
+	const fixture = JSON.parse(await readFile(join(docs, EVIDENCE_SOURCE), 'utf8'));
+	assert.equal(fixture.synthetic, true);
+	assert.match(fixture.notice, /do not describe a provider run/u);
+	assert.equal(data.record.synthetic, true);
+	const forbidden = new Set([
+		'ts', 'sha256', 'assembly_hash', 'runtime_digest', 'runtime_tree_sha256', 'lock_sha256',
+		'provider', 'model', 'input', 'output', 'cache_read', 'cache_write', 'total', 'delay_ms',
+	]);
+	const visit = (value) => {
+		if (value === null || typeof value !== 'object') return;
+		for (const [key, child] of Object.entries(value)) {
+			assert.ok(!forbidden.has(key), `synthetic evidence carries measured field ${key}`);
+			visit(child);
+		}
+	};
+	visit(fixture);
 });
 
 test('the ticker accounts for every event in the record', () => {

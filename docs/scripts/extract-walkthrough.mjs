@@ -1,7 +1,7 @@
 // Build-time extractor for the home page walkthrough.
 //
-// Reads the real assembly under examples/ and a checked event record beside it, and
-// writes one JSON file the page imports. Nothing on the page is retyped: the
+// Reads the real assembly under examples/ and one reviewed synthetic event fixture,
+// then writes one JSON file the page imports. Assembly bytes are not retyped: the
 // file bodies are the files, the `bot assembly check` paste comes out of the assembly's
 // own README by fenced block, and the run ticker comes out of record.jsonl.
 // A step that names a path with no file on disk fails the build by name.
@@ -14,7 +14,7 @@ import {
 	CHECK_SOURCE,
 	FLOW,
 	GITHUB_REPO,
-	RUN,
+	EVIDENCE_SOURCE,
 	RUN_COMMAND,
 	steps,
 } from './walkthrough-steps.mjs';
@@ -121,13 +121,15 @@ function trim(sentence) {
 	return `${(space > EVIDENCE_LIMIT - 24 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-/** record.jsonl as the ticker draws it: one card per stage, rows in order. */
-function readRecord(text) {
-	const lines = text.replace(/\n$/u, '').split('\n');
-	const events = lines.map((line) => JSON.parse(line));
+/** Synthetic record illustration as the ticker draws it: one card per stage. */
+function readRecord(fixture) {
+	if (fixture?.synthetic !== true || typeof fixture.notice !== 'string' || !Array.isArray(fixture.events)) {
+		fail('the walkthrough evidence is not visibly synthetic');
+	}
+	const events = fixture.events;
 	const start = events.find((event) => event.event === 'run_start');
 	const end = events.find((event) => event.event === 'run_end');
-	if (!start || !end) fail('record.jsonl carries no run_start or no run_end');
+	if (!start || !end) fail('synthetic record carries no run_start or no run_end');
 
 	// Every record event is attributed to exactly one thing the ticker draws,
 	// so the running count during playback reaches the record's own line
@@ -219,18 +221,19 @@ function readRecord(text) {
 	}
 	const counted =
 		tail + stages.reduce((n, s) => n + s.events + s.rows.reduce((m, r) => m + r.events, 0), 0);
-	if (counted !== lines.length) {
-		fail(`the ticker accounts for ${String(counted)} of ${String(lines.length)} record events`);
+	if (counted !== events.length) {
+		fail(`the ticker accounts for ${String(counted)} of ${String(events.length)} synthetic record events`);
 	}
 
 	return {
 		run: start.run,
 		flow: start.flow,
-		lines: lines.length,
+		lines: events.length,
 		events: events.length,
+		synthetic: true,
+		notice: fixture.notice,
 		request: {
 			name: start.request?.name ?? start.request?.path ?? 'request.txt',
-			bytes: start.request?.bytes ?? 0,
 		},
 		stages,
 		exit: end.exit,
@@ -241,14 +244,12 @@ function readRecord(text) {
 }
 
 /** The record card at the end: what a run folder holds and what this run produced. */
-async function sealedRun() {
+function sealedRun(fixture) {
 	const entries = ['assembly/', 'record.jsonl', 'request.txt', 'stages/'];
-	const output = await readFile(join(root, 'triage-output.txt'), 'utf8');
-	const headings = output
-		.split('\n')
-		.filter((line) => line.startsWith('## '))
-		.map((line) => line.slice(3));
-	if (headings.length === 0) fail('the run produced no memo headings');
+	const headings = fixture.outputHeadings;
+	if (!Array.isArray(headings) || headings.length === 0 || headings.some((heading) => typeof heading !== 'string')) {
+		fail('the synthetic output carries no memo headings');
+	}
 	return { path: 'a local run folder', entries, headings };
 }
 
@@ -274,8 +275,9 @@ function namesTheFolder(value, where) {
 
 async function main() {
 	const check = await checkOutput();
-	const record = readRecord(await readFile(join(root, RUN), 'utf8'));
-	const sealed = await sealedRun();
+	const fixture = JSON.parse(await readFile(join(docs, EVIDENCE_SOURCE), 'utf8'));
+	const record = readRecord(fixture);
+	const sealed = sealedRun(fixture);
 
 	const files = new Map();
 	const order = [];

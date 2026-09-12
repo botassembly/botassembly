@@ -11,8 +11,8 @@
 export const ASSEMBLY = 'triage';
 export const FLOW = 'triage/triage';
 
-/** The checked event record the last two steps read. */
-export const RUN = 'triage-record.jsonl';
+/** The reviewed authored fixture used for the illustrative run display. */
+export const EVIDENCE_SOURCE = 'src/data/synthetic-walkthrough-record.json';
 
 /** The commands the page shows. Both run from the folder holding them. */
 export const CHECK_COMMAND = 'bot assembly check ./triage/triage';
@@ -141,9 +141,9 @@ export const steps = [
 		kind: 'run',
 		layout: 'wide',
 		blurb:
-			'One command runs the flow. Every stage passes through the checks you just read, and the runtime writes each event as it happens.',
+			'One command runs the flow. Every stage passes through the checks you just read, and the runtime writes each event as it happens. The display uses authored synthetic events, not a measured provider run.',
 		spec: { href: '/specification/running/', label: 'Running' },
-		github: `${RUN}/`,
+		github: 'triage/',
 	},
 	{
 		id: 'the-record',
@@ -152,8 +152,8 @@ export const steps = [
 		kind: 'record',
 		layout: 'wide',
 		blurb:
-			'A run leaves a folder behind. Its `record.jsonl` holds the ordered events, stage outcomes, checks, usage, and final exit. Reading it needs no provider connection. Raw session files stay local because tool output can contain sensitive environment values.',
+			'A run leaves a local folder behind. Its `record.jsonl` holds ordered events, stage outcomes, checks, usage, and the final exit. Reading it needs no provider connection. The illustration is synthetic. Actual records and sessions stay local because they can contain sensitive values.',
 		spec: { href: '/specification/record/', label: 'The record' },
-		github: `${RUN}/`,
+		github: 'triage/',
 	},
 ];

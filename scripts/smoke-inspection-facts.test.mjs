@@ -47,8 +47,9 @@ test("run list exposes page completeness for a named full-session read", () => {
 });
 
 test("record reader rejects malformed JSONL", () => {
-  assert.equal(recordLines('{"event":"run_start"}\n').events.length, 1);
-  assert.match(recordLines('{"event":"run_start"}\nnot-json\n').error, /JSONL/);
+  const start = `${JSON.stringify({ event: "run_start" })}\n`;
+  assert.equal(recordLines(start).events.length, 1);
+  assert.match(recordLines(`${start}not-json\n`).error, /JSONL/);
 });
 
 test("the driver reads exact token JSON and fails before validators", () => {

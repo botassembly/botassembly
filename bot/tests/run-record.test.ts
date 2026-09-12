@@ -6,6 +6,8 @@ import { invokeCli, invokeCliBytes } from "./invoke.ts";
 
 const roots: string[] = [];
 const RUN = "2026-09-05T20-00-00-a022";
+const recordLine = (event: string, fields: Record<string, unknown> = {}): string =>
+  `${JSON.stringify({ ...fields, event })}\n`;
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -26,8 +28,8 @@ test.each([
   ["invalid UTF-8", Buffer.from([0xff, 0xfe, 0x0a])],
   ["malformed JSONL", Buffer.from('{"record":1}\nnot-json\n')],
   ["a torn final segment", Buffer.from('{"record":1}\ntorn')],
-  ["a structurally invalid story", Buffer.from('{"event":"run_end"}\n{"event":"run_start"}\n')],
-  ["an unsupported record format", Buffer.from('{"record":999,"event":"run_start"}\n')],
+  ["a structurally invalid story", Buffer.from(recordLine("run_end") + recordLine("run_start"))],
+  ["an unsupported record format", Buffer.from(recordLine("run_start", { record: 999 }))],
   ["an oversized record", Buffer.alloc(1024 * 1024 + 1, "x")],
 ])("run record preserves %s exactly through the established reader", async (_name, bytes) => {
   const where = await fixture(bytes);

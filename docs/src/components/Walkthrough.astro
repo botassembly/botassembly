@@ -1,8 +1,8 @@
 ---
 // The home page walkthrough. Twelve steps build one real assembly a file at a
-// time, run it, and open the record it wrote. Every byte on screen comes from
-// docs/src/data/walkthrough.json, which the build extracts from examples/ and
-// from a checked event record, so nothing here is retyped and a missing file fails the
+// time, then illustrate a run and its record with visibly synthetic data. Every
+// byte on screen comes from docs/src/data/walkthrough.json, which the build
+// extracts from examples/ and one digest-pinned authored fixture. A missing file fails the
 // build. Every step is rendered server-side; the script only shows one at a
 // time, so with scripting off step 1 stands complete on its own.
 import data from '../data/walkthrough.json';
@@ -108,7 +108,6 @@ ${whenLive(
 }
 `;
 
-const number = (value) => value.toLocaleString('en-US');
 const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 ---
 
@@ -232,13 +231,14 @@ const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 
 						{step.kind === 'run' && (
 							<div class="ba-walk__run" data-run>
+								<p class="ba-walk__note"><strong>Synthetic illustration.</strong> {data.record.notice}</p>
 								<p class="ba-walk__cmd"><code>$ {data.runCommand}</code></p>
 								<div class="ba-walk__ticker" data-ticker>
 									<p class="ba-walk__ticker-line">
 										<span class="ba-walk__ev">run_start</span>
 										<span class="ba-walk__detail">
 											{data.record.run} &middot; flow {data.record.flow} &middot;{' '}
-											{data.record.request.name}, {data.record.request.bytes} bytes
+											{data.record.request.name}
 										</span>
 									</p>
 									{data.record.stages.map((stage) => (
@@ -251,13 +251,7 @@ const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 														data-play
 														data-events={String(row.events)}
 													>
-														{row.kind === 'turns' ? (
-															<span class="ba-walk__ev">
-																{stage.turns} turns &middot; {number(stage.tokens)} tokens
-															</span>
-														) : (
-															<span class="ba-walk__ev">{row.label}</span>
-														)}
+												<span class="ba-walk__ev">{row.label}</span>
 														{typeof row.exit === 'number' && (
 															<span class:list={['ba-walk__exit', exitClass(row.exit)]}>exit {row.exit}</span>
 														)}
@@ -290,6 +284,7 @@ const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 
 						{step.kind === 'record' && (
 							<div class="ba-walk__sealed">
+								<p class="ba-walk__note"><strong>Synthetic illustration.</strong> {data.record.notice}</p>
 								<dl class="ba-facts">
 									<dt>run</dt><dd><code>{data.record.run}</code></dd>
 									<dt>flow</dt><dd><code>{data.record.flow}</code></dd>
@@ -301,16 +296,16 @@ const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 								<ul class="ba-walk__entries">
 									{data.sealed.entries.map((entry) => (<li><code>{entry}</code></li>))}
 								</ul>
-								<h5 class="ba-walk__sealed-head">The memo it wrote</h5>
+								<h5 class="ba-walk__sealed-head">Illustrative memo headings</h5>
 								<ul class="ba-walk__entries">
 									{data.sealed.headings.map((heading) => (<li>## {heading}</li>))}
 								</ul>
 								<p class="ba-walk__note">
-									This repository publishes the event record used here. Complete run folders and
-									raw provider sessions stay local because tool output can contain sensitive values.
+									This repository does not publish provider records or sessions. They stay local
+									because requests, outputs, tool results, and inherited values can be sensitive.
 								</p>
 								<p class="ba-walk__sealed-more">
-									<a href={step.github}>Read the example record &nearr;</a>
+									<a href={step.github}>Read the runnable assembly &nearr;</a>
 								</p>
 							</div>
 						)}

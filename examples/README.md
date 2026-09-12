@@ -14,7 +14,6 @@ Run the commands below from this folder.
 Beside them:
 
 - [`data/`](data/): the sample requests the commands below feed in — `request-urgent.txt`, `request-routine.txt`, `notes-week.txt`, and `topic.txt`. It is not an assembly.
-- [`triage-record.jsonl`](triage-record.jsonl): a checked event record used by the documentation walkthrough. Raw provider sessions and complete run folders stay local.
 
 ## How to run one
 
@@ -41,5 +40,5 @@ Every rung ships with a `bot assembly check` proof. Its own `README.md` shows th
 
 These do not exist yet.
 
-- A generated documentation page per rung, built from the assembly files and a safe event-record export.
+- A generated documentation page per rung, built from the assembly files.
 - A live rung in the smoke ladder that proves a rung still produces its output.

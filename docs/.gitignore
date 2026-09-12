@@ -6,8 +6,9 @@ dist/
 # generated specification pages
 src/content/docs/specification/
 
-# generated conformance corpus data
-src/data/
+# generated documentation data, except the reviewed authored evidence fixture
+src/data/*
+!src/data/synthetic-walkthrough-record.json
 
 # dependencies
 node_modules/

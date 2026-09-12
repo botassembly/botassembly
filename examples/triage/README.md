@@ -45,10 +45,6 @@ The resolved `provider`, `model`, and `reasoning` are whatever your home's `conf
 
 Both arms of the choice resolve to the same option ladder, because both take the chooser's `timeout: 120` and set the same retries. That is the point of the `@` marks: the row says where each value came from, not just what it is.
 
-## The example record
-
-[`../triage-record.jsonl`](../triage-record.jsonl) is the event record used by the documentation walkthrough. It carries the request metadata, every stage's resolved options, provider usage totals, checklist marks, schema pass, chosen branch, gates, and final exit. The repository does not publish raw provider session files or complete run folders because those files can contain sensitive values from the caller's environment.
-
 ## Run it
 
 Run these from the folder above. The `@data/...` path resolves against your working directory.
@@ -59,6 +55,8 @@ bot run start ./triage/triage @data/request-routine.txt
 ```
 
 The urgent request names a deadline inside three working days and takes the `urgent` branch. The routine request is a billing question and takes the `routine` branch. The memo lands on stdout; the record lands in your bot home.
+
+Run records and provider sessions remain local. They can contain requests, outputs, tool results, and inherited values. The documentation walkthrough uses a labeled synthetic illustration instead of retained run bytes.
 
 One environment variable makes the blocked path reachable without editing anything:
 
