@@ -45,7 +45,7 @@ Ian chose the private, non-linked file boundary. The implementation may require 
 
 ## Ticket count and execution
 
-The repository currently carries 211 completed tickets through ticket 0265. This plan defines 19 base release outcomes. The first three outcomes are complete. The remaining 16 outcomes stay ordered until the preceding evidence needed to shape each ticket exists. The reconciliation retained 13 issue files and found no extra release outcome beyond the timestamp repair replacing the already-aligned FANOUT wording. The full starting-path matrix is [the 0264 disposition matrix](../notes/2026-09-12-0264-disposition-matrix.md).
+The repository currently carries 212 completed tickets through ticket 0266. This plan defines 19 base release outcomes. The first four outcomes are complete. The remaining 15 outcomes stay ordered until the preceding evidence needed to shape each ticket exists. The reconciliation retained 13 issue files and found no extra release outcome beyond the timestamp repair replacing the already-aligned FANOUT wording. The full starting-path matrix is [the 0264 disposition matrix](../notes/2026-09-12-0264-disposition-matrix.md).
 
 Work proceeds through one active ticket at a time. Each ticket receives independent design review before implementation, red-green proof for behavior changes, independent code review, remediation of every accepted finding, the focused checks named by the ticket, and the complete repository gate. A completed ticket is recorded, committed, and pushed before the next ticket becomes active. This keeps no draft queue while preserving review independence.
 

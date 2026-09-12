@@ -12,9 +12,9 @@ The [direction decision](decisions/2026-09-08-ideal-state-direction.md), [post-c
 
 ## Next work
 
-Work one reviewed ticket at a time from the alpha plan. Tickets 0263 through 0265 isolated tests from operator authentication, classified every starting issue, and restored the specification checker to the complete local and hosted gate. The next ticket removes runtime-derived evidence from the public tree and replaces documentation needs with reviewed synthetic fixtures.
+Work one reviewed ticket at a time from the alpha plan. Tickets 0263 through 0266 isolated tests from operator authentication, classified every starting issue, restored the specification checker to the complete gate, and replaced runtime-derived public evidence with digest-pinned synthetic fixtures. The next ticket adds known-secret detection to local and hosted publication checks.
 
-Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make file, Bash, and subflow-control authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
+Security work continues before runtime contract repair: add known-secret detection, make file, Bash, and subflow-control authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
 
 Correctness work then repairs whole-run consumption totals, timestamp-faithful run listings, descent depth, and current authentication and model qualification. FANOUT's four-key option contract already agrees across parser, specification, documentation, and conformance. Release work binds documentation publication to the complete gate, publishes the security and concurrency contract, prepares one exact `0.1.0` candidate, qualifies that commit from a clean clone, and tags that same commit only after Ian authorizes publication.
 
