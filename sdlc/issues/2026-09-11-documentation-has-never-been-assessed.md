@@ -19,3 +19,9 @@ The plan already carries a related gap: an unfamiliar author following the guide
 A findings list, one entry per problem, each naming the page and what is wrong, sorted so the corrections can be ticketed separately. Plus a proposed sidebar with the reasoning for the order.
 
 No page is rewritten under this finding. The assessment comes first and its findings become their own tickets.
+
+## Disposition (2026-09-12)
+
+Status: retained unresolved observation. The assessment has not been completed
+in the current tree. Review before alpha outcome 17's candidate document sweep,
+or on 2026-10-15 if that sweep has not started.

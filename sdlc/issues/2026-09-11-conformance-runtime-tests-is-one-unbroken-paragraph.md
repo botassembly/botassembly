@@ -63,3 +63,13 @@ repository convention rather than a conformance condition.
 source file. The source is untouched, so this issue stays open. The generator
 fails the build if the heading is renamed, so the summary cannot silently drift.
 Reasoning is in `sdlc/planning/notes/2026-09-11-third-review-content.md`.
+
+## Disposition (2026-09-12)
+
+Finding 1, the source's long runtime-tests paragraph, is retained as a later
+editorial opportunity. Review on 2026-10-12 or when the conformance page gets
+its next reader-facing revision.
+
+Finding 2, the public source paragraph's internal ticket reference, is a
+confirmed release-document defect owned by alpha outcome 17's specification and
+documentation alignment. Review it during the candidate document sweep.

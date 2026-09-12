@@ -48,3 +48,10 @@ two-item checklist, and nothing else. `examples/README.md` lists the four in ord
 no `ASSEMBLY.md`; it checks four assemblies and exits 0. The visible command is
 `bot run ./triage/triage @data/note-urgent.txt`, run from `examples/`. Decisions are in
 `sdlc/planning/notes/2026-09-11-example-ladder.md`.
+
+## Disposition (2026-09-12)
+
+Status: retained later opportunity. The four runnable examples and the check
+that executes them are landed. Generated per-example pages and a live output
+rung remain unbuilt. Review before the candidate document sweep or on
+2026-10-12.

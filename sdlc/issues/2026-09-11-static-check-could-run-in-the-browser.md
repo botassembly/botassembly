@@ -10,3 +10,9 @@ Four things stand between it and a browser bundle:
 - One `homedir()` fallback.
 
 Estimated bundle without `ajv` is 130 to 150 KB minified. The site already ships the corpus and two explorers built from it; a live checker on the same page would let a reader paste a tree and see the refusal before installing anything. Details in `sdlc/planning/notes/2026-09-11-site-information-architecture-study.md`, section 3.
+
+## Disposition (2026-09-12)
+
+Status: retained later opportunity. No browser checker is required for the
+source alpha. Review when the site interactive checker gets an owner and an
+equivalence plan, or on 2026-12-12.

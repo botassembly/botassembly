@@ -27,3 +27,9 @@ Neither is urgent. 0123's boundary set the condition explicitly, and the consume
 ## Sources
 
 The full reconciliation, with the mapping table from the old profile and tier vocabulary onto intelligences, is archived at `archive/notes-2026-09-09/final-snapshot/botassembly/optimization/intelligences-reconciliation.md`. The design that consumes it is `sdlc/planning/optimize-design.md`.
+
+## Disposition (2026-09-12)
+
+Status: retained later opportunity. The optimizer owns bundle pinning and no
+optimizer repository or caller exists in this project. Review when an optimizer
+consumer exists, or on 2026-12-12 if that condition remains absent.

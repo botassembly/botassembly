@@ -25,3 +25,9 @@ Add one optional line per case — a `title` file beside `invocation`, or a firs
 ## Order
 
 The title is the cheapest and helps the most; it is a file per case and no runtime change. The option source is next and is one field in the check writer. The refusal span is the largest and the least urgent, because the file at fault is usually small enough to read whole.
+
+## Disposition (2026-09-12)
+
+Status: retained later opportunity. No release contract requires these additive
+explorer fields. Review when the corpus explorer gets its next reader-facing
+iteration, or on 2026-12-12.

@@ -51,4 +51,4 @@ An incorrect stale classification can hide a release defect. A broad promoted ti
 ## Review
 
 - Design review: accepted after one rejection. The first design counted files instead of distinct findings, misdiagnosed the brief example, duplicated an owned depth outcome, proposed several active tickets, and left cross-repository ownership unclear. The accepted design requires a traceable disposition per finding, preserves only triggered issues, transfers foreign ownership, records new work as ordered plan outcomes, and activates one next ticket after closure.
-- Code review: pending
+- Code review: accepted after two rejection rounds. Review first found an unowned subflow-control defect, missing brief and Pi migration findings, and incorrect evidence paths. Review then found one remaining overbroad brief citation. The accepted matrix gives every distinct finding a supported disposition, outcome 6 explicitly owns subflow-control authority, all cited paths resolve, and the foreign worktree finding exists in Factory's issue ledger.

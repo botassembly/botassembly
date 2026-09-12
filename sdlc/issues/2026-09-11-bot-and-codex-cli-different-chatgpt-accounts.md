@@ -40,3 +40,14 @@ The experiment copied the Codex CLI credential into Bot's expected fields by han
 
 - Probe assembly and its two runs, before and after the credential swap: the first faulted, the second wrote a file into the shared working directory and returned ready.
 - The private experiment retained its original credential backup outside this repository.
+
+## Disposition (2026-09-12)
+
+Finding 1, exposing provider account or workspace identity in `bot auth list`,
+is a retained later opportunity. Review when an operator needs identity
+diagnostics or on 2026-12-12.
+
+Finding 2, importing the Codex CLI credential shape, is a retained later
+opportunity. Review when a supported cross-tool import is requested or on
+2026-12-12. Neither finding blocks the source alpha; credentials remain local
+and no credential values belong in this ledger.

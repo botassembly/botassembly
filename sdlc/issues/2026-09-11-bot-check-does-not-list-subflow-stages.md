@@ -22,3 +22,10 @@ retry budget a child will run with until it has already run. And the `02-fan` ro
 resolve inside a flow this command does not walk".
 
 `bot check --json` has the same shape.
+
+## Disposition (2026-09-12)
+
+Status: retained later opportunity. The current command deliberately resolves
+the entry-flow root and validates nested flows without printing their stages.
+Review when a reader or release qualification needs child-stage option output,
+or on 2026-12-12.

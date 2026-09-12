@@ -10,3 +10,9 @@ This issue does not block `0.1.0`. Promote it only after either:
 - a deterministic reproduction establishes the cause and proves a bounded repair.
 
 A repair must preserve long provider turns, gate timeouts, child processes, cancellation, and resumable sessions. It must leave a visible bounded reason instead of holding the caller indefinitely.
+
+## Disposition (2026-09-12)
+
+Status: retained unresolved observation. It does not block `0.1.0`.
+Review on 2026-10-24, or promote after an independent stall with completed-operation
+timing evidence or a deterministic reproduction and bounded repair proof.

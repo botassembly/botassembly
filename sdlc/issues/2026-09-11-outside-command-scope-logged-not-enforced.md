@@ -32,3 +32,10 @@ Recommendation is (1) with (2) as the escape hatch, because the failure is silen
 
 - `bot explain 2026-09-10T12-19-31-e4cb --stage 03-synthesis`, the `outside-command-scope` lines.
 - The two files above, timestamped inside the run's window.
+
+## Disposition (2026-09-12)
+
+Status: retained accepted alpha limit. The current specification explicitly
+limits `access` to direct model-facing dispatch and does not claim filesystem
+containment for allowed commands, hooks, gates, or subprocesses. Review only
+with a concrete process-containment design, or on 2026-12-12.

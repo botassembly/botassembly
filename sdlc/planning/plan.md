@@ -6,17 +6,17 @@ Updated 2026-09-12. This is the current planning entry point. The specification 
 
 Build a readable file format and a dependable runtime. Prioritize safe execution defaults, honest records, checking, running, stopping, resuming, and inspection. Keep control mechanisms tied to actual procedures and observed use.
 
-The [first public alpha plan](decisions/2026-09-12-first-public-alpha-plan.md) is the accepted work sequence for `0.1.0`. An independent Astra extra-high review rejected its first authority boundary and accepted the corrected plan after it covered model-backed choices, subflow file inputs, enforceable publication checks, and exact-candidate qualification.
+The [first public alpha plan](decisions/2026-09-12-first-public-alpha-plan.md) is the accepted work sequence for `0.1.0`. An independent Astra extra-high review rejected its first authority boundary and accepted the corrected plan after it covered model-backed choices, subflow file inputs, enforceable publication checks, and exact-candidate qualification. Ticket 0264 leaves 13 retained issue files and 19 base release outcomes; its [starting-path matrix](notes/2026-09-12-0264-disposition-matrix.md) records every disposition.
 
 The [direction decision](decisions/2026-09-08-ideal-state-direction.md), [post-contraction strategy](decisions/2026-09-09-post-contraction-strategy.md), [Pi boundary](adr/0030-pi-model-runtime-boundary.md), and [record publication decision](decisions/public-run-records.md) retain the reasoning that the alpha plan changes or builds upon.
 
 ## Next work
 
-Work one reviewed ticket at a time from the alpha plan. Ticket 0263 now isolates all tests from the operator's Pi authentication. The next ticket classifies every current issue from landed evidence and promotes only confirmed release defects. The following ticket repairs the specification gate and puts it inside the complete local and hosted check.
+Work one reviewed ticket at a time from the alpha plan. Ticket 0263 isolated all tests from the operator's Pi authentication. Ticket 0264 classified every starting issue from landed evidence and promoted only confirmed release defects. The next ticket repairs the specification gate and puts it inside the complete local and hosted check.
 
-Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
+Security and evidence work follows before runtime contract repair: remove runtime-derived public evidence, add known-secret detection, make file, Bash, and subflow-control authority explicit for ordinary stages and model-backed choices, confine subflow file input, minimize assembly-process environments, and enforce the private executable Pi configuration boundary Ian approved on 2026-09-12.
 
-Correctness work then repairs whole-run consumption totals, FANOUT options, descent depth, and current authentication and model qualification. Release work binds documentation publication to the complete gate, publishes the security and concurrency contract, prepares one exact `0.1.0` candidate, qualifies that commit from a clean clone, and tags that same commit only after Ian authorizes publication.
+Correctness work then repairs whole-run consumption totals, timestamp-faithful run listings, descent depth, and current authentication and model qualification. FANOUT's four-key option contract already agrees across parser, specification, documentation, and conformance. Release work binds documentation publication to the complete gate, publishes the security and concurrency contract, prepares one exact `0.1.0` candidate, qualifies that commit from a clean clone, and tags that same commit only after Ian authorizes publication.
 
 Every ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused proof, and the smallest complete integration gate its risk requires. A ticket adds a dependency only when an earlier outcome technically prevents its work.
 
