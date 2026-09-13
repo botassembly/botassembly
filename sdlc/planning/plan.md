@@ -10,13 +10,13 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Eight implementation outcomes remain. Tickets 0270, 0272, 0273, and 0274 completed the first four outcomes. The [evidence-based sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification work after independent inventory and extra-eyes review. This count is a forecast, not a quota. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
+Seven implementation outcomes remain. Tickets 0270, 0272, 0273, 0274, and 0275 completed the first five outcomes. The [evidence-based sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification work after independent inventory and extra-eyes review. This count is a forecast, not a quota. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
 3. **Completed in ticket 0273:** authored `access`, command-name filtering, denial events, and their public claims are gone; older records remain readable.
 4. **Completed in ticket 0274:** an unavailable subflow is refused before Bot expands, reads, hashes, or retains its file input; no path confinement was added.
-5. Require the complete same-commit check before documentation deployment. Keep that dependency aligned with the later platform matrix.
+5. **Completed in ticket 0275:** documentation deployment requires the complete same-commit check, and every checked-in site input triggers the workflow. Later platform checks remain behind the same dependency.
 6. Bound request ingestion from pipes and seekable task files, and prove real command-line pipeline settlement. Preserve the working streamed raw-output path unless a failing test establishes a defect.
 7. Enforce private Pi authentication and command-capable model configuration. Preserve ordinary environment inheritance while removing recognized provider credential variables from Bot-created assembly processes.
 8. Make run summaries truthful: aggregate verified root and descendant token use with an explicit complete or partial label, render exact timestamps, and reject an ending earlier than its accepted start.
