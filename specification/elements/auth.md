@@ -15,9 +15,11 @@ owns them in `auth.json` under its resolved agent directory. The default is
 `~/.pi/agent/auth.json`. No
 `--home` reaches them ([the home](home.md)). A `--home` given here is refused
 rather than ignored, because a person who typed one is expecting per-home
-credentials and does not have them. An existing Pi agent directory must be a
-real owner-controlled directory with mode `0700`. An existing auth file must
-be a real owner-controlled file with mode `0600`.
+credentials and does not have them. An existing Pi agent directory must be a real directory owned by the effective user with mode `0700`. Each operation validates only the Pi files that it uses. An existing `auth.json` or `models.json` must be a real regular file owned by the effective user with mode `0600`; a symbolic link is refused. Missing paths remain valid. Pi owns later agent-directory and authentication-file creation. Bot does not create a model file.
+
+A credential-free provider catalog validates the agent directory and `models.json`. A model runtime or authentication listing also validates `auth.json`. The logout mutation runtime validates the agent directory and `auth.json` without loading `models.json`; the full logout command first resolves its provider through the credential-free catalog. Authentication import keeps its separate source and destination checks.
+
+These checks limit which operating-system accounts can supply credential or command-capable local configuration through ordinary file access. They do not sandbox trusted configuration. Pi may run a supported command-backed key from `auth.json` or a leading `!command` value from `models.json` with the operator's filesystem and network authority. A same-account replacement or path race remains outside this boundary.
 
 ## The commands
 

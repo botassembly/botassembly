@@ -7,7 +7,7 @@ import { afterEach, expect, test } from "vitest";
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
 
-type Mode = "success" | "valid" | "malformed" | "wrong-envelope" | "wrong-types" | "unknown-code" | "oversized-array" | "oversized-field" | "oversized-input" | "read-failure" | "parser-failure";
+type Mode = "success" | "isolated" | "valid" | "malformed" | "wrong-envelope" | "wrong-types" | "unknown-code" | "oversized-array" | "oversized-field" | "oversized-input" | "read-failure" | "parser-failure";
 
 async function fixture(mode: Mode): Promise<{ root: string; script: string; bin: string }> {
 	const root = await mkdtemp(join(tmpdir(), "bot-examples-gate-"));
@@ -29,6 +29,12 @@ async function fixture(mode: Mode): Promise<{ root: string; script: string; bin:
 if case "$1" in */bot/src/cli.ts) true;; *) false;; esac; then
   case "$GATE_MODE" in
     success) printf '%s\\n' 'unexpected check output'; exit 0 ;;
+    isolated)
+      [ "$PI_CODING_AGENT_DIR" != "$GATE_HOSTILE_PI" ] || exit 9
+      [ -d "$PI_CODING_AGENT_DIR" ] || exit 8
+      printf '%s\\n' "$PI_CODING_AGENT_DIR" > "$GATE_CAPTURE"
+      exit 0
+      ;;
     valid) printf '%s\\n' '{"schemaVersion":1,"kind":"error","error":{"code":"request-invalid","operation":"assembly.check","cause":"assembly-invalid","message":"The assembly is not valid.","retryable":false,"details":{"faults":[{"code":"entry-unknown","path":"flows/main/01-stage.md","sentence":"SECRET sentence"},{"code":"path-missing","path":"/private/secret","sentence":"SECRET path"}]}}}' >&2 ;;
     malformed) printf '%s\\n' 'not json' >&2 ;;
     wrong-envelope) printf '%s\\n' '{"schemaVersion":1,"kind":"not-error","error":{}}' >&2 ;;
@@ -49,10 +55,10 @@ exec "$REAL_NODE" "$@"
 	return { root, script, bin };
 }
 
-function run(held: { root: string; script: string; bin: string }, mode: Mode) {
+function run(held: { root: string; script: string; bin: string }, mode: Mode, extra: NodeJS.ProcessEnv = {}) {
 	return spawnSync("sh", [held.script], {
 		cwd: held.root,
-		env: { ...process.env, GATE_MODE: mode, PATH: `${held.bin}:${process.env.PATH ?? ""}`, REAL_NODE: process.execPath },
+		env: { ...process.env, ...extra, GATE_MODE: mode, PATH: `${held.bin}:${process.env.PATH ?? ""}`, REAL_NODE: process.execPath },
 		encoding: "utf8",
 	});
 }
@@ -63,6 +69,25 @@ test("examples gate keeps successful check output silent", async () => {
 	expect(result.status, result.stderr).toBe(0);
 	expect(result.stdout).toBe("examples: examples/fixture/main resolves\n");
 	expect(result.stderr).toBe("");
+});
+
+test("examples gate replaces a hostile operator Pi path with a private suite path", async () => {
+	const held = await fixture("isolated");
+	const hostile = join(held.root, "operator-pi");
+	const capture = join(held.root, "pi-path");
+	await mkdir(hostile, { mode: 0o700 });
+	await writeFile(join(hostile, "models.json"), "operator canary\n", { mode: 0o600 });
+	const result = run(held, "isolated", {
+		GATE_CAPTURE: capture,
+		GATE_HOSTILE_PI: hostile,
+		PI_CODING_AGENT_DIR: hostile,
+	});
+	expect(result.status, result.stderr).toBe(0);
+	expect(await readFile(join(hostile, "models.json"), "utf8")).toBe("operator canary\n");
+	const isolated = (await readFile(capture, "utf8")).trim();
+	expect(isolated).not.toBe(hostile);
+	expect(isolated.startsWith(`${tmpdir()}/`)).toBe(true);
+	expect(isolated.endsWith("/pi-agent")).toBe(true);
 });
 
 test("examples gate reports safe details and keeps check output hidden", async () => {

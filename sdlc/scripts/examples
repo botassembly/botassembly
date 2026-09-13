@@ -16,10 +16,15 @@ esac
 cd -- "$REPO"
 
 # Examples name the intelligence `default` so any configured home runs them.
-# CI has no home, so write a throwaway one. No model is called and no
-# credential is read; the mapping only has to resolve.
+# Give both Bot and Pi throwaway configuration beneath one private root. No
+# model is called and no credential or operator configuration is read; the
+# mapping only has to resolve.
 HOME_DIR=$(mktemp -d) || exit 2
 trap 'rm -rf "$HOME_DIR"' EXIT INT TERM
+umask 077
+PI_CODING_AGENT_DIR="$HOME_DIR/pi-agent"
+mkdir "$PI_CODING_AGENT_DIR"
+export PI_CODING_AGENT_DIR
 cat > "$HOME_DIR/config.yaml" <<'YAML'
 intelligences:
   default:

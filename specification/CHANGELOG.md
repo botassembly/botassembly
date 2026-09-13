@@ -2,6 +2,8 @@
 
 ## 2026-09-13
 
+Ticket 0277 requires each existing Pi configuration path used by an operation to be private on POSIX systems. The agent directory must be a real effective-user-owned `0700` directory. `auth.json` and command-capable `models.json` must be real effective-user-owned `0600` regular files without symbolic links. Missing paths remain valid. The check preserves trusted configuration commands, ordinary tools, ordinary environment inheritance with recognized provider credential names scrubbed, and Pi's supported configuration behavior. Same-account replacement and path races remain outside the boundary.
+
 Ticket 0276 sets one inclusive 4 MiB request limit for arguments, complete task sources, retained parsed task bodies, standard input, and resumed donors. Oversized requests refuse before run birth while raw request retrieval keeps its unlimited fixed-extent path. Ordinary command output now observes ordered callback settlement and backpressure before explicit exit. Early pipe close remains quiet success, other delivery failures produce one bounded diagnostic, and an existing nonzero or signal status keeps precedence. The runtime contract now states concrete command-line stream behavior without claiming formal POSIX certification.
 
 Ticket 0274 rejects a subflow outside the caller's resolved scope before expanding, reading, hashing, or retaining its file input. The parent record keeps the numbered scope refusal without invented input or child artifacts. Already-present inline text keeps its descriptor. Valid subflows retain their existing file behavior under the operator's authority.

@@ -3,7 +3,7 @@
 // resolved path. Local model configuration is trusted operator input, but Bot
 // admits it only through the ownership and mode checks recorded in ADR 0030.
 import { constants, type Stats } from "node:fs";
-import { access, lstat, realpath, stat } from "node:fs/promises";
+import { lstat, open } from "node:fs/promises";
 import { join } from "node:path";
 import type { CreateModelRuntimeOptions, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
@@ -57,7 +57,7 @@ function unsafe(path: string, sentence: string): Error {
 }
 
 function owned(path: string, facts: Stats, uid: number): void {
-  if (facts.uid !== uid) throw unsafe(path, "the path is not owned by the current user.");
+  if (facts.uid !== uid) throw unsafe(path, "the path is not owned by the effective user.");
 }
 
 async function existing(path: string): Promise<Stats | undefined> {
@@ -79,25 +79,30 @@ async function validateAgentDirectory(path: string, uid: number): Promise<void> 
 }
 
 async function validateAuthFile(path: string, uid: number): Promise<void> {
+  await validatePrivateFile(path, uid, "authentication");
+}
+
+async function validatePrivateFile(path: string, uid: number, kind: "authentication" | "model configuration"): Promise<void> {
   const facts = await existing(path);
   if (facts === undefined) return;
-  if (facts.isSymbolicLink()) throw unsafe(path, "the authentication path is a symbolic link.");
-  if (!facts.isFile()) throw unsafe(path, "the authentication path is not a regular file.");
+  if (facts.isSymbolicLink()) throw unsafe(path, `the ${kind} path is a symbolic link; it must be a real regular file with mode 0600.`);
+  if (!facts.isFile()) throw unsafe(path, `the ${kind} path must be a real regular file with mode 0600.`);
   owned(path, facts, uid);
-  if ((facts.mode & 0o777) !== 0o600) throw unsafe(path, "the authentication file must have mode 0600.");
-  await access(path, constants.R_OK);
+  if ((facts.mode & 0o777) !== 0o600) throw unsafe(path, `the ${kind} file must have mode 0600.`);
+  const handle = await open(path, constants.O_RDONLY).catch(() => {
+    throw unsafe(path, `the ${kind} file must be readable through a read-only open.`);
+  });
+  await handle.close().catch(() => {
+    throw unsafe(path, `the ${kind} file read-only verification handle could not close.`);
+  });
 }
 
 async function validateModelsFile(path: string, uid: number): Promise<void> {
-  const link = await existing(path);
-  if (link === undefined) return;
-  if (link.isSymbolicLink() && link.uid !== uid) throw unsafe(path, "the symlink is not owned by the current user.");
-  const resolved = link.isSymbolicLink() ? await realpath(path) : path;
-  const facts = link.isSymbolicLink() ? await stat(resolved) : link;
-  if (!facts.isFile()) throw unsafe(resolved, "the resolved model configuration is not a regular file.");
-  owned(resolved, facts, uid);
-  if ((facts.mode & 0o002) !== 0) throw unsafe(resolved, "the path is world-writable.");
-  await access(resolved, constants.R_OK);
+  await validatePrivateFile(path, uid, "model configuration");
+}
+
+function effectiveUser(): number | undefined {
+  return typeof process.geteuid === "function" ? process.geteuid() : undefined;
 }
 
 function runtimeError(runtime: ModelRuntime): Error | undefined {
@@ -112,11 +117,9 @@ const NO_CREDENTIALS: CredentialStore = {
   delete: () => Promise.resolve(),
 };
 
-async function validateModelBoundary(input: ConfiguredModelRuntimeInput): Promise<string> {
+async function validateModelBoundary(input: ConfiguredModelRuntimeInput, uid = effectiveUser()): Promise<string> {
   const modelsPath = join(input.agentDir, "models.json");
-  const getuid = process.getuid;
-  if (getuid !== undefined) {
-    const uid = getuid();
+  if (uid !== undefined) {
     await validateAgentDirectory(input.agentDir, uid);
     await validateModelsFile(modelsPath, uid);
   }
@@ -125,17 +128,16 @@ async function validateModelBoundary(input: ConfiguredModelRuntimeInput): Promis
 
 async function validateAuthBoundary(input: ConfiguredModelRuntimeInput): Promise<{ authPath: string; modelsPath: string }> {
   const authPath = join(input.agentDir, "auth.json");
-  const modelsPath = await validateModelBoundary(input);
-  const getuid = process.getuid;
-  if (getuid !== undefined) await validateAuthFile(authPath, getuid());
+  const uid = effectiveUser();
+  const modelsPath = await validateModelBoundary(input, uid);
+  if (uid !== undefined) await validateAuthFile(authPath, uid);
   return { authPath, modelsPath };
 }
 
 async function validateCredentialBoundary(input: ConfiguredModelRuntimeInput): Promise<string> {
   const authPath = join(input.agentDir, "auth.json");
-  const getuid = process.getuid;
-  if (getuid !== undefined) {
-    const uid = getuid();
+  const uid = effectiveUser();
+  if (uid !== undefined) {
     await validateAgentDirectory(input.agentDir, uid);
     await validateAuthFile(authPath, uid);
   }

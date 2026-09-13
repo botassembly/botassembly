@@ -38,13 +38,30 @@ install is the machine's own answer, and `bot auth list` lists every provider a
 credential could be added for. The pair this project's own live runs use, and what those
 runs cost in tokens, is [what it costs](/guides/first-assembly/#what-it-costs).
 
-Pi's local `models.json` is trusted operator input. It may add providers,
-models, endpoints, headers, and authentication values. A leading `!command`
-runs with the Bot process owner's filesystem and network authority. Bot checks
-the agent directory and resolved model file owner and
-permissions before loading the file. An owner-controlled model-file symlink is
-allowed. This check is an account boundary and does not sandbox the
-configuration.
+Pi's local `models.json` is trusted operator input. It may add providers, models, endpoints, headers, and authentication values. A leading `!command` runs with the Bot process owner's filesystem and network authority. Bot checks the paths before loading the file. An existing Pi agent directory must be a real directory owned by the effective user with mode `0700`. An existing `models.json` must be a real regular file owned by the effective user with mode `0600`; a symbolic link is refused. Missing paths remain valid. Pi may create its agent directory and authentication file later. Bot does not create a model file.
+
+For a linked default model file, replace the link with a private regular copy:
+
+```sh
+set -eu
+agent=${PI_CODING_AGENT_DIR:-"$HOME/.pi/agent"}
+models="$agent/models.json"
+copy="$agent/models.private-copy"
+umask 077
+if [ ! -L "$models" ]; then
+  echo "refused: $models is not a symbolic link" >&2
+  exit 1
+fi
+if [ -e "$copy" ] || [ -L "$copy" ]; then
+  echo "refused: $copy already exists" >&2
+  exit 1
+fi
+cp -L "$models" "$copy"
+chmod 600 "$copy"
+mv -f "$copy" "$models"
+```
+
+For an existing regular file, run `chmod 600 "$models"` and make sure the effective user owns it. Bot never repairs these paths. The permission check limits which operating-system accounts can supply executable local configuration through ordinary file access. Trusted `!command` values keep the operator's full authority. A same-account replacement or path race remains outside this boundary. Bot does not sandbox the configuration, agents, or commands.
 
 Bot removes every environment name used by Pi's built-in provider credentials
 from stage environments. A local model configuration may reference arbitrary environment names that Bot cannot discover, so those names cannot be scrubbed

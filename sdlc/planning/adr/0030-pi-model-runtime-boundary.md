@@ -2,7 +2,7 @@
 
 **Status:** accepted · **Date:** 2026-09-10 · **Decision owner:** Ian Maurer · **Implements:** Ticket 0242
 
-**Amended 2026-09-12:** Ian approved replacing the accepted `models.json` compatibility boundary before `0.1.0`. The release plan requires a current-owner regular file under a private directory, mode `0600`, no symbolic link, and no group write. The existing implementation remains an acknowledged gap until release-plan outcome 10 lands. Same-account command execution and path races remain accepted limits.
+**Amended 2026-09-12 and implemented by ticket 0277:** Ian replaced the earlier `models.json` compatibility rule. An existing model file must now be an effective-user-owned regular file under a private agent directory, with mode `0600` and no symbolic link. Same-account command execution and path races remain accepted limits.
 
 ## Decision
 
@@ -22,11 +22,11 @@ Bot accepts Pi's built-in providers and declarative providers from `models.json`
 
 Bot accepts Pi's live parent-process environment and provider-owned file probes as authentication inputs. A mutation of `process.env` inside one Bot process can change later availability or request authentication. Bot still gives each stage a scrubbed copy of the environment.
 
-Pi local configuration is trusted operator input. Before use, Bot requires the Pi agent directory to be owned by the current user and not world-writable. Bot permits an owner-controlled `models.json` symlink. Its resolved target must be a regular file owned by the current user and must not be world-writable. This preserves the current local Pi configuration. Bot accepts the same-account, owner-controlled group, and path-race limits and makes no sandbox claim.
+Pi local configuration is trusted operator input. Before use on POSIX systems, Bot requires an existing Pi agent directory to be a real effective-user-owned directory with exact mode `0700`. Each operation validates only the files it uses. An existing `models.json` must be a real effective-user-owned regular file with exact mode `0600` and no symbolic link. Missing paths remain valid. Bot accepts same-account replacement and path races and makes no sandbox claim.
 
-A `!command` in `models.json` runs outside stage `access` rules with the Bot process owner's filesystem and network authority. Pi gives the command ten seconds. This path uses uncached resolution, so the command may run again on a later authentication resolution. Bot cannot discover every environment name referenced by local configuration. Operators must not reference a value there that an assembly process must not inherit. Ticket 0244 must publish this limit and prove that Pi's built-in credential environment names remain scrubbed. Corrupt or unreadable model configuration fails before provider contact.
+A `!command` in `models.json` runs with the Bot process owner's filesystem and network authority. Bot does not interpret or restrict it. Pi gives the command ten seconds. This path uses uncached resolution, so the command may run again on a later authentication resolution. Bot cannot discover every environment name referenced by local configuration. Operators must not reference a value there that an assembly process must not inherit. Ticket 0244 must publish this limit and prove that Pi's built-in credential environment names remain scrubbed. Corrupt or unreadable model configuration fails before provider contact.
 
-The owner-controlled `auth.json` content is also trusted operator input. Pi may execute a supported command-backed API key as the Bot process owner. Pi gives that command ten seconds and caches its result for the process lifetime. Bot does not interpret that command or apply stage `access` rules to it. Owner-only preflight limits who can supply the file. It does not sandbox the file's content.
+The owner-controlled `auth.json` content is also trusted operator input. Pi may execute a supported command-backed API key as the Bot process owner. Pi gives that command ten seconds and caches its result for the process lifetime. Bot does not interpret or restrict that command. Owner-only preflight limits who can supply the file. It does not sandbox the file's content.
 
 ## Network boundary
 
@@ -34,7 +34,7 @@ Ordinary runtime creation restores local configuration and availability without 
 
 ## Authentication-store boundary
 
-Ticket 0245 validates the Pi agent directory and authentication file before use. On POSIX systems, Bot refuses an existing directory or file with the wrong owner, wrong type, or group or other permissions. It refuses an authentication-file symlink. Bot does not silently repair existing state. Pi owns creation and locked writes after preflight. Platforms without POSIX ownership and mode checks retain Pi's supported account boundary and receive no stronger Bot claim.
+Tickets 0245 and 0277 validate the Pi agent directory and each configuration file before use. On POSIX systems, Bot refuses an existing directory or file with the wrong effective owner, wrong type, or any group or other permissions. It refuses configuration-file symbolic links. Bot does not silently repair existing state. Pi owns supported creation and locked authentication writes after preflight. Platforms without effective-user ownership checks receive no stronger Bot claim and remain subject to Bot's separate platform support contract.
 
 Pi exposes no public arbitrary OAuth credential-import API. Bot therefore owns one narrow migration exception. It takes the destination-path lock, validates both stores, and copies the complete compatible old map through mode-`0600` atomic replacement only when Pi's destination is missing or is a valid empty object. It refuses a nonempty destination. Bot never merges, overwrites, decodes, or selectively copies credentials. Pi owns every later write.
 
@@ -68,7 +68,7 @@ ADR 0021's Pi-owned authentication semantics, secret-safe reporting, and no-secr
 
 ## Accepted costs
 
-Bot accepts a larger bundled dependency, coordinated upgrades of three Pi packages, trusted shell-backed local configuration, owner-controlled model-file symlinks, the named same-account and path-race limits, Pi's in-place locked authentication writes, ambient parent-process authentication inputs, and no promise that arbitrary configuration environment names are scrubbed from assembly processes. A nonempty Pi authentication store requires manual migration resolution.
+Bot accepts a larger bundled dependency, coordinated upgrades of three Pi packages, trusted shell-backed local configuration, one manual replacement for a linked or broadly readable model file, the named same-account and path-race limits, Pi's in-place locked authentication writes, ambient parent-process authentication inputs, and no promise that arbitrary configuration environment names are scrubbed from assembly processes. A nonempty Pi authentication store requires manual migration resolution.
 
 ## Evidence
 
@@ -82,4 +82,4 @@ A second controlled Node 22.22.3 reproduction created a temporary existing `auth
 
 A safe command-count reproduction called `getAuth('demo')` twice. The `models.json` command ran twice. The `auth.json` command ran once across runtime creation and both reads. The reproduction printed counts and no credential values.
 
-Ian can overturn this decision before the staged migration finishes. Reversal after ticket 0245 would require replacing Pi's live authentication owner and migration contract.
+Ian can overturn the private-model-file rule. Reversal would restore compatibility with linked or shared configuration and weaken the operating-system account boundary. Replacing Pi's live authentication owner would require a separate migration.

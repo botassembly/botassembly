@@ -216,6 +216,10 @@ test("published model readings distinguish pinned and live network behavior", ()
 test("the model reference publishes the trusted local configuration limit", () => {
   const text = readFileSync(join(DOCUMENTATION, "reference/models.md"), "utf8");
   expect(text).toMatch(/models\.json[\s\S]*trusted operator input[\s\S]*command[\s\S]*process owner's filesystem and network authority/iu);
+  expect(text).toMatch(/agent directory[\s\S]*real directory[\s\S]*0700/iu);
+  expect(text).toMatch(/models\.json[\s\S]*real regular file[\s\S]*0600[\s\S]*symbolic link/iu);
+  expect(text).toMatch(/replace[\s\S]*link[\s\S]*private regular copy[\s\S]*chmod 600/iu);
+  expect(text).toMatch(/same-account[\s\S]*(?:replacement|race)[\s\S]*outside/iu);
   expect(text).toMatch(/arbitrary environment names[\s\S]*cannot be scrubbed/iu);
 });
 
