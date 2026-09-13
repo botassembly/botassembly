@@ -15,7 +15,7 @@ import { runStateFact, type RunStateFact } from "./run-state.ts";
 import { CAPTURE } from "./record.ts";
 import { jsonObject } from "./check.ts";
 import { field, heldRecord } from "./record-lines.ts";
-import { byteMagnitude, compactMagnitude, elapsedAge, renderRows, renderTable } from "./table.ts";
+import { byteMagnitude, compactMagnitude, renderRows, renderTable } from "./table.ts";
 
 export interface InspectionResult {
   exitCode: 0 | 1;
@@ -105,7 +105,7 @@ function ending(events: Record<string, unknown>[], directory: string): string {
   return checkSync(directory, RUN_LOCK) ? "running" : "crashed";
 }
 
-interface RunReading { id: string; assembly: string | null; flow: string | null; startedAt: string | null; state: string; tokens: number | null; usage?: Usage[] }
+interface RunReading { id: string; assembly: string | null; flow: string | null; startedAt: string | null; state: string; tokens: number | null; tokensStatus: "complete" | "partial"; usage?: Usage[] }
 
 interface RunsQuery { all: boolean; usage?: boolean; assembly?: string; flow?: string; state?: string; since?: string; limit?: number; prefix?: string }
 interface RunsDocument { schemaVersion: 1; runs: RunReading[] }
@@ -119,10 +119,10 @@ export const RUNS_BOUND = 20;
 export async function readRunState(home: string, id: string, withTokens = true, withUsage = false): Promise<RunStateFact | undefined> {
   const directory = join(home, "runs", id);
   const record = await heldRecord(directory);
-  return runStateFact(id, record, checkSync(directory, RUN_LOCK), withTokens, withUsage);
+  return runStateFact(directory, id, record, checkSync(directory, RUN_LOCK), withTokens, withUsage);
 }
 
-function runsLines(runs: RunReading[], readingAt?: string): string[] {
+function runsLines(runs: RunReading[], _readingAt?: string): string[] {
   return renderTable([
     { label: "run id" },
     { label: "assembly" },
@@ -130,13 +130,15 @@ function runsLines(runs: RunReading[], readingAt?: string): string[] {
     { label: "started", align: "right" },
     { label: "outcome" },
     { label: "tokens", align: "right" },
+    { label: "tokens status" },
   ], runs.map((run) => [
     run.id,
     run.assembly ?? "-",
     run.flow ?? "-",
-    run.startedAt === null ? "-" : readingAt === undefined ? run.startedAt : elapsedAge(run.startedAt, readingAt),
+    run.startedAt ?? "-",
     run.state,
     run.tokens === null ? "-" : compactMagnitude(run.tokens),
+    run.tokensStatus,
   ]));
 }
 
@@ -148,7 +150,7 @@ async function readRun(home: string, id: string, withUsage = false): Promise<Hel
   const state = fact.legacyState === "ended" ? `${String(fact.exit)}/${String(fact.cause)}` : fact.legacyState;
   return {
     run: {
-      id: fact.id, assembly: fact.assembly, flow: fact.flow, startedAt: fact.startedAt, state, tokens: fact.tokens,
+      id: fact.id, assembly: fact.assembly, flow: fact.flow, startedAt: fact.startedAt, state, tokens: fact.tokens, tokensStatus: fact.tokensStatus,
       ...(fact.usage === undefined ? {} : { usage: fact.usage }),
     },
     ...(fact.says === undefined ? {} : { says: fact.says }),

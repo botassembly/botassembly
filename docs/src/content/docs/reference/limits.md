@@ -28,7 +28,7 @@ This is worth knowing before unattended or batch work. A flow with a loop, a fan
 
 ## Reading what a run cost
 
-A sealed record carries the token split per stage and for the run. `bot run events RUN` closes with what it cost, and `bot run list` prints tokens in its last column. That is after the fact, not a cap.
+A sealed record carries each turn's token split. `bot run events RUN` reports the selected record's turns. `bot run list` verifies the root and its authorized descendants, prints their summed tokens, and labels the total complete or partial. That is after the fact. It does not impose a cap.
 
 ```sh
 bot run list

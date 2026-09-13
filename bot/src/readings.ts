@@ -31,11 +31,6 @@ function safeSpend(events: Record<string, unknown>[]): Spend | undefined {
   return events.every((event) => countNames.every((name) => validCount(event[name]))) ? spend(events) : undefined;
 }
 
-export function tokenTotal(events: Record<string, unknown>[]): number | null {
-  const held = turns(events);
-  return held.length === 0 ? null : safeSpend(held)?.[2] ?? null;
-}
-
 export interface Usage {
   stage: string;
   retry: number;

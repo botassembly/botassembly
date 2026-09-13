@@ -199,6 +199,9 @@ export function classifyStory(events: Event[], sourceLines?: number[], expectedR
     const name = event["event"], line = lineNumber(sourceLines, index);
     const malformed = eventRule(event, name);
     if (malformed !== undefined) return rejected(line, malformed);
+    if (name === "run_end" && Date.parse(String(event["ts"])) < Date.parse(String(first["ts"]))) {
+      return rejected(line, "run_end precedes run_start");
+    }
     const rule = transition(state, event, String(name), index === 0);
     if (rule !== undefined) return rejected(line, rule);
   }

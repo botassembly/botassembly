@@ -8,12 +8,12 @@ import type { RunStateFact } from "./run-state.ts";
 import { jsonValue } from "./schema-check.ts";
 import { isRunListState, RUN_LIST_CONTRACT, type CliFailure, type RunListField, type RunListQuery, type RunListState } from "./run-list-query.ts";
 import { CAUSES } from "./spine.ts";
-import { compactMagnitude, elapsedAge } from "./table.ts";
+import { compactMagnitude } from "./table.ts";
 import { boundedText as bounded, inertText as inert, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 
 interface RunSummary {
   id: string; assembly: string | null; flow: string | null; startedAt: string | null; endedAt: string | null; duration: number | null;
-  state: RunListState; exit: number | null; cause: string | null; tokens: number | null;
+  state: RunListState; exit: number | null; cause: string | null; tokens: number | null; tokensStatus: "complete" | "partial";
 }
 
 interface Warning { id: string; code: string; diagnostic: string }
@@ -35,7 +35,7 @@ function boundedFact(fact: RunStateFact): { summary: RunSummary; warnings: Warni
   const state = isRunListState(fact.state) ? fact.state : "invalid";
   const summary: RunSummary = { id: fact.id, assembly: fact.assembly, flow: fact.flow, startedAt: fact.startedAt,
     endedAt: fact.endedAt, duration: fact.duration,
-    state, exit: fact.exit, cause: fact.cause, tokens: fact.tokens };
+    state, exit: fact.exit, cause: fact.cause, tokens: fact.tokens, tokensStatus: fact.tokensStatus };
   const textFields = ["assembly", "flow", "startedAt", "endedAt", "cause"] as const;
   const tooLarge = textFields.filter((name) => summary[name] !== null
     && Buffer.byteLength(summary[name] ?? "") > RUN_LIST_CONTRACT.output.summaryTextBytes);
@@ -188,10 +188,9 @@ function project(summary: RunSummary, fields: readonly RunListField[]): Record<s
   return Object.fromEntries(fields.map((name) => [name, summary[name]]));
 }
 
-function humanValue(summary: RunSummary, field: RunListField, now: string): string {
+function humanValue(summary: RunSummary, field: RunListField, _now: string): string {
   const value = summary[field];
   if (value === null) return "-";
-  if (field === "startedAt" || field === "endedAt") return elapsedAge(String(value), now);
   if (field === "duration") return `${String(value)}ms`;
   if (field === "tokens") return compactMagnitude(Number(value));
   return String(value);

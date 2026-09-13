@@ -193,7 +193,7 @@ Network: ${RUN_SESSION_DESCRIPTOR.network}. Home: ${RUN_SESSION_DESCRIPTOR.home}
 const RUN_LIST_DESCRIPTOR = descriptor("run.list");
 const RUN_LIST = `usage: bot ${RUN_LIST_DESCRIPTOR.command.join(" ")} [filters] [options]
 
-Lists runs without network access. Human output is a bounded Markdown table.
+Lists runs without network access. Human output is a bounded Markdown table with exact retained timestamps. Tokens cover each root and its verified authorized descendants. The tokensStatus field says complete or partial.
 Modes: ${RUN_LIST_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(RUN_LIST_DESCRIPTOR)}.
 Network: ${RUN_LIST_DESCRIPTOR.network}. Home: ${RUN_LIST_DESCRIPTOR.home}.
 

@@ -73,7 +73,7 @@ test("run list gives people the newest twenty rows and leaves legacy runs byte-i
   const listed = await invokeCli(["run", "list"], { home: where });
   const after = await invokeCli(["run", "list", "--all", "--json"], { home: where });
   expect(listed.code, listed.err).toBe(0);
-  expect(listed.out.split("\n")[0]).toBe("| id | assembly | flow | startedAt | endedAt | duration | state | exit | cause | tokens |");
+  expect(listed.out.split("\n")[0]).toBe("| id | assembly | flow | startedAt | endedAt | duration | state | exit | cause | tokens | tokensStatus |");
   expect(listed.out).toContain(id(20));
   expect(listed.out).not.toContain(id(0));
   expect(after.out).toBe(before.out);
@@ -88,7 +88,7 @@ test("run list JSON modes are identical and empty valid results succeed", async 
   expect(short).toEqual(long);
   expect(object(long.out)).toMatchObject({
     schemaVersion: 1, kind: "bot.run.list",
-    data: [{ id: id(1), state: "ended", exit: 0, cause: "success", tokens: 2 }],
+    data: [{ id: id(1), state: "ended", exit: 0, cause: "success", tokens: 2, tokensStatus: "complete" }],
     page: { limit: 20, next: null, through: id(1), complete: true },
     summary: { returned: 1, matched: null }, warnings: [],
   });
@@ -98,10 +98,10 @@ test("run list JSON modes are identical and empty valid results succeed", async 
   expect(empty.err).toBe("");
 });
 
-test("run list carries exact retained end times and signed durations in either projection", async () => {
+test("run list carries exact retained end times and non-negative durations in either projection", async () => {
   const where = await home();
   await ended(where, 1, "review", "main", "success", "2026-09-05T12:01:01.234Z");
-  await ended(where, 2, "review", "main", "rejected", "2026-09-05T12:01:59.500Z");
+  await ended(where, 2, "review", "main", "rejected", "2026-09-05T12:02:59.500Z");
 
   const defaultJson = await invokeCli(["run", "list", "-j"], { home: where, now: "2099-01-01T00:00:00.000Z" });
   const defaultHuman = await invokeCli(["run", "list"], { home: where, now: "2099-01-01T00:00:00.000Z" });
@@ -114,13 +114,13 @@ test("run list carries exact retained end times and signed durations in either p
     endedAtExit: endedProjection.code,
     durationExit: durationProjection.code,
   }).toEqual({
-    defaultFields: ["id", "assembly", "flow", "startedAt", "endedAt", "duration", "state", "exit", "cause", "tokens"],
-    markdownHeading: "| id | assembly | flow | startedAt | endedAt | duration | state | exit | cause | tokens |",
+    defaultFields: ["id", "assembly", "flow", "startedAt", "endedAt", "duration", "state", "exit", "cause", "tokens", "tokensStatus"],
+    markdownHeading: "| id | assembly | flow | startedAt | endedAt | duration | state | exit | cause | tokens | tokensStatus |",
     endedAtExit: 0,
     durationExit: 0,
   });
   expect(defaults).toEqual([
-    expect.objectContaining({ id: id(2), endedAt: "2026-09-05T12:01:59.500Z", duration: -500, exit: 1, cause: "rejected" }),
+    expect.objectContaining({ id: id(2), endedAt: "2026-09-05T12:02:59.500Z", duration: 59_500, exit: 1, cause: "rejected" }),
     expect.objectContaining({ id: id(1), endedAt: "2026-09-05T12:01:01.234Z", duration: 1_234, exit: 0, cause: "success" }),
   ]);
   expect(typeof defaults[0]?.["endedAt"]).toBe("string");
@@ -130,12 +130,39 @@ test("run list carries exact retained end times and signed durations in either p
     "run", "list", "--fields", "duration,endedAt,id", "-j",
   ], { home: where })).out));
   expect(Object.keys(projected[0] ?? {})).toEqual(["duration", "endedAt", "id"]);
-  expect(projected[0]).toEqual({ duration: -500, endedAt: "2026-09-05T12:01:59.500Z", id: id(2) });
+  expect(projected[0]).toEqual({ duration: 59_500, endedAt: "2026-09-05T12:02:59.500Z", id: id(2) });
 
   const human = await invokeCli(["run", "list", "--fields", "endedAt,duration", "--limit", "1"], {
     home: where, now: "2026-09-05T12:05:00.000Z",
   });
-  expect(human.out).toBe("| endedAt | duration |\n| --- | --- |\n| 3m | -500ms |\n");
+  expect(human.out).toBe("| endedAt | duration |\n| --- | --- |\n| 2026-09-05T12:02:59.500Z | 59500ms |\n");
+});
+
+test("run list preserves accepted offset timestamps and projects token status by itself", async () => {
+  const where = await home(), run = id(1), directory = join(where, "runs", run);
+  const startedAt = "2026-09-05T08:01:00.000-04:00", endedAt = "2026-09-05T08:01:01.000-04:00";
+  await mkdir(directory);
+  await writeFile(join(directory, "record.jsonl"), currentRecord([
+    runStartEvent({ ts: startedAt, run, assembly: "review", assemblyHash: HASH, flow: "main", request: REQUEST }),
+    ...successfulStageEvents({ stage: "01-work", retry: 1 }, "2026-09-05T12:01:00"),
+    runEndEvent({ ts: endedAt, exit: 0, cause: "success" }),
+  ]));
+  const json = rows(object((await invokeCli(["run", "list", "--fields", "startedAt,endedAt,tokensStatus", "-j"], { home: where })).out));
+  expect(json).toEqual([{ startedAt, endedAt, tokensStatus: "complete" }]);
+  const human = await invokeCli(["run", "list", "--fields", "startedAt,endedAt"], { home: where, now: "2099-01-01T00:00:00.000Z" });
+  expect(human.out).toContain(`| ${startedAt} | ${endedAt} |`);
+});
+
+test("run list preserves accepted timestamps when their non-negative duration is unsafe", async () => {
+  const where = await home(), run = id(1), directory = join(where, "runs", run);
+  const startedAt = "-271821-04-20T00:00:00.000Z", endedAt = "+275760-09-13T00:00:00.000Z";
+  await mkdir(directory);
+  await writeFile(join(directory, "record.jsonl"), `${[
+    runStartEvent({ ts: startedAt, run, assembly: "review", assemblyHash: HASH, flow: "main", request: REQUEST }),
+    runEndEvent({ ts: endedAt, exit: 0, cause: "success" }),
+  ].map((event) => JSON.stringify(event)).join("\n")}\n`);
+  const json = rows(object((await invokeCli(["run", "list", "--fields", "startedAt,endedAt,duration", "-j"], { home: where })).out));
+  expect(json).toEqual([{ startedAt, endedAt, duration: null }]);
 });
 
 test("repeatable filters use OR within a name and AND across names with inclusive recorded times", async () => {
@@ -345,11 +372,14 @@ test("run list gives every retained record shape its distinct structured state",
   release();
   releaseUnborn();
   const states = Object.fromEntries(rows(object(held.out)).map((row) => [String(row["id"]), row["state"]]));
+  const summaries = Object.fromEntries(rows(object(held.out)).map((row) => [String(row["id"]), row]));
   expect(states).toMatchObject({
     [id(1)]: "ended", [id(2)]: "crashed", [id(3)]: "running", [id(4)]: "incomplete", [id(5)]: "invalid",
     [id(6)]: "no-record", [id(7)]: "bad-record", [id(8)]: "bad-version", [id(9)]: "unreadable",
   });
   expect(states[id(0)]).toBeUndefined();
+  for (const run of [id(2), id(3), id(4)]) expect(summaries[run]).toMatchObject({ tokens: 0, tokensStatus: "partial" });
+  for (const run of [id(5), id(6), id(7), id(8), id(9)]) expect(summaries[run]).toMatchObject({ tokens: null, tokensStatus: "partial" });
   for (const row of rows(object(held.out)).filter((row) => row["state"] !== "ended")) {
     expect(row).toMatchObject({ endedAt: null, duration: null });
   }
@@ -423,7 +453,7 @@ test("run list help names the complete network-free surface while legacy run hel
   const help = await invokeCli(["run", "list", "--help"], { home: where });
   const after = await invokeCli(["run", "start", "--help"], { home: where });
   expect(help.code).toBe(0);
-  for (const word of ["--assembly", "--flow", "--state", "--cause", "--since", "--until", "--limit", "--after", "--fields", "endedAt", "duration", "--count", "--json", "-j", "--home", "64", "2,048", "8,192", "YYYY-MM-DDTHH:mm:ss.sssZ", "without network access"]) expect(help.out).toContain(word);
+  for (const word of ["--assembly", "--flow", "--state", "--cause", "--since", "--until", "--limit", "--after", "--fields", "endedAt", "duration", "tokensStatus", "complete or partial", "--count", "--json", "-j", "--home", "64", "2,048", "8,192", "YYYY-MM-DDTHH:mm:ss.sssZ", "without network access"]) expect(help.out).toContain(word);
   expect(help.out).not.toContain("bot runs");
   expect(after.out).toBe(before.out);
 });

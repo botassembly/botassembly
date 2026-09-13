@@ -88,8 +88,13 @@ Encoded cursors stay within 8,192 bytes before decoding. Decoded cursors stay wi
 ### `bot run list`
 
 `bot run list` reads bounded summaries for the home's top-level runs. It does
-not read sessions or detailed artifacts. Markdown and version-1 JSON support
-typed filters and continuation without changing the home.
+not read sessions, outputs, or provider paths. Markdown and version-1 JSON
+support typed filters and continuation without changing the home. Each row
+reports `tokens` across the root and its uniquely authorized descendants.
+`tokensStatus` says `complete` or `partial`. A partial numeric value is the
+verified prefix and may be lower than provider consumption. Human timestamps
+preserve the record's exact strings. `inspectRuns({ usage: true })` keeps its
+selected-root breakdown by stage and model.
 
 ### `bot assembly check`
 
@@ -177,8 +182,13 @@ Everything this does is deterministic, which is what makes it the backbone of
 ### `bot run list`
 
 `bot run list` reads bounded summaries for the home's top-level runs. It does
-not read sessions or detailed artifacts. Markdown and version-1 JSON support
-typed filters and continuation without changing the home.
+not read sessions, outputs, or provider paths. Markdown and version-1 JSON
+support typed filters and continuation without changing the home. Each row
+reports `tokens` across the root and its uniquely authorized descendants.
+`tokensStatus` says `complete` or `partial`. A partial numeric value is the
+verified prefix and may be lower than provider consumption. Human timestamps
+preserve the record's exact strings. `inspectRuns({ usage: true })` keeps its
+selected-root breakdown by stage and model.
 
 ### `bot assembly check`
 

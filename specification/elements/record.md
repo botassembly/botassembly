@@ -203,7 +203,7 @@ runtime — can answer these, and a record that cannot is not a record:
    was told.
 6. What the model was asked: each stage-repeat's system prompt and first turn,
    byte for byte.
-7. What it cost: tokens per stage, and in total.
+7. What it cost in this selected record. Whole-run summaries recursively verify writer-authorized child records and label the resulting token total complete or partial.
 8. What was called: every control-tool decision and any reason it gave, every
    mark's evidence, and every subflow call with its admitted input and outcome.
    A file request rejected because its flow is outside the caller's scope has

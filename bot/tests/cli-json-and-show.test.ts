@@ -332,5 +332,5 @@ test("leg 6 — rendered `bot run events` is one line per recorded event, stage-
   await expect(main(["run", "list"], runsBoundary)).resolves.toBe(0);
   const listed = printedLines(Buffer.concat(runsOut).toString().trimEnd().split("\n"));
   expect(listed).toHaveLength(3);
-  expect(listed[2]).toMatch(new RegExp(`\\| ${run} \\| review \\| main \\| .+ \\| 4\\.1K \\|$`, "u"));
+  expect(listed[2]).toMatch(new RegExp(`\\| ${run} \\| review \\| main \\| .+ \\| 4\\.1K \\| complete \\|$`, "u"));
 });

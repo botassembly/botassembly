@@ -30,7 +30,7 @@ Every run-summary reader reports the verified token total for the root and all a
 - Mark a total `complete` only when the root is a valid ended record, every started child has one writer-owned authorization and agrees with its parent, every accepted descendant is a valid ended record, every turn is valid, no provider operation has known missing consumption, and the complete recursive sum is a safe integer. Otherwise mark the result `partial`.
 - A readable running, crashed, or incomplete record reports the verified safe sum found in its accepted events, including zero, with `tokensStatus: "partial"`. This includes an agreeing incomplete machinery-failure child: count its verified turns and verified descendants, then keep the ancestor partial. An incomplete child that contradicts a recorded terminal parent outcome fails agreement and contributes nothing. A missing, unreadable, unsupported, structurally invalid, or disagreeing descendant contributes nothing and makes the ancestor partial. A missing, unreadable, unsupported, or structurally invalid root keeps `tokens: null` and reports partial.
 - Preserve the top-level run enumeration, paging, cursor membership, filtering, count behavior, warning bounds, and output-size limits. `--count` does not read token or descendant facts. A projected row may select either `tokens` or `tokensStatus`; ordinary row scans compute one shared token fact rather than reading descendants twice.
-- Change human `bot run list` timestamp cells to the exact recorded strings held in `startedAt` and `endedAt`. JSON continues to preserve those strings. Keep `duration` as the exact non-negative integer millisecond difference between their parsed instants. Preserve accepted historical timestamp spellings, including offsets.
+- Change human `bot run list` timestamp cells to the exact recorded strings held in `startedAt` and `endedAt`. JSON continues to preserve those strings. Publish `duration` as the exact non-negative integer millisecond difference between their parsed instants when that difference is a safe integer; otherwise publish null. Preserve accepted historical timestamp spellings, including offsets.
 - Reject a `run_end` whose parsed instant precedes the accepted `run_start` at the shared semantic record-classification boundary. Every semantic reader then treats the record through its existing invalid-record behavior. Do not require canonical timestamp spelling or impose monotonic ordering on other events.
 - Preserve the public `inspectRuns({ usage: true })` array as selected-root detail grouped by stage and model. It is not a whole-run breakdown. Document that boundary beside the new whole-run `tokens` and `tokensStatus` fields.
 - Keep `bot run events` scoped to its selected record and keep `bot run show` free of cost. Correct any cost wording that implies their root-only event arithmetic is a whole-run total. Do not change retained record events, record format, sessions, outputs, runtime token collection, pricing, or budgets.
@@ -61,7 +61,7 @@ The new status describes evidence, not billing accuracy. Providers define the to
 ## Size decision
 
 - Starting production size: 18142 nonblank lines
-- Ending production size: measured after implementation
+- Ending production size: 18267 nonblank lines
 - Simpler approach tried: Sum child directories found on disk and keep null as the only incomplete marker.
 - Why insufficient alternatives were rejected: Directory presence does not authorize a child, and null cannot distinguish verified zero usage from an unavailable or incomplete total.
 - Production code added: One recursive verified-consumption reader, one completeness label, safe aggregation, and one chronological record rule at existing boundaries.
@@ -85,5 +85,5 @@ The new status describes evidence, not billing accuracy. Providers define the to
 
 - Origin: The 2026-09-13 completion-plan reassessment consolidated root and descendant token use, exact timestamps, and impossible durations into one truthful run-summary outcome. A read-only implementation survey confirmed that both summary readers share the root-only fact, child authorization already exists, JSON timestamps are exact, and chronology is not enforced.
 - Design review: accepted after one rejection. The correction defines known missing consumption, incomplete-child prefixes, writer-owned child authorization, all five turn counters, historical timestamp spellings, and the public human and usage contracts.
-- Code review: pending
+- Code review: accepted after one rejection. The correction restricts child request reads before opening bytes, preserves exact provider stage identity, returns null for unsafe durations, and supplies the full recursive, authorization, confinement, overflow, and public-reader regression evidence.
 - Completion: pending

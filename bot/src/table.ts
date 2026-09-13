@@ -24,19 +24,6 @@ export function byteMagnitude(value: number): string {
   return `${decimalMagnitude(value, BYTE_MAGNITUDES, " ")}B`;
 }
 
-/** Render a timestamp's largest whole elapsed unit at a fixed reading time. */
-export function elapsedAge(startedAt: string, readingAt: string): string {
-  const started = Date.parse(startedAt);
-  const read = Date.parse(readingAt);
-  if (!Number.isFinite(started) || !Number.isFinite(read)) return "-";
-  const seconds = Math.floor(Math.max(0, read - started) / 1_000);
-  if (seconds < 60) return `${String(seconds)}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${String(minutes)}m`;
-  const hours = Math.floor(minutes / 60);
-  return hours < 24 ? `${String(hours)}h` : `${String(Math.floor(hours / 24))}d`;
-}
-
 export interface TableColumn {
   label: string;
   align?: "left" | "right";

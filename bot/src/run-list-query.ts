@@ -3,7 +3,7 @@ import { CAUSES } from "./spine.ts";
 
 export const RUN_LIST_CONTRACT = {
   operation: "run.list", result: { kind: "bot.run.list", schemaVersion: 1 },
-  fields: ["id", "assembly", "flow", "startedAt", "endedAt", "duration", "state", "exit", "cause", "tokens"],
+  fields: ["id", "assembly", "flow", "startedAt", "endedAt", "duration", "state", "exit", "cause", "tokens", "tokensStatus"],
   states: ["ended", "running", "crashed", "incomplete", "invalid", "no-record", "bad-record", "bad-version", "unreadable"],
   causes: CAUSES,
   page: { minimum: 1, default: 20, maximum: 200 },

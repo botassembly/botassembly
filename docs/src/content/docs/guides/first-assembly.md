@@ -156,7 +156,7 @@ The titled summary lands on standard output. Exit `0` means the flow finished an
 
 ## What it costs
 
-A run is billed by the provider you configured, per token. The runtime adds nothing and caps nothing. Your total depends on the model, request length, number of stages, and how many times a check sends a stage back. `bot model list` prints the input and output prices reported for models your machine can call. Every event record carries the token split per stage and for the run, so you can price later runs from your own observed use.
+A run is billed by the provider you configured, per token. The runtime adds nothing and caps nothing. Your total depends on the model, request length, number of stages, and how many times a check sends a stage back. `bot model list` prints the input and output prices reported for models your machine can call. Each `turn` records its provider token counts. `bot run list` verifies the root and its authorized descendants, sums their recorded totals, and labels the result `complete` or `partial`. A partial value can omit provider consumption that the retained evidence cannot prove.
 
 `config.yaml` names a provider and a model, and which names it accepts is what
 your machine can reach rather than a fixed list. `bot model list` after install is
@@ -172,7 +172,7 @@ bot run list
 bot run events RUN
 ```
 
-`bot run list` is a table of one row per run with its assembly, flow, times, state, exit, cause, and tokens. `bot run events RUN` is the full record reading. It prints the run event by event: prompt construction, every provider turn with its token split and stop reason, each checklist mark, `check output passed` and `check checklist passed`, the alternative a `CHOOSE` picked and the reason it gave, every gate by path with its verdict, every hook with its exit, and the token totals per stage and for the run.
+`bot run list` is a table of one row per run with its assembly, flow, exact times, state, exit, cause, verified whole-run tokens, and token status. `bot run events RUN` reads only the selected root or child record. It prints that record event by event: prompt construction, every provider turn with its token split and stop reason, each checklist mark, `check output passed` and `check checklist passed`, the alternative a `CHOOSE` picked and the reason it gave, every gate by path with its verdict, and every hook with its exit.
 
 Two bounded readings sit beside it:
 

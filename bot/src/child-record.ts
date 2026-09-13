@@ -4,11 +4,16 @@ import { mapping } from "./model.ts";
 import { hashBytes } from "./record.ts";
 import { heldRunFile } from "./run-files.ts";
 
+function requestName(value: string): boolean {
+  return /^request\.[A-Za-z0-9]{1,247}$/u.test(value);
+}
+
 function normalizedRequest(reference: string, input: Record<string, unknown>): string | undefined {
   if (typeof input["text"] === "string") return "request.txt";
   const prefix = `${reference}/`;
-  return typeof input["path"] === "string" && input["path"].startsWith(prefix)
-    ? input["path"].slice(prefix.length) : undefined;
+  if (typeof input["path"] !== "string" || !input["path"].startsWith(prefix)) return undefined;
+  const normalized = input["path"].slice(prefix.length);
+  return requestName(normalized) ? normalized : undefined;
 }
 
 function parentInputAgrees(input: Record<string, unknown>): boolean {
@@ -34,7 +39,7 @@ async function requestAgrees(
   directory: string, reference: string, parent: Record<string, unknown>, started: Record<string, unknown> | undefined,
 ): Promise<boolean> {
   const request = started?.["request"], input = parent["input"];
-  if (!mapping(request) || !mapping(input) || typeof request["path"] !== "string") return false;
+  if (!mapping(request) || !mapping(input) || typeof request["path"] !== "string" || !requestName(request["path"])) return false;
   const held = await heldRunFile(join(directory, ...reference.split("/")), request["path"]);
   if (held.kind !== "held") return false;
   const sha256 = hashBytes(held.bytes);
