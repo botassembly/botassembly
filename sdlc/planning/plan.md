@@ -10,10 +10,10 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Thirteen implementation outcomes remain. Ticket 0270 completed the first outcome. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
+Twelve implementation outcomes remain. Tickets 0270 and 0272 completed the first two outcomes. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
-2. Replace the custom secret detector and Git collector with one pinned repository scanner over the working tree and reachable history. Integrate redacted local and hosted checks, then delete the custom production machinery.
+2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
 3. Remove authored `access`, command-name filtering, denial events, and their public claims. Preserve tolerant reading of older records.
 4. Reject an unavailable subflow before reading or retaining its model-selected input file. Do not add path confinement.
 5. Enforce private Pi authentication and command-capable model configuration. Preserve ordinary environment inheritance while removing recognized provider credential variables from Bot-created assembly processes.
