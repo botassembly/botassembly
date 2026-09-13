@@ -7,9 +7,10 @@ import { isRunLive, runNames } from "./inspection.ts";
 import { mapping, stagePath, type Flow, type StageNode } from "./model.ts";
 import { type HashedPath, type StageIdentity } from "./record-events.ts";
 import { CAPTURE, compactJson, hashBytes, prehashAssembly } from "./record.ts";
+import { REQUEST_MAX_BYTES, REQUEST_TOO_LARGE_SENTENCE } from "./request-limit.ts";
 import { heldRecord } from "./record-lines.ts";
 import { normalizedRunPath } from "./record-operation.ts";
-import { heldRunFile } from "./run-files.ts";
+import { boundedHeldRunFile, heldRunFile } from "./run-files.ts";
 import { CAUSES, type Cause, type Refusal } from "./spine.ts";
 
 interface CarriedStage { identity: StageIdentity; output?: HashedPath; outputBytes?: Buffer; at: number }
@@ -224,8 +225,9 @@ function startedDonor(event: Record<string, unknown> | undefined): StartedDonor 
   return flow === undefined ? { assembly, assemblyHash } : { assembly, assemblyHash, flow };
 }
 
-async function retainedBytes(directory: string, request: RetainedRequest): Promise<Buffer | undefined> {
-  const file = await heldRunFile(directory, request.path);
+async function retainedBytes(directory: string, request: RetainedRequest): Promise<Buffer | "too-large" | undefined> {
+  const file = await boundedHeldRunFile(directory, request.path, REQUEST_MAX_BYTES);
+  if (file.kind === "too-large") return "too-large";
   return file.kind === "held" && file.bytes.length === request.bytes && hashBytes(file.bytes) === request.sha256 ? file.bytes : undefined;
 }
 
@@ -249,6 +251,7 @@ export async function resumeDonor(home: string, requested: string): Promise<Resu
   const request = requestOf(start ?? {}, name);
   if ("code" in request) return request;
   const bytes = await retainedBytes(directory, request);
+  if (bytes === "too-large") return { code: "request-invalid", path: name, sentence: REQUEST_TOO_LARGE_SENTENCE };
   if (bytes === undefined) return unavailable(name, "its retained request cannot be verified.");
   return { name, directory, ...details, request: { bytes, extension: request.extension, via: request.via }, events: record.events };
 }

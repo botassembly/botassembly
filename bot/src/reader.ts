@@ -10,6 +10,7 @@ import {
 } from "./invocation.ts";
 import { refusalLines, renderAssemblyAgent, renderFlow, validateSuppliedSlots } from "./check.ts";
 import { fault, type Assembly, type Flow, type HomeConfig, type Invocation } from "./model.ts";
+import { REQUEST_TOO_LARGE_SENTENCE } from "./request-limit.ts";
 import type { ExitCode, Refusal } from "./spine.ts";
 
 /** What `bot check --json` produces: an exit code and one JSON line per object. */
@@ -54,6 +55,9 @@ function refusal(invocation: Invocation, extra: typeof invocation.faults): Check
 }
 
 function resolve(invocation: Invocation, dir: string): InvocationResolve {
+  if (invocation.faults.some((held) => held.code === "request-invalid" && held.sentence === REQUEST_TOO_LARGE_SENTENCE)) {
+    return { status: "refused", result: refusal(invocation, []) };
+  }
   const home = readHome(invocation, dir);
   validateInvocationPaths(invocation, dir);
   const target = resolveTarget(invocation, dir);

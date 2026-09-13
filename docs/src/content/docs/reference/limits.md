@@ -22,6 +22,7 @@ This is worth knowing before unattended or batch work. A flow with a loop, a fan
 | `repeat` | `LOOP.md` | repeats before a loop is spent |
 | `width` | `PARALLEL.md` and `FANOUT.md` | branches at once, at most 32 |
 | `max-depth` | `DESCEND.md` | how deep a flow may call itself |
+| 4 MiB | the runtime | one fresh or resumed request; a task file's complete source and retained body each fit separately |
 
 `timeout` and `retries` resolve per stage. Where each key resolves, and its defaults, is the format's rule: [options and where they resolve](/specification/running/#options-and-where-they-resolve).
 

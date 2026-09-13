@@ -23,9 +23,9 @@ The files outlive the program. An assembly lives in git, reviews as a diff, and 
 
 The agent is the only non-deterministic part, and it is fenced by deterministic machinery on every side: a `before` script prepares the world, the checklist, schema, and gate judge the output in a fixed order, and `success` or `failure` runs on the way out. Skills can carry scripts too, so even the capabilities an agent reaches for can be deterministic tools rather than improvisation. Wherever a step *can* be a script, it should be a script; the agent is spent only on the part that genuinely needs judgment.
 
-## A Unix command with a non-deterministic core
+## A command-line program with a non-deterministic core
 
-A stage is a pipeline step: it reads its input, does one job, writes its output, and exits with a code that means what exit codes mean everywhere. A flow is a pipeline of such steps — one procedure, end to end. Assemblies compose the way commands compose, and follow POSIX manners: honest exit codes, files as the interface, no hidden state. The only thing unusual about this command is that its middle is an agent.
+A stage is a pipeline step: it reads its input, does one job, writes its output, and exits with an honest code. A flow is a pipeline of such steps from end to end. On Linux, macOS, and WSL, Bot preserves bytes, separates output and diagnostics, observes delivery backpressure, succeeds quietly when a reader closes early, reports other delivery failures, and retains signal exit meanings. This describes Bot's supported command-line behavior. It does not claim formal POSIX certification or native Windows support. The only unusual part is the agent in the middle.
 
 ## Placement is the graph
 

@@ -51,6 +51,8 @@ given, it is not a terminal, and it holds bytes. Two request arguments, or no
 request by any of the three ways, is refused (`request-invalid`) — a run with
 nothing to act on has nothing to do.
 
+The complete request occupies at most 4,194,304 bytes. The bound is inclusive and Bot refuses a larger argument or task source before home access or run birth. For a task file, both the complete Markdown source and the retained body after frontmatter parsing, comment removal, malformed-prose replacement, and fenced newline normalization must fit. Standard-input collection stops and refuses as soon as it reads byte 4,194,305. An admitted request keeps its exact bytes under the source's established parsing rule.
+
 ## Where the work happens
 
 ```sh
@@ -74,6 +76,8 @@ the fix are the same.
 ### Current bot run resume
 
 `bot run resume RUN` starts a new run from `RUN`; it never resumes the donor process. `RUN` is a full run name or an unambiguous prefix in the selected home. Before a new record exists, Bot rejects a missing, ambiguous, live, unreadable, malformed, or unverifiable donor. It derives the assembly, optional flow, and retained request from the donor, verifies the retained bytes, resolves the recorded assembly in the selected home, and checks its current hash against the donor's recorded hash. The donor and its record never change.
+
+Resume applies the same 4,194,304-byte request limit before creating a new identity, directory, record, or id file. A larger historical donor request remains available through `bot run request RUN --raw`, but it cannot seed a new run.
 
 The command accepts `--home`, `--in`, declared slot paths, `--id-file`, bounded opaque `--correlation` metadata, and `--json` or `-j`. `--correlation` enters `run_start` and the structured result. `--json` and `-j` select structured output. Current authored configuration, the selected home, and built-in defaults resolve intelligence, timeout, retries, and local context again. A carried prefix contains only a contiguous prefix of plain root stages. It stops before the first `LOOP`, `CHOOSE`, `PARALLEL`, `FANOUT`, or `DESCEND`; every container and its contents run fresh. Each carried stage is a successful sealed and judged stage with a verified output. Bot copies and hash-checks each output into the new self-contained run and records it as carried.
 

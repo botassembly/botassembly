@@ -126,6 +126,10 @@ export const CATCH_BUDGET = {
     "A fatal UTF-8 decode and JSON.parse throw on an authored JSON schema, and a schema that will not parse is a schema-invalid refusal (validateJsonSchema).",
     "ajv compile() throws on a schema whose $ref does not resolve — valid 2020-12, still unusable — and that is a schema-invalid refusal caught before a run pays for output (validateJsonSchema).",
     "lstatSync throws on a path that cannot be reached, and the reader refuses on absence rather than on a crash (lstatExists).",
+    "Bounded task-file descriptor operations throw when a seekable source cannot be inspected or read; readBoundedBytes converts that platform failure to an unreadable result.",
+  ],
+  "src/process-output.ts": [
+    "Writable.write can throw synchronously before its callback or error event; the process-owned delivery queue records that same delivery failure and settles queued output.",
   ],
   "src/record-lines.ts": [
     "Buffer#toString and JSON.parse over held record.jsonl bytes become the mark a listing carries, except a torn last line, which costs one event rather than the file (heldRecord).",

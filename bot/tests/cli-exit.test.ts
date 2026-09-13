@@ -6,6 +6,8 @@
 // carries a deliberately lingering handle and still seeing every byte AND a
 // prompt exit. A bare process.exit() fails the byte count (65,536 of 8 MiB in
 // the scripted reproduction).
+import { spawn } from "node:child_process";
+import { closeSync, existsSync, openSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -58,6 +60,68 @@ test("the real CLI exits after piping a large inspection output complete", async
   expect(result.stdout.length).toBe(Buffer.byteLength(bytes));
 }, BOUNDARY_MS);
 
+test("a real bounded JSON reading settles through ordinary stdout", async () => {
+  const result = await piped([cliPath, "capabilities", "-j"], process.env);
+  expect(result.code, result.stderr.toString()).toBe(0);
+  expect(JSON.parse(result.stdout.toString()) as unknown).toMatchObject({ kind: "bot.capabilities" });
+  expect(result.stdout.length).toBeLessThan(1 << 20);
+  expect(result.stderr).toEqual(Buffer.alloc(0));
+}, BOUNDARY_MS);
+
+test("a paused ordinary reader receives every byte in order before exit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bot-cli-paused-output-"));
+  roots.push(root);
+  const harness = join(root, "harness.mjs");
+  await writeFile(harness, [
+    `import { processBoundary } from ${JSON.stringify(cliPath)};`,
+    `import { exitFlushed } from ${JSON.stringify(new URL("../src/process-output.ts", import.meta.url).pathname)};`,
+    "const boundary = processBoundary();",
+    "boundary.stdout('a'.repeat(4 << 20));",
+    "boundary.stdout('b'.repeat(4 << 20));",
+    "exitFlushed(0);",
+    "",
+  ].join("\n"));
+  const child = spawn(process.execPath, [harness], { stdio: ["ignore", "pipe", "pipe"] });
+  const output: Buffer[] = [], errors: Buffer[] = [];
+  child.stdout.pause();
+  child.stdout.on("data", (bytes: Buffer) => { output.push(bytes); });
+  child.stderr.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  let closed = false;
+  child.once("close", () => { closed = true; });
+  await new Promise<void>((resolve) => { setTimeout(resolve, 50); });
+  expect(closed).toBe(false);
+  child.stdout.resume();
+  const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
+  expect(code, Buffer.concat(errors).toString()).toBe(0);
+  expect(Buffer.concat(output)).toEqual(Buffer.concat([Buffer.alloc(4 << 20, 0x61), Buffer.alloc(4 << 20, 0x62)]));
+}, BOUNDARY_MS);
+
 test("exitFlushed is the exported exit seam", () => {
   expect(typeof exitFlushed).toBe("function");
 });
+
+test.skipIf(!existsSync("/dev/full"))("ordinary help reports /dev/full once without a stack", async () => {
+  const full = openSync("/dev/full", "w");
+  const child = spawn(process.execPath, [cliPath, "--help"], { stdio: ["ignore", full, "pipe"] });
+  closeSync(full);
+  const errors: Buffer[] = [];
+  child.stderr?.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
+  const diagnostic = Buffer.concat(errors).toString();
+  expect(code).toBe(1);
+  expect(diagnostic).toBe("Bot failed during stdout delivery (ENOSPC).\n");
+  expect(diagnostic).not.toMatch(/\n\s+at /u);
+}, BOUNDARY_MS);
+
+test("ordinary help treats an early-closing reader as quiet success", async () => {
+  const child = spawn("bash", ["-o", "pipefail", "-c", '"$1" "$2" --help | head -c 0', "bash", process.execPath, cliPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const output: Buffer[] = [], errors: Buffer[] = [];
+  child.stdout.on("data", (bytes: Buffer) => { output.push(bytes); });
+  child.stderr.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
+  expect({ code, stdout: Buffer.concat(output), stderr: Buffer.concat(errors) }).toEqual({
+    code: 0, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+  });
+}, BOUNDARY_MS);

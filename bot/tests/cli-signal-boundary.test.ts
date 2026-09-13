@@ -31,7 +31,8 @@
 //   with cause `signal`.
 // - signal.ts: SIGTERM is signal 15 and exit 143 (128 + 15), the shell's own
 //   convention, so the exit code the process leaves is the one a caller reads.
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, readdir, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -175,4 +176,44 @@ test("SIGTERM to a live run: the process leaves with the signal's exit code, the
   const stageEnding = record.find((event) => event["event"] === "stage_end");
   expect(stageEnding).toMatchObject({ exit: 143, cause: "signal" });
   expect(await heldRecord(join(runs, run))).toMatchObject({ classification: "valid" });
+}, BOUNDARY_MS);
+
+test.skipIf(!existsSync("/dev/full"))("a signalled structured run keeps exit 143 under stdout failure", async () => {
+  const { root, home } = await scratch("bot-cli-signal-output-");
+  await assembly(home);
+  const marker = join(root, "in-the-turn"), full = openSync("/dev/full", "w"), errors: Buffer[] = [];
+  const child = spawn(process.execPath, [driver], {
+    env: { ...process.env, BOT_HOME: home, XDG_CACHE_HOME: join(root, "cache"), PWD: root,
+      BOT_SIGNAL_MARKER: marker, BOT_SIGNAL_CWD: root, BOT_SIGNAL_LOCK: join(root, "lock-after-main"), BOT_SIGNAL_PROCESS_OUTPUT: "1" },
+    stdio: ["ignore", full, "pipe"],
+  });
+  closeSync(full);
+  child.stderr?.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  await until(() => existsSync(marker), "the structured child reached its first turn");
+  child.kill("SIGTERM");
+  const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
+    child.once("close", (code, signal) => { resolve({ code, signal }); });
+  });
+  expect(outcome).toEqual({ code: 143, signal: null });
+  expect(Buffer.concat(errors).toString()).toBe("Bot failed during stdout delivery (ENOSPC).\n");
+}, BOUNDARY_MS);
+
+test("a signalled structured run keeps exit 143 when its reader closes early", async () => {
+  const { root, home } = await scratch("bot-cli-signal-pipe-");
+  await assembly(home);
+  const marker = join(root, "in-the-turn"), errors: Buffer[] = [];
+  const child = spawn(process.execPath, [driver], {
+    env: { ...process.env, BOT_HOME: home, XDG_CACHE_HOME: join(root, "cache"), PWD: root,
+      BOT_SIGNAL_MARKER: marker, BOT_SIGNAL_CWD: root, BOT_SIGNAL_LOCK: join(root, "lock-after-main"), BOT_SIGNAL_PROCESS_OUTPUT: "1" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  child.stdout.destroy();
+  child.stderr.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  await until(() => existsSync(marker), "the pipe-closed child reached its first turn");
+  child.kill("SIGTERM");
+  const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
+    child.once("close", (code, signal) => { resolve({ code, signal }); });
+  });
+  expect(outcome).toEqual({ code: 143, signal: null });
+  expect(Buffer.concat(errors)).toEqual(Buffer.alloc(0));
 }, BOUNDARY_MS);

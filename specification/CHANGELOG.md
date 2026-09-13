@@ -2,6 +2,8 @@
 
 ## 2026-09-13
 
+Ticket 0276 sets one inclusive 4 MiB request limit for arguments, complete task sources, retained parsed task bodies, standard input, and resumed donors. Oversized requests refuse before run birth while raw request retrieval keeps its unlimited fixed-extent path. Ordinary command output now observes ordered callback settlement and backpressure before explicit exit. Early pipe close remains quiet success, other delivery failures produce one bounded diagnostic, and an existing nonzero or signal status keeps precedence. The runtime contract now states concrete command-line stream behavior without claiming formal POSIX certification.
+
 Ticket 0274 rejects a subflow outside the caller's resolved scope before expanding, reading, hashing, or retaining its file input. The parent record keeps the numbered scope refusal without invented input or child artifacts. Already-present inline text keeps its descriptor. Valid subflows retain their existing file behavior under the operator's authority.
 
 Ticket 0273 retires the stage `access` policy. Every stage receives the ordinary read, write, edit, and Bash tools under the operator's operating-system authority. Authored `access` now receives `key-unknown`; it is never ignored. New records no longer carry `stage_start.access` or `tool_denied`, while record-1 readers retain both historical forms.

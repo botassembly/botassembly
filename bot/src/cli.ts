@@ -5,7 +5,7 @@ import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { helpScreen, newHelpScreen } from "./help.ts";
 import { credentialPath } from "./invocation.ts";
-import { exitFlushed, processRawStdout } from "./process-output.ts";
+import { exitFlushed, ordinaryProcessOutput, processRawStdout } from "./process-output.ts";
 import { dispatchNewCommand } from "./new-command-dispatch.ts";
 import type { RunCommandBoundary } from "./run-command.ts";
 import type { DriverClock } from "./process.ts";
@@ -86,11 +86,12 @@ export function processBoundary(): CliBoundary {
   let authListRuntime: Promise<AuthListRuntime> | undefined;
   let authLogoutRuntime: Promise<AuthLogoutRuntime> | undefined;
   let catalog: Promise<ModelRuntime> | undefined;
-  delete process.env["BOT_HOME"]; process.stdout.on("error", (error: NodeJS.ErrnoException) => { if (error.code !== "EPIPE") throw error; });
+  delete process.env["BOT_HOME"];
+  const output = ordinaryProcessOutput();
   return {
     cwd: process.cwd(), env, stdinIsTTY: process.stdin.isTTY, stderrIsTTY: process.stderr.isTTY,
     readStdin: processStdin,
-    stdout: (bytes) => { process.stdout.write(bytes); },
+    stdout: (bytes) => { output.write(bytes); },
     rawStdout: () => processRawStdout(),
     stderr: (bytes) => { process.stderr.write(bytes); },
     clock,

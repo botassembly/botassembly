@@ -16,9 +16,9 @@ happens once a model is running depends on the model, so a run is not
 reproducible — the reading of the folder is
 ([conformance](../conformance.md)).
 
-## It is a POSIX program
+## Command-line contract
 
-The format leans on the shell's conventions rather than inventing its own.
+On Linux, macOS, and WSL, the runtime preserves request and result bytes, separates standard output from standard error, observes standard-output backpressure, treats an early-closing reader as quiet success, reports other delivery failures through its exit status, and retains signal exit meanings. This contract does not claim formal POSIX certification or native Windows support.
 
 ### Exit codes
 
@@ -71,6 +71,10 @@ repaint the line it is printed on. While standard error is
 a terminal, a run names each stage there as that stage starts: a display for
 whoever is watching, so what a capture receives is unchanged and the record
 holds no line of it.
+
+Every ordinary standard-output write settles in order before explicit process exit. A successful command keeps exit `0` after `EPIPE`. Another standard-output delivery failure makes a successful command exit nonzero and adds one bounded inert diagnostic to standard error. A command that already has a nonzero status keeps that status under every delivery outcome; `EPIPE` adds no diagnostic. Raw inspection keeps its stronger fixed-extent streaming contract.
+
+The settlement path observes backpressure in order, but the synchronous command boundary and the command that produces ordinary output may queue or materialize results before delivery. Bot does not promise bounded memory for generated ordinary output. Raw inspection separately streams one fixed held extent with bounded memory.
 
 `bot run start` and `bot run resume` use the existing start and resume runtimes. Human mode keeps those bytes and diagnostics. Structured mode writes one newline-terminated version-1 `bot.run.result` document to standard output after every started run and writes no progress or terminal diagnostic. The document names the run, installation identity, start, completion state, exit, cause, recorded ending, terminal stage, bounded reason, correlation, and accepted output only when each fact exists. The result projects the installation identity from the successfully written `run_start` object. It does not reread the home. A resumed result also names its donor and always reports the count of durably appended carried stages. It includes the ordered identities only when the complete result fits and otherwise states that it omitted them. A nonzero started run remains a result and preserves its exit. A failure before `run_start` uses the common error document on standard error and creates no durable result.
 

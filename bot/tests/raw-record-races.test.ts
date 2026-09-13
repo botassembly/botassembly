@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { closeSync, createWriteStream, openSync } from "node:fs";
+import { closeSync, createWriteStream, existsSync, openSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -211,7 +211,7 @@ test("the process stdout adapter restores error listeners after destruction", as
   expect(process.stdout.listeners("error")).toEqual(listeners);
 });
 
-test("the real CLI owns a /dev/full stdout failure and reports it without a stack", async () => {
+test.skipIf(!existsSync("/dev/full"))("the real CLI owns a /dev/full stdout failure and reports it without a stack", async () => {
   const where = await fixture(Buffer.alloc(128 * 1024, "x"));
   const full = openSync("/dev/full", "w");
   const child = spawn(process.execPath, [cliPath, "run", "record", RUN, "--raw"], {
@@ -227,7 +227,7 @@ test("the real CLI owns a /dev/full stdout failure and reports it without a stac
   });
   const diagnostic = Buffer.concat(stderr).toString();
   expect(outcome).toEqual({ code: 1, signal: null });
-  expect(diagnostic).toMatch(/stdout delivery \(ENOSPC\)/u);
+  expect(diagnostic).toBe("The raw record copy was interrupted during stdout delivery (ENOSPC).\n");
   expect(diagnostic.length).toBeLessThan(160);
   expect(diagnostic).not.toMatch(/\n\s+at /u);
 });

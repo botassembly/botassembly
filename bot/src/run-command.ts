@@ -6,6 +6,8 @@ import { runCommand, type RunDependencies, type RunOutcome, type RunRequest, typ
 import { scriptedMessages } from "./scripted-model.ts";
 import type { DriverClock } from "./process.ts";
 import type { Refusal } from "./spine.ts";
+import { REQUEST_TOO_LARGE_SENTENCE } from "./request-limit.ts";
+import { RequestTooLargeError } from "./stdin.ts";
 
 export interface RunCommandBoundary {
   cwd: string;
@@ -73,7 +75,17 @@ export async function runOperation(args: string[], boundary: RunCommandBoundary,
   const script = suppliedScript(options.script, boundary);
   const read = resolveInvocationTokens([...options.args, ...split.suffix], boundary.cwd, boundary.env);
   if (read.status === "refused") return { kind: "faults", faults: read.result.faults ?? [] };
-  const request = await requestFor(read, boundary);
+  const requested = await requestFor(read, boundary).then(
+    (request) => ({ request }),
+    (reason: unknown) => ({ reason }),
+  );
+  if ("reason" in requested) {
+    if (requested.reason instanceof RequestTooLargeError) {
+      return { kind: "faults", faults: [{ code: "request-invalid", path: read.invocation.target, sentence: REQUEST_TOO_LARGE_SENTENCE }] };
+    }
+    throw requested.reason;
+  }
+  const { request } = requested;
   if (request === undefined) {
     const held = read.invocation.faults;
     const none = { code: "request-invalid" as const, path: read.invocation.target, sentence: "Give exactly one request." };

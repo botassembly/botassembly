@@ -18,6 +18,7 @@ import { createAssistantMessageEventStream, createModels, fauxProvider, type Pro
 import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { main, type CliBoundary } from "../src/cli.ts";
+import { exitFlushed, ordinaryProcessOutput } from "../src/process-output.ts";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -27,6 +28,7 @@ function required(name: string): string {
 
 const marker = required("BOT_SIGNAL_MARKER");
 const cwd = required("BOT_SIGNAL_CWD");
+const processOutput = process.env["BOT_SIGNAL_PROCESS_OUTPUT"] === "1";
 
 const base = fauxProvider({ tokensPerSecond: 10_000, models: [{ id: "faux-1" }] });
 const stream = (): ReturnType<Provider["stream"]> => {
@@ -47,7 +49,7 @@ const boundary: CliBoundary = {
   stdinIsTTY: true,
   stderrIsTTY: false,
   readStdin: () => Promise.resolve(Buffer.alloc(0)),
-  stdout: () => undefined,
+  stdout: (bytes) => { if (processOutput) ordinaryProcessOutput().write(bytes); },
   stderr: (bytes) => { process.stderr.write(bytes); },
   clock: {
     milliseconds: () => performance.now(),
@@ -62,7 +64,7 @@ try {
   // `main` returns only after run.ts's `finally` has released the lock and
   // after `executeRun` has awaited the record's own drain, so exiting here
   // cannot truncate either of the two things the parent asserts.
-  const code = await main(["run", "start", "review/main", "the request"], boundary);
+  const code = await main(["run", "start", "review/main", "the request", ...(processOutput ? ["-j"] : [])], boundary);
 
   // Read the lock HERE, from inside the still-running process, and report it.
   //
@@ -79,7 +81,8 @@ try {
     .some((name) => existsSync(join(runs, `${name}.lock`)));
   writeFileSync(required("BOT_SIGNAL_LOCK"), held ? "held" : "released");
 
-  process.exit(code);
+  if (processOutput) exitFlushed(code);
+  else process.exit(code);
 } catch (reason: unknown) {
   process.stderr.write(`driver threw: ${String(reason)}\n`);
   process.exit(99);

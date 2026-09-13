@@ -1,8 +1,14 @@
 import {
+  closeSync,
+  constants,
+  fstatSync,
   lstatSync,
+  openSync,
   readFileSync,
+  readSync,
   readdirSync,
   type Dirent,
+  type Stats,
 } from "node:fs";
 import { isAbsolute, join, normalize } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
@@ -62,6 +68,56 @@ export function readBytes(filename: string): Buffer | undefined {
   }
 }
 
+export type BoundedBytes = { kind: "read"; bytes: Buffer } | { kind: "too-large" } | { kind: "unreadable" };
+
+export interface BoundedReadHooks { afterRead?(): void; observeRead?(bytes: number): void }
+
+function readOpenedBounded(descriptor: number, size: number, maximum: number, hooks?: BoundedReadHooks): BoundedBytes {
+  const capacity = Math.min(size, maximum + 1), bytes = Buffer.alloc(capacity);
+  let position = 0;
+  while (position < capacity) {
+    const count = readSync(descriptor, bytes, position, capacity - position, position);
+    hooks?.observeRead?.(count);
+    if (count === 0) break;
+    position += count;
+  }
+  if (size > maximum || position > maximum) return { kind: "too-large" };
+  return position === size ? { kind: "read", bytes } : { kind: "unreadable" };
+}
+
+function regularNamed(file: Stats): boolean { return file.isFile() && !file.isSymbolicLink(); }
+function sameIdentity(left: Stats, right: Stats): boolean { return left.dev === right.dev && left.ino === right.ino; }
+
+function readBoundedDescriptor(filename: string, descriptor: number, named: Stats, maximum: number, hooks?: BoundedReadHooks): BoundedBytes {
+  const opened = fstatSync(descriptor);
+  if (!opened.isFile() || !sameIdentity(opened, named)) return { kind: "unreadable" };
+  const read = readOpenedBounded(descriptor, opened.size, maximum, hooks);
+  const final = fstatSync(descriptor), finalNamed = lstatSync(filename);
+  if (read.kind === "too-large" || final.size > maximum) return { kind: "too-large" };
+  if (read.kind === "unreadable") return read;
+  if (!sameIdentity(final, opened) || final.size !== opened.size || !sameIdentity(finalNamed, opened)) return { kind: "unreadable" };
+  return read;
+}
+
+/** Read no more than one byte beyond a caller-owned inclusive file limit. */
+export function readBoundedBytes(filename: string, maximum: number, hooks?: BoundedReadHooks): BoundedBytes {
+  let descriptor: number | undefined;
+  try {
+    const named = lstatSync(filename);
+    if (!regularNamed(named)) return { kind: "unreadable" };
+    descriptor = openSync(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const read = readBoundedDescriptor(filename, descriptor, named, maximum, hooks);
+    hooks?.afterRead?.();
+    if (read.kind !== "read") return read;
+    const final = fstatSync(descriptor), finalNamed = lstatSync(filename);
+    return final.size === read.bytes.length && sameIdentity(finalNamed, final) ? read : { kind: "unreadable" };
+  } catch {
+    return { kind: "unreadable" };
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
 /** A directory's entries in bytewise order, invisible names included;
  *  unreadable lists as empty. Only `bot status`'s walk of the copies an
  *  interrupted update stranded reads this rather than `entries` (ticket 0124). */
@@ -91,6 +147,12 @@ export function readMarkdown(
     fault(faults, "frontmatter-invalid", path, "Make the document a readable file.");
     return { data: {}, body: "", sound: false };
   }
+  return markdownFromBytes(bytes, path, faults, optionalFrontmatter);
+}
+
+export function markdownFromBytes(
+  bytes: Buffer, path: string, faults: Refusal[], optionalFrontmatter = false,
+): MarkdownDocument {
   // Strict config, tolerant prose (Ian, 2026-08-05). The decode below replaces a
   // bad byte with U+FFFD and says nothing, which is right for a body an agent
   // reads and wrong for frontmatter bot ACTS on: `model: gpt<FF>4` reached the

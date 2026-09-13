@@ -24,3 +24,5 @@ The specification states the grammar and every flag:
 - [Run id file](/specification/running/#run-id-file): `--id-file PATH`.
 
 Starting from an older run is [Resuming a run](/reference/resume/).
+
+Every new request source has an inclusive 4 MiB limit. Bot checks an argument and complete task file before home access, checks the parsed task body separately, and stops reading standard input as soon as byte 4,194,305 arrives. A task file keeps its current frontmatter and body transformations.

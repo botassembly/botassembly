@@ -2,10 +2,11 @@ import { lstatSync } from "node:fs";
 import { readlink, symlink, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
-import { TIMEOUT_MAX, assemblyMarker, lstatExists, readMarkdown, validateData } from "./documents.ts";
+import { TIMEOUT_MAX, assemblyMarker, lstatExists, markdownFromBytes, readBoundedBytes, validateData } from "./documents.ts";
 import { readYamlOptions } from "./home-config.ts";
 import { LOCAL_CONTEXTS, OPTION_NAMES, errorCode, fault, type AuthoredOptions, type HomeConfig, type Invocation, type Target } from "./model.ts";
 import { hashBytes } from "./record.ts";
+import { REQUEST_MAX_BYTES, REQUEST_TOO_LARGE_SENTENCE } from "./request-limit.ts";
 import type { Refusal } from "./spine.ts";
 
 function words(source: string): string[] {
@@ -228,11 +229,18 @@ interface RequestInfo {
   request?: Invocation["request"];
 }
 
-function readRequest(request: string | undefined, dir: string, faults: Refusal[]): RequestInfo {
+function readDirectRequest(request: string | undefined, target: string, faults: Refusal[]): RequestInfo {
+  if (request === undefined) return { extension: "txt", options: {} };
+  if (Buffer.byteLength(request) > REQUEST_MAX_BYTES) {
+    fault(faults, "request-invalid", target, REQUEST_TOO_LARGE_SENTENCE);
+    return { extension: "txt", options: {} };
+  }
+  return { extension: "txt", options: {}, request: { body: request, via: "argument" } };
+}
+
+function readRequest(request: string | undefined, target: string, dir: string, faults: Refusal[]): RequestInfo {
   if (request?.startsWith("@") !== true) {
-    return request === undefined
-      ? { extension: "txt", options: {} }
-      : { extension: "txt", options: {}, request: { body: request, via: "argument" } };
+    return readDirectRequest(request, target, faults);
   }
   const taskName = request.slice(1);
   const taskPath = resolve(dir, taskName);
@@ -251,8 +259,21 @@ function readRequest(request: string | undefined, dir: string, faults: Refusal[]
     return { extension, options: {} };
   }
   const path = relative(dir, taskPath);
-  const document = readMarkdown(taskPath, path, faults, true);
+  const source = readBoundedBytes(taskPath, REQUEST_MAX_BYTES);
+  if (source.kind === "too-large") {
+    fault(faults, "request-invalid", taskName, REQUEST_TOO_LARGE_SENTENCE);
+    return { extension, options: {} };
+  }
+  if (source.kind === "unreadable") {
+    fault(faults, "frontmatter-invalid", path, "Make the document a readable file.");
+    return { extension, options: {} };
+  }
+  const document = markdownFromBytes(source.bytes, path, faults, true);
   const options = validateData(document.data, path, faults);
+  if (Buffer.byteLength(document.body) > REQUEST_MAX_BYTES) {
+    fault(faults, "request-invalid", taskName, REQUEST_TOO_LARGE_SENTENCE);
+    return { extension, options };
+  }
   return {
     extension,
     options,
@@ -262,7 +283,7 @@ function readRequest(request: string | undefined, dir: string, faults: Refusal[]
 
 function parseSplitInvocation(split: SplitInvocation, dir: string, env: NodeJS.ProcessEnv, faults: Refusal[]): Invocation {
   const commandOptions = extractCommandOptions(split.rawOptions, split.valueless, faults);
-  const request = readRequest(split.requests[0], dir, faults);
+  const request = readRequest(split.requests[0], split.target, dir, faults);
   const supplied = new Map(split.rawOptions);
   const home = resolveHome(dir, split.valueless.has("home") ? undefined : split.rawOptions.get("home"), env);
   supplied.delete("home");
