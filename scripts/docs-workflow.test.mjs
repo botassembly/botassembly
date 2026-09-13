@@ -13,6 +13,7 @@ const CHECKOUT = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
 const SETUP_NODE = 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020';
 const UPLOAD_PAGES = 'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9';
 const DEPLOY_PAGES = 'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346';
+const COMPLETE_CHECK = './.github/workflows/runtime.yml';
 const DEPLOY_GATE = "${{ vars.PUBLISH_PAGES == 'true' }}";
 const ACTION_LINES = [
 	`      - uses: ${CHECKOUT} # v7.0.1`,
@@ -31,13 +32,13 @@ function validate(document) {
 	assert.deepEqual(document.on, {
 		push: {
 			branches: ['main'],
-			paths: ['docs/**', 'specification/**', '.github/workflows/docs.yml'],
+			paths: ['docs/**', 'specification/**', 'examples/**', '.github/workflows/docs.yml'],
 		},
 		workflow_dispatch: null,
 	});
 	assert.deepEqual(document.permissions, { contents: 'read' });
 	assert.deepEqual(document.concurrency, { group: 'pages', 'cancel-in-progress': true });
-	assert.deepEqual(Object.keys(document.jobs ?? {}), ['build', 'deploy']);
+	assert.deepEqual(Object.keys(document.jobs ?? {}), ['build', 'check', 'deploy']);
 
 	const build = document.jobs.build;
 	assert.deepEqual(Object.keys(build ?? {}), ['runs-on', 'steps']);
@@ -52,9 +53,11 @@ function validate(document) {
 		{ uses: UPLOAD_PAGES, with: { path: 'docs/dist' } },
 	]);
 
+	assert.deepEqual(document.jobs.check, { uses: COMPLETE_CHECK });
+
 	const deploy = document.jobs.deploy;
 	assert.deepEqual(Object.keys(deploy ?? {}), ['needs', 'if', 'runs-on', 'permissions', 'environment', 'steps']);
-	assert.equal(deploy.needs, 'build');
+	assert.deepEqual(deploy.needs, ['build', 'check']);
 	assert.equal(deploy.if, DEPLOY_GATE);
 	assert.equal(deploy['runs-on'], 'ubuntu-latest');
 	assert.deepEqual(deploy.permissions, { pages: 'write', 'id-token': 'write' });
@@ -123,6 +126,8 @@ test('the documentation workflow contract rejects weakened authority and changed
 		(document) => { delete action(document.jobs.build.steps, 'actions/checkout').with['persist-credentials']; },
 		(document) => { action(document.jobs.build.steps, 'actions/checkout').with['persist-credentials'] = true; },
 		(document) => { document.jobs.preview = structuredClone(document.jobs.build); },
+		(document) => { document.on.push.paths = document.on.push.paths.filter((path) => path !== 'examples/**'); },
+		(document) => { document.on.push.paths.push('README.md'); },
 		(document) => { document.jobs.build.if = 'false'; },
 		(document) => { document.jobs.build.steps[0].if = 'false'; },
 		(document) => { document.jobs.build.steps.reverse(); },
@@ -131,7 +136,16 @@ test('the documentation workflow contract rejects weakened authority and changed
 		(document) => { document.jobs.build.steps[0].uses = 'example/checkout@v4'; },
 		(document) => { document.jobs.build.steps[1].uses = 'example/setup-node@v4'; },
 		(document) => { document.jobs.build.steps[2].run = 'npm install'; },
+		(document) => { document.jobs.check.uses = 'owner/repository/.github/workflows/runtime.yml@main'; },
+		(document) => { document.jobs.check.uses = './.github/workflows/runtime.yml@main'; },
+		(document) => { document.jobs.check.if = 'always()'; },
+		(document) => { document.jobs.check['continue-on-error'] = true; },
+		(document) => { document.jobs.check.steps = [{ run: 'make check' }]; },
+		(document) => { document.jobs.check['runs-on'] = 'ubuntu-latest'; },
+		(document) => { document.jobs.deploy.needs = ['build']; },
+		(document) => { document.jobs.deploy.needs = ['check']; },
 		(document) => { document.jobs.deploy.needs = []; },
+		(document) => { document.jobs.deploy.if = `always() && ${DEPLOY_GATE}`; },
 		(document) => { document.jobs.deploy.environment.url = 'https://example.test'; },
 		(document) => { document.jobs.deploy.steps[0].uses = 'example/deploy-pages@v4'; },
 	];

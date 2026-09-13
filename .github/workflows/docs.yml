@@ -6,7 +6,7 @@ name: docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'specification/**', '.github/workflows/docs.yml']
+    paths: ['docs/**', 'specification/**', 'examples/**', '.github/workflows/docs.yml']
   workflow_dispatch:
 
 permissions:
@@ -36,8 +36,11 @@ jobs:
         with:
           path: docs/dist
 
+  check:
+    uses: ./.github/workflows/runtime.yml
+
   deploy:
-    needs: build
+    needs: [build, check]
     if: ${{ vars.PUBLISH_PAGES == 'true' }}
     runs-on: ubuntu-latest
     permissions:

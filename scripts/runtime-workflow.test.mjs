@@ -27,7 +27,7 @@ function action(steps, name) {
 function validate(document) {
 	assert.deepEqual(Object.keys(document), ['name', 'on', 'permissions', 'jobs']);
 	assert.equal(document.name, 'runtime');
-	assert.deepEqual(document.on, { pull_request: null, push: { branches: ['main'] } });
+	assert.deepEqual(document.on, { pull_request: null, push: { branches: ['main'] }, workflow_call: null });
 	assert.deepEqual(document.permissions, { contents: 'read' });
 	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check']);
 	const job = document.jobs.check;
@@ -70,6 +70,7 @@ test('the workflow contract rejects each weakened essential and prohibited work'
 	const original = await current();
 	const mutations = [
 		(document) => { delete document.on.pull_request; },
+		(document) => { delete document.on.workflow_call; },
 		(document) => { document.defaults = { run: { shell: 'bash {0} || true' } }; },
 		(document) => { document.on.pull_request = { paths: ['bot/**'] }; },
 		(document) => { document.on.push.branches = ['develop']; },

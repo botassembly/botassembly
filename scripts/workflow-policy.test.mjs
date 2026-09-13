@@ -15,6 +15,7 @@ const EXPECTED_USES = [
 	{ workflow: 'docs.yml', path: 'jobs.build.steps[0].uses', value: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' },
 	{ workflow: 'docs.yml', path: 'jobs.build.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
 	{ workflow: 'docs.yml', path: 'jobs.build.steps[4].uses', value: 'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9' },
+	{ workflow: 'docs.yml', path: 'jobs.check.uses', value: './.github/workflows/runtime.yml' },
 	{ workflow: 'docs.yml', path: 'jobs.deploy.steps[0].uses', value: 'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346' },
 	{ workflow: 'runtime.yml', path: 'jobs.check.steps[0].uses', value: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' },
 	{ workflow: 'runtime.yml', path: 'jobs.check.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
@@ -27,6 +28,7 @@ const EXPECTED_PERMISSIONS = [
 const DEPLOY_GATE = "${{ vars.PUBLISH_PAGES == 'true' }}";
 const REQUIRED_ABSENCES = [
 	['docs.yml', 'jobs.build'],
+	['docs.yml', 'jobs.check'],
 	['runtime.yml', 'jobs.check'],
 ];
 
@@ -96,6 +98,14 @@ function validate(workflows) {
 			`${workflow} ${path} must not declare permissions`);
 	}
 	assert.equal(at(workflows, 'docs.yml', 'jobs.deploy').if, DEPLOY_GATE);
+	assert.deepEqual(at(workflows, 'docs.yml', 'jobs.deploy').needs, ['build', 'check']);
+	assert.deepEqual(at(workflows, 'docs.yml', 'jobs.check'), { uses: './.github/workflows/runtime.yml' });
+	assert.deepEqual(at(workflows, 'docs.yml', 'on.push.paths'), [
+		'docs/**', 'specification/**', 'examples/**', '.github/workflows/docs.yml',
+	]);
+	assert.deepEqual(at(workflows, 'runtime.yml', 'on'), {
+		pull_request: null, push: { branches: ['main'] }, workflow_call: null,
+	});
 	assert.equal(Object.hasOwn(at(workflows, 'docs.yml', 'jobs.build'), 'if'), false,
 		'docs.yml jobs.build must remain unconditional');
 }
@@ -105,10 +115,10 @@ test('the workflow policy inventories every maintained workflow', async () => {
 	validate(workflows);
 	const found = inventory(workflows);
 	assert.equal(workflows.length, 2);
-	assert.equal(found.uses.length, 6);
+	assert.equal(found.uses.length, 7);
 	assert.equal(found.permissions.filter(({ path }) => path === 'permissions').length, 2);
 	assert.equal(found.permissions.filter(({ path }) => path.endsWith('.permissions')).length, 1);
-	assert.equal(REQUIRED_ABSENCES.filter(([workflow, path]) => !Object.hasOwn(at(workflows, workflow, path), 'permissions')).length, 2);
+	assert.equal(REQUIRED_ABSENCES.filter(([workflow, path]) => !Object.hasOwn(at(workflows, workflow, path), 'permissions')).length, 3);
 });
 
 function clone(workflows) {
@@ -130,6 +140,12 @@ test('the workflow policy rejects every named hostile mutation', async () => {
 		['a different full action SHA', (workflows) => { step(workflows, 'docs.yml', 'build', 0).uses = 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262'; }],
 		['an added step action', (workflows) => { at(workflows, 'docs.yml', 'jobs.build.steps').push({ uses: 'example/action@v1' }); }],
 		['a job-level reusable workflow', (workflows) => { at(workflows, 'docs.yml', 'jobs.build').uses = './.github/workflows/reusable.yml'; }],
+		['a versioned reusable workflow', (workflows) => { at(workflows, 'docs.yml', 'jobs.check').uses = './.github/workflows/runtime.yml@main'; }],
+		['an external reusable workflow', (workflows) => { at(workflows, 'docs.yml', 'jobs.check').uses = 'owner/repository/.github/workflows/runtime.yml@main'; }],
+		['a conditional complete check', (workflows) => { at(workflows, 'docs.yml', 'jobs.check').if = 'always()'; }],
+		['a suppressed complete-check error', (workflows) => { at(workflows, 'docs.yml', 'jobs.check')['continue-on-error'] = true; }],
+		['a duplicated partial check', (workflows) => { at(workflows, 'docs.yml', 'jobs.check').steps = [{ run: 'make check' }]; }],
+		['a complete-check runner', (workflows) => { at(workflows, 'docs.yml', 'jobs.check')['runs-on'] = 'ubuntu-latest'; }],
 		['deleted docs workflow permissions', (workflows) => { delete root(workflows, 'docs.yml').permissions; }],
 		['added docs workflow permission', (workflows) => { root(workflows, 'docs.yml').permissions.actions = 'read'; }],
 		['changed docs workflow permission', (workflows) => { root(workflows, 'docs.yml').permissions.contents = 'write'; }],
@@ -137,6 +153,7 @@ test('the workflow policy rejects every named hostile mutation', async () => {
 		['added runtime workflow permission', (workflows) => { root(workflows, 'runtime.yml').permissions.actions = 'read'; }],
 		['changed runtime workflow permission', (workflows) => { root(workflows, 'runtime.yml').permissions.contents = 'write'; }],
 		['added docs build permissions', (workflows) => { at(workflows, 'docs.yml', 'jobs.build').permissions = { contents: 'read' }; }],
+		['added docs check permissions', (workflows) => { at(workflows, 'docs.yml', 'jobs.check').permissions = { contents: 'read' }; }],
 		['added runtime check permissions', (workflows) => { at(workflows, 'runtime.yml', 'jobs.check').permissions = { contents: 'read' }; }],
 		['deleted deploy pages permission', (workflows) => { delete at(workflows, 'docs.yml', 'jobs.deploy').permissions.pages; }],
 		['added weak deploy pages permission', (workflows) => { const permissions = at(workflows, 'docs.yml', 'jobs.deploy').permissions; delete permissions.pages; permissions.pages = 'read'; }],
@@ -148,6 +165,11 @@ test('the workflow policy rejects every named hostile mutation', async () => {
 		['false deploy gate', (workflows) => { at(workflows, 'docs.yml', 'jobs.deploy').if = '${{ false }}'; }],
 		['changed deploy gate shape', (workflows) => { at(workflows, 'docs.yml', 'jobs.deploy').if = '${{ vars.PUBLISH_PAGES }}'; }],
 		['gated docs build', (workflows) => { at(workflows, 'docs.yml', 'jobs.build').if = DEPLOY_GATE; }],
+		['removed build dependency', (workflows) => { at(workflows, 'docs.yml', 'jobs.deploy').needs = ['check']; }],
+		['removed check dependency', (workflows) => { at(workflows, 'docs.yml', 'jobs.deploy').needs = ['build']; }],
+		['always deploy bypass', (workflows) => { at(workflows, 'docs.yml', 'jobs.deploy').if = `always() && ${DEPLOY_GATE}`; }],
+		['omitted examples input', (workflows) => { at(workflows, 'docs.yml', 'on.push.paths').splice(2, 1); }],
+		['removed reusable trigger', (workflows) => { delete at(workflows, 'runtime.yml', 'on').workflow_call; }],
 	];
 	for (const [name, mutate] of mutations) {
 		const changed = clone(original);
