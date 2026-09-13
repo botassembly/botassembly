@@ -83,6 +83,34 @@ test("an unstarted nested call names its caller fault instead of an outside sign
   })]);
 });
 
+test("a stopped valid call still admits its file input before reporting the stop", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bot-stopped-subflow-input-"));
+  roots.push(root);
+  const runs = join(root, "runs");
+  await mkdir(runs);
+  const clock = createAgentClock(manualClock());
+  const first = runStartEvent({
+    ts: clock.timestamp(), run: "parent", assembly: "test", assemblyHash: "a".repeat(64), flow: "main",
+    request: { path: "request.txt", sha256: hashBytes("request"), bytes: 7, via: "stdin" },
+  });
+  const created = await createRecordWriter(runs, first);
+  if (created.status !== "created") throw new Error("The parent record collided.");
+  const child = flow("child", "subflows/child", [stage("subflows/child/01-answer.md", "answer")]);
+  const main = flow("main", "flows/main", [stage("flows/main/01-parent.md", "parent")]);
+  const caller = new AbortController();
+  caller.abort();
+  const missing = join(root, "missing.txt");
+  const result = await runSubflowBatch({
+    calls: [{ flow: "child", "input-file": missing }], scope: new Map([["child", child]]), currentFlow: main,
+    currentDepth: 1, currentCallChainDepth: 0, identity: { stage: "01-parent", retry: 1 }, writer: created.writer,
+    answersDirectory: join(root, "answers"), scratchDirectory: join(root, "scratch"),
+    metadata: { assembly: "test", assemblyHash: "a".repeat(64), installationId: "018f2f4a-52f8-4c81-9b35-6ad2acdb70d8" }, slots: {}, workdirRoot: root,
+    clock, monotonic: () => clock.milliseconds(), signal: createRunSignal(clock), toolSignal: caller.signal,
+    counter: { value: 0 }, runChild: () => Promise.reject(new Error("A stopped child must not run.")),
+  });
+  expect(result).toEqual([{ call: 1, flow: "child", depth: 1, started: false, reason: expect.stringContaining("ENOENT") as unknown }]);
+});
+
 test("an outside signal admitted before child publication replaces a concurrent local fault", async () => {
   const promptStarted = latch();
   const promptNeverSettles = latch();

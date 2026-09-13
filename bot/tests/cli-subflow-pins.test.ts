@@ -9,8 +9,8 @@
 // child fault not failing the parent (hostile-flow.test.ts:287-304), DESCEND
 // depth exposure (flow.test.ts:364-380), declared slots crossing and parent
 // env not crossing (flow.test.ts:268-270). The assertion sources:
-// - subflow.md:86-88: "Every call lands in the `$SUBFLOWS` slot, numbered in
-//   the order the calls were made, across batches, starting at 1".
+// - subflow.md:98-100: every call whose input crosses the boundary lands in
+//   `$SUBFLOWS`, numbered in call order across batches, starting at 1.
 // - subflow.md:99-105: "a typed pair. `input` carries the extension of what
 //   was sent: `.txt` for inline text, the file's own extension for an
 //   `input-file`. `output` carries the extension the child's final stage's

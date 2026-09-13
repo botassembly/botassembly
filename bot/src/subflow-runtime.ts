@@ -220,6 +220,9 @@ export async function runSubflowChild(
   const childDepth = depth(input, flow);
   const childCallChainDepth = input.currentCallChainDepth + 1;
   const recordedDepth = callDepth(input, flow);
+  if (flow === undefined) {
+    return { call, flow: request.flow, depth: recordedDepth, started: false, reason: `Subflow ${request.flow} is not in scope.` };
+  }
   // The input seam: a call whose input cannot be read is an outcome, not an
   // exception. A rejection past this point (writer, runChild) still escapes to
   // runSubflowBatch's throw — which the harness turns into an error tool
@@ -242,10 +245,7 @@ export async function runSubflowChild(
     call, flow: request.flow, depth: recordedDepth,
     ...(normalized.event === undefined ? {} : { input: normalized.event }),
   };
-  if (flow === undefined || stopped(input)) {
-    const reason = flow === undefined ? `Subflow ${request.flow} is not in scope.` : stoppedReason(input);
-    return { ...common, started: false, reason };
-  }
+  if (stopped(input)) return { ...common, started: false, reason: stoppedReason(input) };
 
   const first = startEvent(input, flow, call, normalized);
   const recordDirectory = recordsDirectory(input);

@@ -2,6 +2,8 @@
 
 ## 2026-09-13
 
+Ticket 0274 rejects a subflow outside the caller's resolved scope before expanding, reading, hashing, or retaining its file input. The parent record keeps the numbered scope refusal without invented input or child artifacts. Already-present inline text keeps its descriptor. Valid subflows retain their existing file behavior under the operator's authority.
+
 Ticket 0273 retires the stage `access` policy. Every stage receives the ordinary read, write, edit, and Bash tools under the operator's operating-system authority. Authored `access` now receives `key-unknown`; it is never ignored. New records no longer carry `stage_start.access` or `tool_denied`, while record-1 readers retain both historical forms.
 
 ## 2026-09-12

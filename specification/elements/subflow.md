@@ -95,8 +95,9 @@ the parent's effective `$PWD`.
 
 ## `$SUBFLOWS` — where the answers live
 
-Every call lands in the [`$SUBFLOWS` slot](slots.md), numbered in the order the
-calls were made, across batches, starting at 1:
+Every call whose input crosses the subflow boundary lands in the
+[`$SUBFLOWS` slot](slots.md), numbered in the order the calls were made, across
+batches, starting at 1:
 
 ```text
 $SUBFLOWS/
@@ -117,6 +118,11 @@ child's final stage's schema chose. Both names are constant whatever flow ran �
 composing over calls never depends on what a flow was called; which flow it was
 is in the tool result and the record. The agent composes over these files by
 path and never learns where the child's run record lives.
+
+Bot rejects a flow outside the caller's resolved scope before it expands or
+reads an `input-file`. That disposition keeps its call number but creates no
+folder. Inline text already exists at the boundary, so its refusal retains the
+text descriptor in the parent record without creating a folder.
 
 ## What enters the context
 
@@ -149,15 +155,16 @@ to *be* its output copies it there and stands behind it.
 
 ## In the record
 
-Every call is one event in the parent's record — the flow, the request, how it
-ended — and the child itself is recorded under the parent stage's attempt,
-with its own record and sessions, in the ordinary record shape, read through
-its parent ([the record](record.md), [inspection](inspection.md)). An inline
-request records its text, size, and hash. An `input-file` request records the
-normalized retained child request path, size, and hash. It never records the
-expanded absolute source path. A child record-writer failure leaves that child
-record visibly incomplete; the parent call keeps the normalized input
-descriptor and says its machinery failed without inventing an exit or cause.
+Every call is one event in the parent's record: the flow, any admitted input,
+and how it ended. A child that starts is recorded under the parent stage's
+attempt, with its own record and sessions, in the ordinary record shape, read
+through its parent ([the record](record.md), [inspection](inspection.md)). An
+inline request records its text, size, and hash. When a child starts from an
+`input-file`, the request records the normalized retained child request path,
+size, and hash. It never records the expanded absolute source path. A child
+record-writer failure leaves that child record visibly incomplete; the parent
+call keeps the normalized input descriptor and says its machinery failed
+without inventing an exit or cause.
 
 On disk that is a run directory in the ordinary shape, nested where the call
 was made — `stages/<stage>/<repeat>/<attempt>/subflows/<n>/`, the number

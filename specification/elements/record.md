@@ -205,7 +205,9 @@ runtime — can answer these, and a record that cannot is not a record:
    byte for byte.
 7. What it cost: tokens per stage, and in total.
 8. What was called: every control-tool decision and any reason it gave, every
-   mark's evidence, and every subflow call with its input and outcome.
+   mark's evidence, and every subflow call with its admitted input and outcome.
+   A file request rejected because its flow is outside the caller's scope has
+   no admitted input.
 
 Everything else — the turns, the reasoning, the tool-by-tool history — is the
 session's, reachable from here but never required
@@ -255,11 +257,14 @@ without a path, item, evidence, or reason.
 
 **For each fan-out:** the retained manifest descriptor, authored limits, complete sorted request plan, one sorted item disposition, measured concurrency, and terminal aggregate. A fan-out item uses `subflow_call` with `via: "fanout"`, its item id, and its verified successful output when one exists. Fan-out events carry no `repeat` under the root-only placement rule.
 
-**For each subflow call:** which flow, the input, how it ended, and where the
-child run is. The child is a complete run of its own, recorded under the parent
-stage's attempt with its own record and sessions, and a descend flow's depth is
-recorded with each invocation ([subflows](subflow.md),
-[descend](descend.md)).
+**For each subflow call:** which flow, any admitted input, how it ended, and
+where the child run is when one started. A flow outside the caller's scope is
+recorded before Bot admits its file input, so that disposition has no input or
+child. Already-present inline text retains its descriptor. Readers continue to
+accept older unstarted file dispositions that carry an input descriptor. A
+started child is a complete run of its own, recorded under the parent stage's
+attempt with its own record and sessions, and a descend flow's depth is recorded
+with each invocation ([subflows](subflow.md), [descend](descend.md)).
 
 ## Identity
 
