@@ -10,22 +10,20 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Eleven implementation outcomes remain. Tickets 0270, 0272, and 0273 completed the first three outcomes. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
+Eight implementation outcomes remain. Tickets 0270, 0272, 0273, and 0274 completed the first four outcomes. The [evidence-based sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification work after independent inventory and extra-eyes review. This count is a forecast, not a quota. Shape each later outcome as one reviewed ready ticket when it becomes next. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
 3. **Completed in ticket 0273:** authored `access`, command-name filtering, denial events, and their public claims are gone; older records remain readable.
-4. Reject an unavailable subflow before reading or retaining its model-selected input file. Do not add path confinement.
-5. Enforce private Pi authentication and command-capable model configuration. Preserve ordinary environment inheritance while removing recognized provider credential variables from Bot-created assembly processes.
-6. Aggregate root and descendant token use. Every reading says whether its observed total is complete.
-7. Render exact run-list timestamps and reject an ending earlier than its accepted start.
-8. Admit authored descent depths 1 through 11 and refuse larger values while retaining the separate ten-call mixed-flow ceiling.
-9. Make assembly checking describe every statically reachable flow and stage once, with resolved options and honest limits on dynamic execution order and count.
-10. Bound non-seekable request input, stream seekable files and raw output with bounded memory, and prove ordinary command-line pipeline behavior including early-closing readers.
-11. Qualify installation, process cleanup, signals, locking, and examples on Linux, macOS, and WSL. Native Windows refuses with WSL guidance.
-12. Qualify one current authentication and model path from a clean home and make expected model failures actionable.
-13. Bind documentation deployment to the complete check for the same commit and cover every site input.
-14. Review all documentation and examples as a first-time user. Remove biomedical scenarios, internal work references, access claims, and unnecessary collections of provider-key examples. Publish the final trust, credential, record, concurrency, and platform boundaries.
+4. **Completed in ticket 0274:** an unavailable subflow is refused before Bot expands, reads, hashes, or retains its file input; no path confinement was added.
+5. Require the complete same-commit check before documentation deployment. Keep that dependency aligned with the later platform matrix.
+6. Bound request ingestion from pipes and seekable task files, and prove real command-line pipeline settlement. Preserve the working streamed raw-output path unless a failing test establishes a defect.
+7. Enforce private Pi authentication and command-capable model configuration. Preserve ordinary environment inheritance while removing recognized provider credential variables from Bot-created assembly processes.
+8. Make run summaries truthful: aggregate verified root and descendant token use with an explicit complete or partial label, render exact timestamps, and reject an ending earlier than its accepted start.
+9. Align assembly checking: admit authored descent depths 1 through 11, retain the separate ten-call mixed-flow ceiling, and describe each statically reachable flow definition and stage once with resolved options and honest dynamic limits.
+10. Establish permanent Linux and macOS checks for installation, cleanup, signals, locking, and examples. Native Windows refuses with WSL guidance. Actual WSL clean-clone qualification belongs to the release candidate and sends failures back to implementation.
+11. Make missing or unavailable model failures actionable without claiming that a local catalog miss proves provider retirement or global unavailability.
+12. Review current public documentation and examples as a first-time user after behavior settles. Preserve historical provenance and the existing biomedical vocabulary guard while removing confirmed stale references and inaccurate current claims.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 
