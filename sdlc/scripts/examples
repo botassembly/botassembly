@@ -1,0 +1,143 @@
+#!/bin/sh
+# examples — every assembly under examples/ resolves. Exits 0 when they all do.
+#
+# The examples program's condition is that an example not executed by a check
+# is documentation pretending to be code. `bot assembly check` is the whole of that
+# condition a project check can afford: it resolves every stage, both choose
+# alternatives, the skill, the schema, the gates and the hooks, and it calls
+# no model, so it costs nothing and needs no credential. Running the examples
+# for real belongs to the live smoke ladder, not here.
+set -eu
+
+case $0 in
+*/examples) REPO=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) ;;
+*) REPO=$(git rev-parse --show-toplevel) ;;
+esac
+cd -- "$REPO"
+
+# Examples name the intelligence `default` so any configured home runs them.
+# CI has no home, so write a throwaway one. No model is called and no
+# credential is read; the mapping only has to resolve.
+HOME_DIR=$(mktemp -d) || exit 2
+trap 'rm -rf "$HOME_DIR"' EXIT INT TERM
+cat > "$HOME_DIR/config.yaml" <<'YAML'
+intelligences:
+  default:
+    provider: google
+    model: gemini-2.5-flash-lite
+    reasoning: low
+YAML
+
+checked=0
+status=0
+CHECK_ERROR="$HOME_DIR/check-error"
+
+# `data/` holds the sample requests and `runs/` holds the published runs. They
+# sit beside the assemblies so a visitor's command is short, and neither is one.
+for assembly in examples/*/; do
+	case ${assembly#examples/} in
+	data/ | runs/) continue ;;
+	esac
+	if [ ! -f "$assembly/ASSEMBLY.md" ]; then
+		echo "examples: ${assembly%/} has no ASSEMBLY.md" >&2
+		status=1
+		continue
+	fi
+	for flow in "$assembly"flows/*/; do
+		[ -f "$flow/FLOW.md" ] || continue
+		name="${assembly%/}/$(basename "$flow")"
+		if node "$REPO/bot/src/cli.ts" assembly check "./$name" --home "$HOME_DIR" --json > /dev/null 2>"$CHECK_ERROR"; then
+			echo "examples: $name resolves"
+		else
+			echo "examples: $name does not resolve" >&2
+			# Keep the gate's failure useful without printing arbitrary fault text.
+			# Codes and relative paths identify the repair; sentences may contain
+			# authored content or machine paths, so they stay out of this summary.
+			node --input-type=module - "$CHECK_ERROR" "$REPO/bot/src/spine.ts" <<'NODE' >&2
+import { closeSync, fstatSync, openSync, readSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
+const FALLBACK = "no structured fault details";
+const MAX_INPUT_BYTES = 65_536;
+const MAX_FAULTS = 20;
+const MAX_CODE_BYTES = 64;
+const MAX_PATH_BYTES = 1_024;
+const MAX_SENTENCE_BYTES = 2_048;
+const MAX_SUMMARY_BYTES = 1_024;
+const exact = (value, keys) => value !== null && typeof value === "object" && !Array.isArray(value)
+  && Object.keys(value).sort().join("\0") === [...keys].sort().join("\0");
+const text = (value, maximum) => typeof value === "string" && Buffer.byteLength(value) <= maximum ? value : undefined;
+
+function readBounded(filename) {
+	const descriptor = openSync(filename, "r");
+	try {
+		const size = fstatSync(descriptor).size;
+		if (!Number.isSafeInteger(size) || size > MAX_INPUT_BYTES) return undefined;
+		const bytes = Buffer.alloc(size);
+		let offset = 0;
+		while (offset < size) {
+			const count = readSync(descriptor, bytes, offset, size - offset, offset);
+			if (count === 0) return undefined;
+			offset += count;
+		}
+		return offset === size ? bytes : undefined;
+	} finally {
+		closeSync(descriptor);
+	}
+}
+
+function safePath(value) {
+	if (typeof value !== "string" || value.length === 0 || Buffer.byteLength(value) > 96
+		|| value.startsWith("/") || value.includes("..") || !/^[A-Za-z0-9._/-]+$/u.test(value)) return "<omitted>";
+	return value;
+}
+
+async function summary() {
+	const bytes = readBounded(process.argv[2] ?? "");
+	if (bytes === undefined) return FALLBACK;
+	let document;
+	try {
+		document = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+	} catch {
+		return FALLBACK;
+	}
+	if (!exact(document, ["error", "kind", "schemaVersion"]) || document.schemaVersion !== 1 || document.kind !== "error") return FALLBACK;
+	const error = document.error;
+	if (!exact(error, ["cause", "code", "details", "message", "operation", "retryable"])
+		|| error.code !== "request-invalid" || error.operation !== "assembly.check" || error.cause !== "assembly-invalid"
+		|| error.message !== "The assembly is not valid." || error.retryable !== false) return FALLBACK;
+	const details = error.details;
+	if (!exact(details, ["faults"]) || !Array.isArray(details.faults) || details.faults.length === 0 || details.faults.length > MAX_FAULTS) return FALLBACK;
+	const spine = await import(pathToFileURL(process.argv[3] ?? "").href);
+	if (!Array.isArray(spine.REFUSAL_CODES) || spine.REFUSAL_CODES.some((code) => typeof code !== "string")) return FALLBACK;
+	const codes = new Set(spine.REFUSAL_CODES);
+	const shown = [];
+	for (const fault of details.faults) {
+		if (!exact(fault, ["code", "path", "sentence"])) return FALLBACK;
+		const code = text(fault.code, MAX_CODE_BYTES), path = text(fault.path, MAX_PATH_BYTES), sentence = text(fault.sentence, MAX_SENTENCE_BYTES);
+		if (code === undefined || path === undefined || sentence === undefined || !codes.has(code)) return FALLBACK;
+		const next = `${code} at ${safePath(path)}`;
+		const candidate = `  faults: ${[...shown, next].join("; ")}`;
+		if (Buffer.byteLength(candidate) > MAX_SUMMARY_BYTES) return FALLBACK;
+		shown.push(next);
+	}
+	return `faults: ${shown.join("; ")}`;
+}
+
+try {
+	console.log(`  ${await summary()}`);
+} catch {
+	console.log(`  ${FALLBACK}`);
+}
+NODE
+			status=1
+		fi
+		checked=$((checked + 1))
+	done
+done
+
+if [ "$checked" -eq 0 ]; then
+	echo "examples: no example assembly was checked; examples/ is empty or misshapen" >&2
+	exit 1
+fi
+exit "$status"

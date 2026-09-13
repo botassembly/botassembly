@@ -1,0 +1,9 @@
+intelligences:
+  quick:
+    model: quick-model
+    reasoning: low
+    temperature: 0.2
+  default:
+    provider: faux
+    model: faux-1
+    reasoning: medium

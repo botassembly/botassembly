@@ -1,0 +1,8 @@
+#!/bin/sh
+# Stand in for an external dependency being unavailable.
+# Exit 75 with output ends the run as blocked, not as a rejected stage.
+set -eu
+if [ -n "${BOT_SIM_BLOCKER:-}" ]; then
+	echo "The ticket system is unreachable: $BOT_SIM_BLOCKER"
+	exit 75
+fi

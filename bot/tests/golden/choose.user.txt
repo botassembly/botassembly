@@ -1,0 +1,4 @@
+The files in `$INPUT` are:
+- `request.json`
+
+Use them to make the requested selection.

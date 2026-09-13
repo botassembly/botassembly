@@ -1,0 +1,5 @@
+intelligences:
+  default:
+    provider: example-provider
+    model: home-model
+    reasoning: medium

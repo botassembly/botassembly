@@ -1,0 +1,3 @@
+{"code":"key-unknown","path":"home/config.yaml","message":"Remove the unknown key hard from intelligence coder."}
+{"code":"key-missing","path":"home/config.yaml","message":"Add the required key reasoning to intelligence coder."}
+{"code":"key-unknown","path":"ASSEMBLY.md","message":"Remove the retired key model; define the choice in the home intelligences table and name it with --intelligence."}

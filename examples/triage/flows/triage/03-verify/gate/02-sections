@@ -1,0 +1,10 @@
+#!/bin/sh
+# Refuse a memo that lost a required section. The gate's own words are
+# what reaches the agent on a send-back and the terminal on exhaustion.
+set -eu
+for heading in "## Queue" "## Why" "## Action"; do
+	if ! grep -qF "$heading" "$1"; then
+		echo "The memo is missing its $heading section. Add it."
+		exit 1
+	fi
+done

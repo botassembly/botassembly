@@ -1,0 +1,200 @@
+---
+// Assembly explorer. Every accept case in the conformance corpus, its files on
+// the left and the exact `bot assembly check` lines it produces on the right. The data
+// is inlined at build time, so the page makes no request of its own and the
+// first case renders with scripting off.
+import corpus from '../data/corpus.json';
+import { baseName, directorySegments } from './paths.mjs';
+
+// Richest case first. A one-stage case shows the least, so it is a poor
+// default and a poor first entry in the picker.
+const cases = corpus.cases
+	.filter((entry) => entry.kind === 'accept')
+	.map((entry) => ({
+		id: entry.id,
+		invocation: entry.invocation,
+		files: entry.files,
+		stages: entry.stages,
+		summary: entry.summary,
+	}))
+	.sort((a, b) => b.stages.length - a.stages.length || a.id.localeCompare(b.id));
+
+const payload = JSON.stringify(cases);
+const first = cases[0];
+const firstFile = first.files.find((file) => typeof file.text === 'string') ?? first.files[0];
+---
+
+<div class="ba-explorer" data-assembly-explorer>
+	<script type="application/json" data-explorer-data set:html={payload} is:inline />
+
+	<div class="ba-explorer__bar">
+		<label class="ba-explorer__label" for="ba-case">Case</label>
+		<select id="ba-case" class="ba-explorer__select" data-case-picker>
+			{cases.map((entry) => (
+				<option value={entry.id}>{entry.id} · {entry.summary}</option>
+			))}
+		</select>
+		<code class="ba-explorer__command" data-invocation>bot assembly check {first.invocation}</code>
+	</div>
+
+	<div class="ba-explorer__panes">
+		<section class="ba-pane" aria-label="Files in this assembly">
+			<h3 class="ba-pane__head">Files</h3>
+			<ul class="ba-tree" data-tree>
+				{first.files.map((file) => (
+					<li>
+						<button
+							type="button"
+							class="ba-tree__item"
+							data-path={file.path}
+							aria-pressed={file.path === firstFile.path ? 'true' : 'false'}
+						>
+							<span class="ba-tree__dir">{directorySegments(file.path).map((segment) => (<>{segment}<wbr /></>))}</span>
+							<span class="ba-tree__name">{baseName(file.path)}</span>
+							{file.executable && <span class="ba-tag">exec</span>}
+						</button>
+					</li>
+				))}
+			</ul>
+			<figure class="ba-file">
+				<figcaption data-file-name>{firstFile.path}</figcaption>
+				<pre tabindex="0" data-file-body>{firstFile.text ?? ''}</pre>
+			</figure>
+		</section>
+
+		<section class="ba-pane" aria-label="What bot assembly check prints">
+			<h3 class="ba-pane__head">bot assembly check</h3>
+			<div class="ba-stages" data-stages>
+				{first.stages.map((stage) => (
+					<article class="ba-stage">
+						<header class="ba-stage__head">
+							<code class="ba-stage__name">{stage.stage}</code>
+							<span class="ba-tag">{stage.type}</span>
+						</header>
+						<dl class="ba-facts">
+							{stage.input && <><dt>input</dt><dd><code>{stage.input.join(', ')}</code></dd></>}
+							{stage.output && <><dt>output</dt><dd><code>{stage.output}</code></dd></>}
+							{stage.workdir && <><dt>workdir</dt><dd><code>{stage.workdir}</code></dd></>}
+							{stage.files && <><dt>files</dt><dd><code>{stage.files.join(', ')}</code></dd></>}
+						</dl>
+						{stage.options && (
+							<ul class="ba-options">
+								{Object.entries(stage.options).map(([name, option]) => (
+									<li>
+										<code class="ba-option__name">{name}</code>
+										<code class="ba-option__value">{String(option.value)}</code>
+										<span class="ba-rung">from {option.from}</span>
+									</li>
+								))}
+							</ul>
+						)}
+					</article>
+				))}
+			</div>
+		</section>
+	</div>
+</div>
+
+<script>
+	import { baseName, directorySegments } from './paths.mjs';
+
+	for (const root of document.querySelectorAll('[data-assembly-explorer]')) {
+		const cases = JSON.parse(root.querySelector('[data-explorer-data]').textContent);
+		const picker = root.querySelector('[data-case-picker]');
+		const tree = root.querySelector('[data-tree]');
+		const invocation = root.querySelector('[data-invocation]');
+		const fileName = root.querySelector('[data-file-name]');
+		const fileBody = root.querySelector('[data-file-body]');
+		const stages = root.querySelector('[data-stages]');
+
+		const element = (name, className, text) => {
+			const node = document.createElement(name);
+			if (className) node.className = className;
+			if (text !== undefined) node.textContent = text;
+			return node;
+		};
+
+		function showFile(entry, path) {
+			const file = entry.files.find((candidate) => candidate.path === path) ?? entry.files[0];
+			fileName.textContent = file.path;
+			if (typeof file.text === 'string') {
+				fileBody.textContent = file.text;
+			} else if (file.omitted === 'link') {
+				fileBody.textContent = `symbolic link to ${file.link}`;
+			} else if (file.omitted === 'bytes') {
+				fileBody.textContent = `not UTF-8. First bytes: ${file.bytes}`;
+			} else {
+				fileBody.textContent = `${file.size} bytes, contents not shipped`;
+			}
+			for (const button of tree.querySelectorAll('[data-path]')) {
+				button.setAttribute('aria-pressed', String(button.dataset.path === file.path));
+			}
+		}
+
+		function showStages(entry) {
+			stages.replaceChildren();
+			for (const stage of entry.stages) {
+				const article = element('article', 'ba-stage');
+				const head = element('header', 'ba-stage__head');
+				head.append(element('code', 'ba-stage__name', stage.stage));
+				head.append(element('span', 'ba-tag', stage.type));
+				article.append(head);
+
+				const facts = element('dl', 'ba-facts');
+				const fact = (label, value) => {
+					if (value === undefined || value === null) return;
+					facts.append(element('dt', '', label));
+					const dd = element('dd');
+					dd.append(element('code', '', Array.isArray(value) ? value.join(', ') : String(value)));
+					facts.append(dd);
+				};
+				fact('input', stage.input);
+				fact('output', stage.output);
+				fact('workdir', stage.workdir);
+				fact('files', stage.files);
+				if (facts.childElementCount > 0) article.append(facts);
+
+				if (stage.options) {
+					const list = element('ul', 'ba-options');
+					for (const [name, option] of Object.entries(stage.options)) {
+						const item = element('li');
+						item.append(element('code', 'ba-option__name', name));
+						item.append(element('code', 'ba-option__value', String(option.value)));
+						item.append(element('span', 'ba-rung', `from ${option.from}`));
+						list.append(item);
+					}
+					article.append(list);
+				}
+				stages.append(article);
+			}
+		}
+
+		function showCase(id) {
+			const entry = cases.find((candidate) => candidate.id === id) ?? cases[0];
+			invocation.textContent = `bot assembly check ${entry.invocation}`;
+			tree.replaceChildren();
+			for (const file of entry.files) {
+				const item = element('li');
+				const button = element('button', 'ba-tree__item');
+				button.type = 'button';
+				button.dataset.path = file.path;
+				const dir = element('span', 'ba-tree__dir');
+				for (const segment of directorySegments(file.path)) {
+					dir.append(segment, document.createElement('wbr'));
+				}
+				button.append(dir);
+				button.append(element('span', 'ba-tree__name', baseName(file.path)));
+				if (file.executable) button.append(element('span', 'ba-tag', 'exec'));
+				button.addEventListener('click', () => showFile(entry, file.path));
+				item.append(button);
+				tree.append(item);
+			}
+			const opening = entry.files.find((file) => typeof file.text === 'string') ?? entry.files[0];
+			showFile(entry, opening.path);
+			showStages(entry);
+		}
+
+		picker.addEventListener('change', () => showCase(picker.value));
+		showCase(picker.value);
+	}
+</script>

@@ -1,0 +1,9 @@
+intelligences:
+  container:
+    provider: example-provider
+    model: container-model
+    reasoning: medium
+  default:
+    provider: faux
+    model: faux-1
+    reasoning: medium

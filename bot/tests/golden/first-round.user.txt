@@ -1,0 +1,5 @@
+The files in `$INPUT` are:
+- `notes.txt`
+- `request.md`
+
+Use them to complete the instructions, then write the result to `$OUTPUT`.

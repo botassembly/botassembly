@@ -1,0 +1,7 @@
+intelligences:
+  quick:
+    model: quick-model
+  default:
+    provider: faux
+    model: faux-1
+    reasoning: medium

@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated repository paths"
+paths = [
+  '''^\.git/''',
+  '''^\.tools/''',
+  '''^bot/node_modules/''',
+  '''^docs/node_modules/''',
+  '''^bot/coverage/''',
+  '''^docs/dist/''',
+  '''^docs/\.astro/''',
+  '''^bot/\.bot-test-[^/]+(?:/|$)''',
+]

@@ -1,0 +1,5 @@
+intelligences:
+  default:
+    provider: faux
+    model: example-model
+    reasoning: medium

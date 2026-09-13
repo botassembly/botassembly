@@ -1,0 +1,3 @@
+intelligences:
+  coder:
+    hard: { provider: example-provider, reasoning: high }

@@ -1,0 +1,17 @@
+---
+// The home page's name and its one-line pitch. The pitch names the reader and
+// the job. The mechanism belongs to the story block under it, so the two never
+// say the same thing twice. The lockup image carries the page's name for a
+// screen reader, so the splash template's own heading panel stays hidden.
+import lockupLight from '../assets/botassembly-lockup-light.svg';
+import lockupDark from '../assets/botassembly-lockup-dark.svg';
+---
+
+<section class="ba-hero">
+	<img class="ba-lockup ba-lockup--light" src={lockupLight.src} alt="botassembly" width="747" height="113" />
+	<img class="ba-lockup ba-lockup--dark" src={lockupDark.src} alt="botassembly" width="747" height="113" />
+
+	<p class="ba-sentence">
+		You write the procedure in plain English, and agents run it in the background with nobody watching.
+	</p>
+</section>

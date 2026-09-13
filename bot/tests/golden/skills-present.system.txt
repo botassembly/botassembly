@@ -1,0 +1,36 @@
+# Purpose
+
+Turn source material into a dependable brief.
+
+# Instructions
+
+Write a sourced brief for a careful reader.
+
+# Output
+
+Write the completed result as plain text to `$OUTPUT`.
+
+# Slots
+
+Address files through the slot names, not through the paths they resolve to.
+
+- `$PWD` — the tree where you work.
+- `$INPUT` — a directory containing the named input files.
+- `$OUTPUT` — the one file for the completed result.
+- `$TMP` — empty scratch space for this task; write working files here and nowhere else.
+- `$SKILLS` — capabilities available to read on demand.
+- `$SUBFLOWS` — saved inputs and answers from helper calls.
+
+# Skills
+
+- `fact-check` — Verify factual claims against primary sources. Read `$SKILLS/fact-check/SKILL.md` when useful.
+- `house-style` — Apply the publication's editorial conventions. Read `$SKILLS/house-style/SKILL.md` when useful.
+
+# Helpers
+
+- `research` — Find relevant primary evidence.
+- `summarize` — Condense long material without losing qualifications.
+
+# Tools
+
+Use the available tools to inspect inputs, do the work, and record required decisions.

@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "notice": "Authored illustration for this repository. These values do not describe a provider run.",
+  "outputHeadings": ["Queue", "Why", "Action"],
+  "events": [
+    {"event": "run_start", "run": "synthetic-run", "flow": "triage", "request": {"name": "request.txt"}},
+    {"event": "stage_start", "stage": "01-classify"},
+    {"event": "hook", "stage": "01-classify", "hook": "before", "exit": 0},
+    {"event": "tool_call", "stage": "01-classify", "tool": "mark", "decision": "done", "evidence": "The request states a near deadline."},
+    {"event": "tool_call", "stage": "01-classify", "tool": "mark", "decision": "done", "evidence": "The priority rule applies."},
+    {"event": "check", "stage": "01-classify", "check": "output", "exit": 0},
+    {"event": "check", "stage": "01-classify", "check": "checklist", "exit": 0},
+    {"event": "check", "stage": "01-classify", "check": "schema", "exit": 0},
+    {"event": "hook", "stage": "01-classify", "hook": "success", "exit": 0},
+    {"event": "stage_end", "stage": "01-classify", "exit": 0, "cause": "success"},
+    {"event": "stage_start", "stage": "02-route"},
+    {"event": "chose", "stage": "02-route", "chose": "urgent", "declined": ["routine"], "reason": "The synthetic request uses the urgent rule."},
+    {"event": "stage_end", "stage": "02-route", "exit": 0, "cause": "success"},
+    {"event": "stage_start", "stage": "02-route/urgent/01-urgent"},
+    {"event": "check", "stage": "02-route/urgent/01-urgent", "check": "output", "exit": 0},
+    {"event": "stage_end", "stage": "02-route/urgent/01-urgent", "exit": 0, "cause": "success"},
+    {"event": "stage_start", "stage": "03-verify"},
+    {"event": "check", "stage": "03-verify", "check": "output", "exit": 0},
+    {"event": "check", "stage": "03-verify", "check": "gate", "file": "flows/triage/03-verify/gate/01-blocker", "exit": 0},
+    {"event": "check", "stage": "03-verify", "check": "gate", "file": "flows/triage/03-verify/gate/02-sections", "exit": 0},
+    {"event": "stage_end", "stage": "03-verify", "exit": 0, "cause": "success"},
+    {"event": "run_end", "exit": 0, "cause": "success"}
+  ]
+}

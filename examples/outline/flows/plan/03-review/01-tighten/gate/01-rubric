@@ -1,0 +1,42 @@
+#!/bin/sh
+# Refuse an outline the rubric can catch without reading it. The gate's own
+# words are what reaches the agent on a send-back, so they say what to fix.
+# What is left is judgement, and the loop's question is what asks for it.
+set -eu
+out=$1
+
+if ! grep -q '^## ' "$out"; then
+	echo "The outline has no level-two title. Add one."
+	exit 1
+fi
+
+sections=$(grep -c '^###* ' "$out" || true)
+if [ "$sections" -lt 2 ]; then
+	echo "The outline carries $sections section headings and needs at least two."
+	exit 1
+fi
+
+if grep -q '^##### ' "$out"; then
+	echo "The outline nests past three levels. Fold the deepest headings into their parents."
+	exit 1
+fi
+
+# A leaf section — a heading with no heading under it — needs two bullets.
+awk '
+function check() {
+	if (done || leaf == "" || bullets >= 2) return
+	done = 1
+	printf "The section \"%s\" needs at least two bullets. It has %d.\n", leaf, bullets
+	exit 1
+}
+/^#+ / {
+	level = index($0, " ") - 1
+	if (level <= prev) check()
+	leaf = $0
+	prev = level
+	bullets = 0
+	next
+}
+/^[ \t]*[-*] / { bullets++ }
+END { check() }
+' "$out"

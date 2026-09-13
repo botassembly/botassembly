@@ -1,0 +1,26 @@
+# Purpose
+
+Produce careful answers grounded in the supplied material.
+
+# Instructions
+
+Summarize the request clearly and accurately.
+
+# Output
+
+Write the completed result as plain text to `$OUTPUT`.
+
+# Slots
+
+Address files through the slot names, not through the paths they resolve to.
+
+- `$PWD` — the tree where you work.
+- `$INPUT` — a directory containing the named input files.
+- `$OUTPUT` — the one file for the completed result.
+- `$TMP` — empty scratch space for this task; write working files here and nowhere else.
+- `$SKILLS` — capabilities available to read on demand.
+- `$KB` — Trusted reference collection.
+
+# Tools
+
+Use the available tools to inspect inputs, do the work, and record required decisions.

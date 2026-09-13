@@ -1,0 +1,44 @@
+#!/bin/sh
+# install-gitleaks — install the exact development scanner used by the gate.
+set -eu
+
+REPO=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+VERSION=8.30.1
+TARGET="$REPO/.tools/gitleaks/$VERSION/gitleaks"
+
+if [ -x "$TARGET" ] && [ "$("$TARGET" version 2>/dev/null || :)" = "$VERSION" ]; then
+	exit 0
+fi
+
+SYSTEM=$(uname -s 2>/dev/null) || { echo "install: cannot identify this operating system." >&2; exit 1; }
+MACHINE=$(uname -m 2>/dev/null) || { echo "install: cannot identify this processor." >&2; exit 1; }
+case "$SYSTEM:$MACHINE" in
+	Linux:x86_64|Linux:amd64) ASSET=linux_x64; SHA=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb; HASH=sha256sum ;;
+	Linux:aarch64|Linux:arm64) ASSET=linux_arm64; SHA=e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080; HASH=sha256sum ;;
+	Darwin:x86_64|Darwin:amd64) ASSET=darwin_x64; SHA=dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952709; HASH=shasum ;;
+	Darwin:arm64|Darwin:aarch64) ASSET=darwin_arm64; SHA=b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5; HASH=shasum ;;
+	*) echo "install: Gitleaks $VERSION does not support $SYSTEM $MACHINE in this project." >&2; exit 1 ;;
+esac
+
+for tool in curl tar "$HASH" mktemp; do
+	command -v "$tool" >/dev/null 2>&1 || { echo "install: $tool is required to install Gitleaks $VERSION." >&2; exit 1; }
+done
+
+mkdir -p "$REPO/.tools/gitleaks"
+STAGE=$(mktemp -d "$REPO/.tools/gitleaks/.install.XXXXXX") || { echo "install: cannot create the Gitleaks staging directory." >&2; exit 1; }
+trap 'rm -rf "$STAGE"' EXIT HUP INT TERM
+ARCHIVE="$STAGE/gitleaks.tar.gz"
+URL="https://github.com/gitleaks/gitleaks/releases/download/v$VERSION/gitleaks_${VERSION}_${ASSET}.tar.gz"
+curl -fL --output "$ARCHIVE" "$URL" || { echo "install: could not download Gitleaks $VERSION." >&2; exit 1; }
+case "$HASH" in
+	sha256sum) printf '%s  %s\n' "$SHA" "$ARCHIVE" | sha256sum -c - >/dev/null 2>&1 ;;
+	shasum) printf '%s  %s\n' "$SHA" "$ARCHIVE" | shasum -a 256 -c - >/dev/null 2>&1 ;;
+esac || { echo "install: Gitleaks $VERSION archive checksum did not match." >&2; exit 1; }
+mkdir "$STAGE/unpacked"
+tar -xzf "$ARCHIVE" -C "$STAGE/unpacked" gitleaks >/dev/null 2>&1 || { echo "install: Gitleaks $VERSION archive was malformed." >&2; exit 1; }
+chmod 755 "$STAGE/unpacked/gitleaks"
+[ "$("$STAGE/unpacked/gitleaks" version 2>/dev/null || :)" = "$VERSION" ] || { echo "install: downloaded Gitleaks did not report version $VERSION." >&2; exit 1; }
+rm -rf "$REPO/.tools/gitleaks/$VERSION"
+mkdir "$REPO/.tools/gitleaks/$VERSION"
+mv "$STAGE/unpacked/gitleaks" "$TARGET"
+echo "installed: Gitleaks $VERSION"

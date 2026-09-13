@@ -1,0 +1,2 @@
+{"code":"value-invalid","path":"home/config.yaml","message":"Give reasoning a valid value in intelligence default."}
+{"code":"intelligence-unresolved","path":"flows/change/01-read.md","message":"Define an intelligence named default in the home configuration."}

@@ -1,0 +1,3 @@
+intelligences:
+  coder:
+    hard: { model: hard-model, temperature: low }

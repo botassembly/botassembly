@@ -1,0 +1,5 @@
+---
+colour: red
+---
+
+Work.

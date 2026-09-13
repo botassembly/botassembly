@@ -1,0 +1,37 @@
+# Purpose
+
+Produce concise, verifiable answers.
+
+# Instructions
+
+Check the facts and write a brief response.
+
+## Checklist
+
+- Verify every claim against the supplied material
+- Keep the response under 200 words
+
+# Output
+
+Write Markdown following this template to `$OUTPUT`:
+
+---
+summary: str
+reviewed: bool
+---
+
+## Answer
+
+# Slots
+
+Address files through the slot names, not through the paths they resolve to.
+
+- `$PWD` — the tree where you work.
+- `$INPUT` — a directory containing the named input files.
+- `$OUTPUT` — the one file for the completed result.
+- `$TMP` — empty scratch space for this task; write working files here and nowhere else.
+- `$SKILLS` — capabilities available to read on demand.
+
+# Tools
+
+Use the available tools to inspect inputs, do the work, and record required decisions.

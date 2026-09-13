@@ -1,0 +1,4 @@
+The files in `$INPUT` are:
+- `request.txt`
+
+Use them to complete the instructions, then write the result to `$OUTPUT`.

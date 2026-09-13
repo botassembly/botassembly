@@ -1,0 +1,13 @@
+---
+title: Explore an Assembly
+description: Every assembly the conformance corpus says a runtime must accept, its files beside the exact lines bot assembly check prints for it.
+tableOfContents: false
+---
+
+import AssemblyExplorer from '../../../components/AssemblyExplorer.astro';
+
+Each case below is an assembly the specification says every runtime must accept. Pick one, click through its files, and read what `bot assembly check` resolves for it on the right. The lines are not a demonstration. They are the bytes the [conformance corpus](/specification/conformance/) asserts, and every change to `bot` or to the specification is run against all 143 cases. The corpus is also how a second implementation would be judged, and none exists yet.
+
+Every resolved option carries the rung it came from. `from stage` means the stage's own frontmatter set it, `from assembly` means `ASSEMBLY.md` did, and `from default` means nothing in the tree did and the format's default stands.
+
+<AssemblyExplorer />
