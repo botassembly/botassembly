@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DEFAULT_ASSEMBLY_TRAVERSAL_POLICY, grammarAssemblyRoot, includeAssemblyRoot, parseAssemblyTraversalPolicy, policyForRootEntries, type AssemblyTraversalPolicy } from "./assembly-policy.ts";
 import { allEntries, entries, lstatExists, readMarkdown, readSkills, validTmpMaxBytes, validateData } from "./documents.ts";
 import { parseFlowCollection } from "./graph.ts";
-import { DEFAULT_TMP_MAX_BYTES, fault, type Assembly, type Flow, type Node, type Sequence } from "./model.ts";
+import { DEFAULT_TMP_MAX_BYTES, fault, type Assembly, type Flow } from "./model.ts";
 import type { Refusal } from "./spine.ts";
 
 const RUNTIME_SLOTS = new Set(["INPUT", "OUTPUT", "TMP", "SKILLS", "PWD"]);
@@ -52,34 +52,6 @@ function declaredSlots(data: Record<string, unknown>, faults: Refusal[], env: No
     }
   }
   return slots;
-}
-
-function validateStageAccess(held: Extract<Node, { kind: "STAGE" }>, declared: ReadonlySet<string>, subflows: boolean, faults: Refusal[]): void {
-  const available = new Set(declared);
-  if (subflows || held.subflows.size > 0) available.add("SUBFLOWS");
-  for (const operation of ["read", "write", "edit"] as const) {
-    for (const slot of held.access?.[operation] ?? []) {
-      if (!available.has(slot)) fault(faults, "value-invalid", held.path, `Name an available managed slot in access.${operation}, not ${slot}.`);
-    }
-  }
-  validateAccessSlots(held.subflows, declared, true, faults);
-}
-
-function validateAccessNode(held: Node, declared: ReadonlySet<string>, subflows: boolean, faults: Refusal[]): void {
-  const sequence = (value: Sequence): void => { value.nodes.forEach((node) => { validateAccessNode(node, declared, subflows, faults); }); };
-  if (held.kind === "STAGE") validateStageAccess(held, declared, subflows, faults);
-  else if (held.kind === "LOOP") sequence(held.sequence);
-  else if (held.kind === "PARALLEL" || held.kind === "CHOOSE") {
-    for (const branch of held.kind === "PARALLEL" ? held.branches : held.alternatives) sequence(branch.sequence);
-  }
-}
-
-function validateAccessSlots(flows: ReadonlyMap<string, Flow>, declared: ReadonlySet<string>, inheritedSubflows: boolean, faults: Refusal[]): void {
-  for (const flow of flows.values()) {
-    const subflows = inheritedSubflows || flow.subflows.size > 0;
-    for (const node of flow.sequence.nodes) validateAccessNode(node, declared, subflows, faults);
-    validateAccessSlots(flow.subflows, declared, true, faults);
-  }
 }
 
 function validateRootEntries(root: string, faults: Refusal[], policy: AssemblyTraversalPolicy): void {
@@ -145,8 +117,5 @@ export function readAssembly(root: string, env: NodeJS.ProcessEnv): Assembly {
   const subflows = lstatExists(subflowDir) && lstatSync(subflowDir).isDirectory()
     ? parseFlowCollection(subflowDir, "subflows", faults)
     : new Map<string, Flow>();
-  const managedSlots = new Set([...RUNTIME_SLOTS, ...Object.keys(slots).map((name) => name.toUpperCase())]);
-  validateAccessSlots(flows, managedSlots, subflows.size > 0, faults);
-  validateAccessSlots(subflows, managedSlots, true, faults);
   return { root, tmpMaxBytes, options, slots, skills, flows, subflows, faults, body };
 }

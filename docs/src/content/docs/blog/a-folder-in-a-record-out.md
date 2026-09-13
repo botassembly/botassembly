@@ -66,7 +66,7 @@ Reading a retained run needs no provider connection. The supported Bot commands 
 
 ## One honest limit
 
-The record is not containment. Bot keeps the calls the model harness reports and the calls Bot itself denied. It does not watch the filesystem, and a gate script runs with whatever authority you have. Put a container around an assembly you did not write. That is the easiest lie to tell in this category and I am not going to tell it.
+The record is not containment. Bot keeps the calls the model harness reports. It does not watch the filesystem, and a gate script runs with whatever authority you have. Put a container around an assembly you did not write. That is the easiest lie to tell in this category and I am not going to tell it.
 
 The repository does not publish provider records, raw provider sessions, or complete run folders. A request, response, tool result, or inherited value can carry sensitive material.
 

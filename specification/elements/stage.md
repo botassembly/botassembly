@@ -135,24 +135,6 @@ Frontmatter carries only what placement cannot say. A stage's position, its
 order, and the folder that holds it are read from the filesystem, never restated
 as keys.
 
-## Access
-
-The stage-only `access` key sets the boundary for tools dispatched directly for the model. `access` is a mapping with up to four operation keys: `read`, `write`, `edit`, and `bash`. Unknown operations are refused. Each operation takes an array of names with no duplicates. `access: {}` denies every operation. Empty operation arrays deny every name for those operations. An omitted `access` declaration keeps the unrestricted default described by [the runtime](runtime.md#the-agents-tools).
-
-The file operations `read`, `write`, and `edit` name managed slot exports. The runtime slots are `INPUT`, `OUTPUT`, `TMP`, `SKILLS`, and `PWD`. A declared assembly slot contributes its uppercase export. `SUBFLOWS` is available only where subflows are in scope from the assembly root, the flow, or the stage. A valid-looking managed name that is unavailable at that stage is refused.
-
-Bash names start with an ASCII letter or digit. The remaining characters may be ASCII letters, digits, `.`, `_`, `+`, or `-`. A name authorizes direct dispatch by that name. It does not prove that the executable is installed.
-
-`access` belongs only to `STAGE`. A control sentinel that carries `access` is refused.
-
-```yaml
-access:
-  read: [INPUT, PROJECT_DATA]
-  write: [OUTPUT]
-  edit: []
-  bash: [git, python3]
-```
-
 ## Input and output
 
 The agent reaches everything through [slots](slots.md) — environment variables

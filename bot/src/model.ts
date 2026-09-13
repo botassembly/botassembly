@@ -52,10 +52,6 @@ interface NodeFields {
   skills: string[];
 }
 
-export const ACCESS_OPERATIONS = ["read", "write", "edit", "bash"] as const;
-export type AccessOperation = (typeof ACCESS_OPERATIONS)[number];
-export type StageAccess = Partial<Record<AccessOperation, string[]>>;
-
 export interface StageNode extends NodeFields {
   kind: "STAGE";
   /** Authored as one `.md` file, not a folder — record.md "Identity" takes the extension off only this form. */
@@ -66,8 +62,6 @@ export interface StageNode extends NodeFields {
   body?: string;
   /** An authored subdirectory of the root run workspace (stage.md). */
   workdir?: string;
-  /** Model execution tools offered by an explicit stage-local boundary. */
-  access?: StageAccess;
 }
 
 export interface LoopNode extends NodeFields {

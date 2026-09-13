@@ -1,8 +1,9 @@
-import { lstat, mkdir, unlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { main } from "../src/cli.ts";
 import { parseRunResume, renderRunStart } from "../src/run-start.ts";
+import { prehashAssembly } from "../src/record.ts";
 import type { StartedRunResult } from "../src/run.ts";
 import { events, realBoundary, runsIn, tempRoots, TEST_INSTALLATION_ID, writes } from "./cli-boundary.ts";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai";
@@ -91,6 +92,35 @@ test("a refused donor uses the common error before starting a run", async () => 
   expect(Buffer.concat(out)).toEqual(Buffer.alloc(0));
   expect(JSON.parse(Buffer.concat(err).toString())).toMatchObject({ kind: "error", error: { operation: "run.resume" } });
   await expect(runsIn(home).catch(() => [])).resolves.toEqual([]);
+});
+
+test("resume refuses a captured assembly that uses retired access syntax", async () => {
+  const { root, home } = await roots.scratch("bot-run-resume-retired-access-");
+  await assembly(home);
+  const donorRun = await donor(home, root);
+  const capturedStage = join(home, "runs", donorRun, "assembly/flows/main/03-code.md");
+  const installedStage = join(home, "assemblies/review/flows/main/03-code.md");
+  await chmod(capturedStage, 0o600);
+  const original = await readFile(capturedStage, "utf8");
+  const retired = original.replace("---\n---", "---\naccess: {}\n---");
+  await Promise.all([writeFile(capturedStage, retired), writeFile(installedStage, retired)]);
+  const recordPath = join(home, "runs", donorRun, "record.jsonl");
+  const record = await events(recordPath);
+  const opening = record[0];
+  if (opening !== undefined) opening["assembly_hash"] = (await prehashAssembly(join(home, "runs", donorRun, "assembly"))).sha256;
+  await chmod(recordPath, 0o600);
+  await writeFile(recordPath, `${record.map((event) => JSON.stringify(event)).join("\n")}\n`);
+  const out: Buffer[] = [], err: Buffer[] = [];
+  const { held } = realBoundary(root, home, out, err);
+  let executed = false;
+  const code = await main(["run", "resume", donorRun, "-j"], {
+    ...held, executeFlow: () => { executed = true; throw new Error("must not execute"); },
+  });
+  expect(code).toBe(2);
+  expect(executed).toBe(false);
+  expect(Buffer.concat(out)).toEqual(Buffer.alloc(0));
+  expect(Buffer.concat(err).toString()).toContain("unknown key access");
+  expect(await runsIn(home)).toEqual([donorRun]);
 });
 
 test("a first run resume initializes the home before run birth", async () => {

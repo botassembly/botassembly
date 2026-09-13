@@ -41,7 +41,7 @@ An agent is told what exists — skills, subflows, inputs — by name and one li
 
 ## Focused, not sandboxed
 
-[Slots](/specification/slots-and-skills/) tell the agent where to find its input, output, scratch space, and working directory. `bot` is not a sandbox. Direct file tools can use absolute paths, and commands, hooks, gates, and subprocesses use the operator's filesystem and network authority. A stage `access` declaration can refuse direct model-facing calls. It does not contain an allowed process. The record retains calls reported by the model harness and the calls `bot` denied. It does not watch the filesystem or list every side effect. Use operating-system or container containment before running an untrusted assembly or model.
+[Slots](/specification/slots-and-skills/) tell the agent where to find its input, output, scratch space, and working directory. `bot` is not a sandbox. Every stage receives read, write, edit, and Bash tools. Direct file tools can use absolute paths, and commands, hooks, gates, and subprocesses use the operator's filesystem and network authority. The record retains calls reported by the model harness. It does not watch the filesystem or list every side effect. Use operating-system or container containment before running an untrusted assembly or model.
 
 ## The record is an asset
 

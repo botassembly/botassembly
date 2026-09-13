@@ -11,7 +11,6 @@
 // run's capture (ADR 0016 step 8) — schema, gates, hooks and skills alike.
 import type { Api, Model, Models } from "@earendil-works/pi-ai";
 import { basename, join, relative } from "node:path";
-import { createBoundedFileTools } from "./access.ts";
 import { retainPrompt } from "./attempt.ts";
 import { prepareHarness, type Harness } from "./harness.ts";
 import { hookKind } from "./documents.ts";
@@ -19,9 +18,9 @@ import { extractChecklist } from "./extract.ts";
 import type { GatingConfig } from "./gating.ts";
 import type { GatingSession, RunFlowInput, StageRuntimeContext } from "./flow.ts";
 import { childInvocation, resolveNodeOptions, type ResolvedOptions } from "./options.ts";
-import { OPTION_NAMES, REASONING_LEVELS, fault, stem, type Assembly, type AuthoredOptions, type ChooseNode, type Flow, type ReasoningLevel, type Sequence, type StageAccess, type StageNode } from "./model.ts";
+import { OPTION_NAMES, REASONING_LEVELS, fault, stem, type Assembly, type AuthoredOptions, type ChooseNode, type Flow, type ReasoningLevel, type Sequence, type StageNode } from "./model.ts";
 import type { Executable } from "./process.ts";
-import { toolDeniedEvent, type OptionLadder, type StageSlots } from "./record-events.ts";
+import { type OptionLadder, type StageSlots } from "./record-events.ts";
 import { hashBytes, type AssemblyPrehash } from "./record.ts";
 import { retryModel } from "./credentials.ts";
 import type { Accepted } from "./reader.ts";
@@ -188,20 +187,6 @@ function machinery(context: StageRuntimeContext, prehash: AssemblyPrehash, assem
   };
 }
 
-function boundedTools(context: StageRuntimeContext, agentEnv: NodeJS.ProcessEnv, execution: SlotExecutionEnv): {
-  tools: ReturnType<typeof createFileTools>; access?: StageAccess;
-} {
-  const access = context.node.kind === "STAGE" ? context.node.access : undefined;
-  if (access === undefined) return { tools: createFileTools(agentEnv) };
-  const tools = createBoundedFileTools(agentEnv, access, execution, context.slots, (denial) =>
-    context.writer.append(toolDeniedEvent({ ts: context.clock.timestamp(), identity: context.identity, ...denial })));
-  return { tools, access };
-}
-
-function accessConfig(access: StageAccess | undefined): { access?: StageAccess } {
-  return access === undefined ? {} : { access };
-}
-
 export function defaultGating(
   read: Accepted, models: Models, prehash: AssemblyPrehash,
 ): RunFlowInput["createGating"] {
@@ -217,8 +202,7 @@ export function defaultGating(
     let harness: Harness<ReturnType<typeof createControlContext>> | undefined;
     const constructing = Promise.resolve().then(async (): Promise<GatingSession> => {
       const controls = createControlContext([], [], execution);
-      const bounded = boundedTools(context, agentEnv, execution);
-      const tools = [...context.tools, ...bounded.tools];
+      const tools = [...context.tools, ...createFileTools(agentEnv)];
       const configuredMachinery = machinery(context, prehash, read.flow === undefined);
       const construction = await promptConstruction(context);
       harness = prepared.create({
@@ -229,12 +213,6 @@ export function defaultGating(
         systemPrompt: await retainPrompt(context.sessionFile, "system.txt", construction.system),
         tools, context: controls,
       });
-      harness.changeToolResult((event) => {
-        const details = event.details;
-        return typeof details === "object" && details !== null && "type" in details && details.type === "access-denied"
-          ? { isError: true }
-          : {};
-      });
       const common = {
         timeoutMs: optionNumber(options, "timeout") * 1_000, retries: optionNumber(options, "retries"),
         cwd: context.env["PWD"] ?? "/", env: context.env, inputPath: context.inputPath,
@@ -244,7 +222,6 @@ export function defaultGating(
         tools: tools.map(({ name, description }) => ({ name, description })),
         skills: [...context.skills].map(([name, skill]) => ({ name, source: skill.source })),
         promptSources: construction.sources,
-        ...accessConfig(bounded.access),
       };
       let config: GatingConfig;
       if (context.mode.kind === "choose") config = { ...common, mode: "choose", alternatives: context.mode.alternatives };

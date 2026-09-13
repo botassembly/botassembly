@@ -138,38 +138,25 @@ test("every published chapter declares its 0.1 stability level", () => {
   expect(read("CHANGELOG.md")).toMatch(/\bhistory,? not (?:a )?contract\b/iu);
 });
 
-test("the access contract describes policy as guidance rather than containment", () => {
+test("the runtime publishes trusted execution and operating-system containment", () => {
   const runtime = read("elements/runtime.md");
   const invariants = read("elements/invariants.md");
   const witnesses = read("elements/invariants-witnesses.md");
-  const claims = statements(`${runtime}\n${invariants}`);
   const invariant35 = invariants.split("\n").find((line) => /^35\.\s/u.test(line)) ?? "";
   const witness35 = witnesses.split("\n").find((line) => /^\| 35 \|/u.test(line)) ?? "";
 
   expect({
-    policyIsInstruction: claims.some((claim) => /\baccess polic/iu.test(claim)
-      && /\binstruction/iu.test(claim))
-      && claims.some((claim) => /\b(?:access )?polic/iu.test(claim)
-        && /\b(?:does not|is not)\b[\s\S]*\b(?:security boundary|contain)/iu.test(claim)),
-    policyScopeIsDirectDispatch: claims.some((claim) => /\baccess polic/iu.test(claim)
-      && /\bmodel-facing\b/iu.test(claim)
-      && /\b(?:direct|dispatch)/iu.test(claim)),
-    permittedExecutableCanReachOutside: claims.some((claim) => /\b(?:permitted|allowed)\b/iu.test(claim)
-      && /\bexecutable\b/iu.test(claim)
-      && /\b(?:outside|past|beyond)\b/iu.test(claim)
-      && /\bpolic/iu.test(claim)),
-    noAbsoluteRestrictionClaim: !/\btools are never restricted\b|\bevery tool the runtime has[\s\S]{0,80}\bin every stage\b/iu
-      .test(`${runtime}\n${invariants}`),
-    invariant35QualifiesDefaultToolAvailability: /\b(?:without|absent|no)\b[\s\S]*\baccess (?:declaration|policy)\b/iu.test(invariant35)
-      && /\b(?:all|every)\b[\s\S]*\btools?\b/iu.test(invariant35),
+    everyStageGetsTools: /every stage[^.]+read, write, edit, and Bash tools/iu.test(invariant35),
+    operatorOwnsContainment: /operator supplies[^.]+boundary/iu.test(invariants),
+    runtimeNamesAuthority: /operator's filesystem and network authority/iu.test(runtime),
+    retiredGrammarAbsent: !/^## Access$/mu.test(read("elements/stage.md")),
     removalWitnessRemains: /bot\/tests\/file-tools\.test\.ts/iu.test(witness35)
       && /runtime's file tools include read, write, edit, and a shell/iu.test(witness35),
   }).toEqual({
-    policyIsInstruction: true,
-    policyScopeIsDirectDispatch: true,
-    permittedExecutableCanReachOutside: true,
-    noAbsoluteRestrictionClaim: true,
-    invariant35QualifiesDefaultToolAvailability: true,
+    everyStageGetsTools: true,
+    operatorOwnsContainment: true,
+    runtimeNamesAuthority: true,
+    retiredGrammarAbsent: true,
     removalWitnessRemains: true,
   });
 });
@@ -200,34 +187,15 @@ test("public guidance states the file-observation and operating-system boundary"
     expect(prose, `${name} distinguishes call reports from file observation`).toMatch(/reported direct tool calls|direct tool calls reported|calls reported by the model harness/iu);
     expect(prose, `${name} denies complete file observation`).toMatch(/does not watch the filesystem[^.]*complete list of changes|does not watch the filesystem[^.]*list every side effect/iu);
   }
-  expect(publications.runtime).toMatch(/declared access policy[\s\S]{0,300}model-facing dispatch of direct tool calls[\s\S]{0,300}does not provide a security boundary or operating-system containment/iu);
   expect(publications.runtime).toMatch(/reported direct tool calls[^.]*retained model sessions/iu);
   expect(publications.runtime).toMatch(/does not watch the filesystem[^.]*complete list of changes/iu);
   expect(publications.invariants).toMatch(/^34\. Bot does not provide operating-system containment\./mu);
-  expect(publications.invariants).toMatch(/^37\. Bot retains reported direct tool calls and denied direct calls\. It does not watch the filesystem or claim a complete list of changes\./mu);
+  expect(publications.invariants).toMatch(/^37\. Bot retains reported direct tool calls\. It does not watch the filesystem or claim a complete list of changes\./mu);
   expect(publications.witnesses).toMatch(/\| 37 \|[^\n]*reported direct tool calls[^\n]*does not watch the filesystem/iu);
   for (const prose of [publications.inspection, publications.inspectionReference]) {
     expect(prose).toMatch(/`bot run events` reports retained direct tool calls[\s\S]{0,100}does not watch the filesystem/iu);
   }
   expect(publications.guide).toMatch(/absolute paths outside[^.]*working directory[^.]*operating system permits/iu);
-});
-
-test("the stage contract publishes the complete closed access grammar", () => {
-  const access = section(read("elements/stage.md"), "Access");
-
-  expect(access).toMatch(/`access` is a mapping/iu);
-  for (const operation of ["read", "write", "edit", "bash"]) expect(access).toContain(`\`${operation}\``);
-  expect(access).toMatch(/each operation[^.]+array[^.]+no duplicate/iu);
-  expect(access).toMatch(/`access: \{\}`[^.]+den(?:y|ies)/iu);
-  expect(access).toMatch(/empty operation arrays[^.]+den(?:y|ies)/iu);
-  for (const slot of ["INPUT", "OUTPUT", "TMP", "SKILLS", "PWD"]) expect(access).toContain(`\`${slot}\``);
-  expect(access).toMatch(/declared assembly slot[^.]+uppercase export/iu);
-  expect(access).toMatch(/`SUBFLOWS`[^.]+subflows are in scope/iu);
-  expect(access).toMatch(/Bash names start with an ASCII letter or digit/iu);
-  expect(access).toMatch(/remaining characters may be ASCII letters, digits, `\.`, `_`, `\+`, or `-`/iu);
-  expect(access).toMatch(/does not prove[^.]+installed/iu);
-  expect(access).toMatch(/belongs only to `STAGE`/iu);
-  expect(access).toMatch(/control sentinel[^.]+refused/iu);
 });
 
 test("published model readings distinguish pinned and live network behavior", () => {

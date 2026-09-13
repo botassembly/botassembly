@@ -1,6 +1,7 @@
 import { isAbsolute } from "node:path";
-import { ACCESS_OPERATIONS, mapping, sequenceName } from "../../src/model.ts";
+import { mapping, sequenceName } from "../../src/model.ts";
 import { CONTROL_TOOLS, isRecordEventName, type RecordEventName } from "../../src/record-events.ts";
+import { isLegacyRecordEventName, type LegacyRecordEventName } from "../../src/legacy-record-events.ts";
 import { CAUSES } from "../../src/spine.ts";
 
 const causes = new Set<string>(CAUSES);
@@ -8,8 +9,9 @@ const checks = new Set(["output", "checklist", "schema", "gate", "select", "ques
 const hooks = new Set(["before", "success", "failure"]);
 const tools = new Set<string>(CONTROL_TOOLS);
 const skillSources = new Set(["workspace", "assembly-root", "flow-local", "container-local", "stage-local"]);
-const accessOperations = new Set<string>(ACCESS_OPERATIONS);
-const identityEvents = new Set<RecordEventName>([
+const accessOperations = new Set(["read", "write", "edit", "bash"]);
+type ReadableRecordEventName = RecordEventName | LegacyRecordEventName;
+const identityEvents = new Set<ReadableRecordEventName>([
   "stage_carried", "stage_start", "prompt", "stage_end", "unreconciled", "provider_start", "turn", "provider_retry", "provider_transport",
   "gate_start", "check", "tool_call", "tool_denied", "subflow_call", "chose", "loop_done", "parallel_done", "fanout_start", "fanout_done", "hook",
 ]);
@@ -32,8 +34,8 @@ const isoTimestamp = (value: unknown): value is string => typeof value === "stri
   && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)
   && Number.isFinite(Date.parse(value)) && new Date(Date.parse(value)).toISOString() === value;
 
-function recordEventName(value: unknown): RecordEventName | undefined {
-  return isRecordEventName(value) ? value : undefined;
+function recordEventName(value: unknown): ReadableRecordEventName | undefined {
+  return isRecordEventName(value) || isLegacyRecordEventName(value) ? value : undefined;
 }
 
 function noIdentity(event: Record<string, unknown>): boolean {
@@ -370,7 +372,7 @@ function runStartShape(event: Record<string, unknown>): boolean {
 }
 
 type EventValidator = (event: Record<string, unknown>) => string | undefined;
-const validators: Record<RecordEventName, EventValidator> = {
+const validators: Record<ReadableRecordEventName, EventValidator> = {
   run_start: (event) => runStartShape(event) ? undefined : "run_start requires its current writer fields",
   run_end: (event) => stageIdentity(event, true) !== undefined && terminalPair(event) && optionalText(event["reason"])
     ? undefined : "run_end requires a legal terminal pair and optional identity",

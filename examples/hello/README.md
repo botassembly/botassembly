@@ -5,7 +5,7 @@ Turns a joining note into a three-sentence welcome for a new teammate. This is t
 ## What it exercises
 
 - **One stage.** `01-welcome.md` is a file, not a folder. A stage needs a folder only when it carries a schema, a gate, or a hook.
-- **Front matter that sets something.** `ASSEMBLY.md` names the intelligence and a timeout every stage inherits, and the stage cuts its own timeout to 120 seconds. The keys a stage may set are `intelligence`, `timeout`, `retries`, `local-context`, `workdir`, and `access`, and nothing else.
+- **Front matter that sets something.** `ASSEMBLY.md` names the intelligence and a timeout every stage inherits, and the stage cuts its own timeout to 120 seconds. The keys a stage may set are `intelligence`, `timeout`, `retries`, `local-context`, and `workdir`, and nothing else.
 - **A checklist.** Two items the agent affirms one at a time. The checklist is a check, so a stage that skips an item has to say why, and the record keeps the answer.
 
 Nothing else is here. There is no schema, no gate, no hook, no skill, and no container. Read `triage` next for those.

@@ -90,7 +90,7 @@ The format is a folder contract with a versioned specification and a conformance
 
 ## What it is not
 
-- **Not a sandbox.** Commands, hooks, gates, and subprocesses use your filesystem and network authority. The record retains reported direct tool calls and denied direct calls. Bot does not watch the filesystem or claim a complete list of changes. Contain an untrusted assembly with the operating system or a container.
+- **Bot is not a sandbox.** Every stage receives read, write, edit, and Bash tools. Commands, hooks, gates, and subprocesses use your filesystem and network authority. The record retains direct tool calls reported by the model harness. Bot does not watch the filesystem or claim a complete list of changes. Run only trusted assemblies, or contain the process with the operating system or a container.
 - **No run-wide budget.** A stage carries a timeout and concurrency has a width. Nothing bounds a run as a whole: no deadline, no cost budget, no disk cap.
 - **Pre-1.0.** Assembly and record contracts may change without migrations before 1.0.
 - **Linux only.** macOS may work and is not verified. Windows is not supported.

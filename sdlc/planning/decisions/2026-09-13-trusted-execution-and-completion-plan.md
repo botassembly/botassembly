@@ -6,7 +6,7 @@ Decided 2026-09-13. Ian accepted the reassessment of the first-public-release pl
 
 Bot runs trusted assemblies with the operator's operating-system authority. Stages and choices receive the ordinary Pi tools plus the control tools their place in the flow requires. Bot does not try to contain shell commands or require authors to list executable names. An operator who needs containment supplies a restricted account, container, virtual machine, or equivalent operating-system boundary.
 
-The authored `access` feature will be removed before the first public release. Bot will continue to remove recognized provider credential variables from assembly processes as protection against accidental disclosure. That removal is not containment. The approved private-file rules for Pi authentication and command-capable model configuration remain real operating-system protections.
+Ticket 0273 removes the authored `access` feature. Bot continues to remove recognized provider credential variables from assembly processes as protection against accidental disclosure. That removal is not containment. The approved private-file rules for Pi authentication and command-capable model configuration remain real operating-system protections.
 
 ## Platforms
 

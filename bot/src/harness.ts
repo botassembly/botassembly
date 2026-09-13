@@ -121,7 +121,6 @@ export type HarnessEvent =
   | { type: "tool_execution_end"; toolCallId: string; toolName: string; result: unknown; isError: boolean };
 
 interface ProviderRequestEvent { model: { provider: string; id: string } }
-interface ToolResultEvent { details: unknown }
 
 export interface Harness<Context extends object> {
   prompt(text: string): Promise<AssistantMessage>;
@@ -132,7 +131,6 @@ export interface Harness<Context extends object> {
   subscribe(listener: (event: HarnessEvent) => Promise<void> | void): () => void;
   beforeProviderRequest(listener: (event: ProviderRequestEvent) => Promise<void> | void): () => void;
   beforeAgentStart(listener: () => Promise<void> | void): () => void;
-  changeToolResult(listener: (event: ToolResultEvent) => { isError?: boolean }): () => void;
   waitForIdle(): Promise<void>;
   close(): Promise<void>;
 }
@@ -287,10 +285,6 @@ class PiHarness<Context extends object> implements Harness<Context> {
 
   beforeAgentStart(listener: () => Promise<void> | void): () => void {
     return this.#deferredRemover((inner) => inner.hooks.on("before_run", () => Promise.resolve(listener()).then(() => undefined)));
-  }
-
-  changeToolResult(listener: (event: ToolResultEvent) => { isError?: boolean }): () => void {
-    return this.#deferredRemover((inner) => inner.hooks.on("after_tool", (event) => listener({ details: event.details })));
   }
 
   waitForIdle(): Promise<void> {

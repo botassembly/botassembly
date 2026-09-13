@@ -7,7 +7,7 @@
 import { lstatSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { bytewise, type StageAccess } from "./model.ts";
+import { bytewise } from "./model.ts";
 import type { Harness } from "./harness.ts";
 import type { DriverClock, Executable, ProcessGroups } from "./process.ts";
 import { checkEvent, stageStartEvent, type CheckKind, type HashedPath, type OptionLadder, type PromptSource, type RecordedTool, type RecruitedSkill, type StageIdentity, type StageSlots } from "./record-events.ts";
@@ -31,7 +31,6 @@ export interface CommonConfig {
   tools?: RecordedTool[];
   skills?: RecruitedSkill[];
   promptSources?: PromptSource[];
-  access?: StageAccess;
 }
 
 export interface WorkConfig extends CommonConfig {
@@ -136,7 +135,7 @@ export function resolvePromptSources(
 }
 
 export async function startAttempt(input: RuntimeInput, received: CommonConfig["received"]): Promise<void> {
-  await input.writer.append(stageStartEvent({ ts: input.clock.timestamp(), identity: input.identity, received, options: input.config.options, ...(input.config.slots === undefined ? {} : { slots: input.config.slots }), ...(input.config.workdir === undefined ? {} : { workdir: input.config.workdir }), session: input.config.session, ...(input.config.tools === undefined ? {} : { tools: input.config.tools }), skills: input.config.skills ?? [], ...(input.config.access === undefined ? {} : { access: input.config.access }) }));
+  await input.writer.append(stageStartEvent({ ts: input.clock.timestamp(), identity: input.identity, received, options: input.config.options, ...(input.config.slots === undefined ? {} : { slots: input.config.slots }), ...(input.config.workdir === undefined ? {} : { workdir: input.config.workdir }), session: input.config.session, ...(input.config.tools === undefined ? {} : { tools: input.config.tools }), skills: input.config.skills ?? [] }));
 }
 
 export async function nextAttempt(input: RuntimeInput): Promise<void> {

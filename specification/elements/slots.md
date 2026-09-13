@@ -216,4 +216,4 @@ where anything checking it lives. The slot is the whole of what it knows.
 
 Names direct the agent's attention toward its task and away from the machinery around it. They provide no security boundary.
 
-Bot is not a sandbox. An agent holding a shell can print a slot value and follow any path the operating system permits. A stage `access` declaration can refuse direct model-facing calls. It does not contain an allowed process. Bot retains reported direct tool calls and denied direct calls. It does not watch the filesystem or claim a complete list of changes.
+Bot is not a sandbox. An agent holding a shell can print a slot value and follow any path the operating system permits. Bot retains direct tool calls reported by the model harness. It does not watch the filesystem or claim a complete list of changes. Use an operating-system boundary or container when work needs containment.

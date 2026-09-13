@@ -12,10 +12,8 @@ import {
   validateSlimSchema,
 } from "./documents.ts";
 import {
-  ACCESS_OPERATIONS,
   fault,
   stem,
-  type StageAccess,
   type StageNode,
 } from "./model.ts";
 import type { Refusal } from "./spine.ts";
@@ -30,54 +28,6 @@ export function sentinelLike(name: string): boolean {
   return SENTINELS.has(canonical) || name.slice(0, -3) === name.slice(0, -3).toUpperCase();
 }
 
-const BUILT_IN_SLOTS = ["INPUT", "OUTPUT", "TMP", "SKILLS", "PWD", "SUBFLOWS"];
-const OPERATIONS = new Set<string>(ACCESS_OPERATIONS);
-const COMMAND_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u;
-
-function accessNames(operation: string, entries: unknown, path: string, faults: Refusal[], slots: ReadonlySet<string>): string[] {
-  if (!Array.isArray(entries)) {
-    fault(faults, "value-invalid", path, `Give access.${operation} an array of names.`);
-    return [];
-  }
-  const names: string[] = [];
-  for (const entry of entries) {
-    const managedSlot = typeof entry === "string" && (slots.has(entry) || /^[A-Z][A-Z0-9_]*$/u.test(entry));
-    const valid = typeof entry === "string" && (operation === "bash" ? COMMAND_NAME.test(entry) : managedSlot);
-    if (!valid) fault(faults, "value-invalid", path, `Give access.${operation} valid managed names.`);
-    else if (names.includes(entry)) fault(faults, "value-invalid", path, `Remove the duplicate ${entry} from access.${operation}.`);
-    else names.push(entry);
-  }
-  return names;
-}
-
-function setAccess(access: StageAccess, operation: string, names: string[]): void {
-  if (operation === "read") access.read = names;
-  else if (operation === "write") access.write = names;
-  else if (operation === "edit") access.edit = names;
-  else if (operation === "bash") access.bash = names;
-}
-
-function stageAccess(data: Record<string, unknown>, path: string, faults: Refusal[], slots: ReadonlySet<string>): StageAccess | undefined {
-  if (!("access" in data)) return undefined;
-  const value = data["access"];
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    fault(faults, "value-invalid", path, "Give access a mapping of tool operations to names.");
-    return {};
-  }
-  const access: StageAccess = {};
-  for (const [operation, entries] of Object.entries(value)) {
-    if (!OPERATIONS.has(operation)) fault(faults, "key-unknown", path, `Remove the unknown access operation ${operation}.`);
-    else setAccess(access, operation, accessNames(operation, entries, path, faults, slots));
-  }
-  return access;
-}
-
-function accessField(sound: boolean, data: Record<string, unknown>, path: string, faults: Refusal[], slots: ReadonlySet<string>): { access?: StageAccess } {
-  if (!sound) return {};
-  const access = stageAccess(data, path, faults, slots);
-  return access === undefined ? {} : { access };
-}
-
 function validateStageBody(sound: boolean, body: string, path: string, faults: Refusal[]): void {
   if (sound && body.trim().length === 0) fault(faults, "body-missing", path, "Add an instruction to the stage body.");
 }
@@ -87,11 +37,9 @@ export function parseSingleStage(
   path: string,
   name: string,
   faults: Refusal[],
-  managedSlots: ReadonlySet<string> = new Set(BUILT_IN_SLOTS),
 ): StageNode {
   const document = readMarkdown(filename, path, faults);
-  const options = document.sound ? validateData(document.data, path, faults, ["workdir", "access"]) : {};
-  const access = accessField(document.sound, document.data, path, faults, managedSlots);
+  const options = document.sound ? validateData(document.data, path, faults, ["workdir"]) : {};
   validateStageBody(document.sound, document.body, path, faults);
   return {
     kind: "STAGE",
@@ -105,7 +53,6 @@ export function parseSingleStage(
     subflows: new Map(),
     body: document.body,
     ...(typeof document.data["workdir"] === "string" ? { workdir: document.data["workdir"] } : {}),
-    ...access,
   };
 }
 
@@ -212,12 +159,10 @@ export function parseStageFolder(
   sentinel: string,
   faults: Refusal[],
   validateSubflows: (dir: string, path: string) => StageNode["subflows"],
-  managedSlots: ReadonlySet<string> = new Set(BUILT_IN_SLOTS),
 ): StageNode {
   const documentPath = `${path}/${sentinel}`;
   const document = readMarkdown(join(dir, sentinel), documentPath, faults);
-  const options = document.sound ? validateData(document.data, documentPath, faults, ["workdir", "access"]) : {};
-  const access = accessField(document.sound, document.data, documentPath, faults, managedSlots);
+  const options = document.sound ? validateData(document.data, documentPath, faults, ["workdir"]) : {};
   validateStageBody(document.sound, document.body, path, faults);
   const parts = classifyStage(dir, path, sentinel, faults, validateSubflows);
   if (parts.schemas.length > 1) {
@@ -242,6 +187,5 @@ export function parseStageFolder(
     subflows: parts.subflows,
     body: document.body,
     ...(typeof document.data["workdir"] === "string" ? { workdir: document.data["workdir"] } : {}),
-    ...access,
   };
 }

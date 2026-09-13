@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-13
+
+Ticket 0273 retires the stage `access` policy. Every stage receives the ordinary read, write, edit, and Bash tools under the operator's operating-system authority. Authored `access` now receives `key-unknown`; it is never ignored. New records no longer carry `stage_start.access` or `tool_denied`, while record-1 readers retain both historical forms.
+
 ## 2026-09-12
 
 Ticket 0265 corrects the authentication contract link in the home specification and adds the specification checker to the complete offline `make check` gate. The gate now rejects missing local specification links and record-event vocabulary drift before the project checks run.

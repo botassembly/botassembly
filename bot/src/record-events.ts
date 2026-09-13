@@ -1,6 +1,5 @@
 import pkg from "../package.json" with { type: "json" };
 import { fanoutDoneEvent, fanoutStartEvent } from "./fanout-events.ts";
-import type { StageAccess } from "./model.ts";
 import { stageFields, type HashedPath, type StageIdentity } from "./record-fields.ts";
 import type { Cause } from "./spine.ts";
 
@@ -130,7 +129,7 @@ export function stageStartEvent(input: {
   workdir?: { authored: string | null; resolved: string };
   session?: string;
   tools?: RecordedTool[];
-  skills?: RecruitedSkill[]; access?: StageAccess;
+  skills?: RecruitedSkill[];
 }) {
   return {
     ...stageFields(input.ts, "stage_start" as const, input.identity),
@@ -140,12 +139,8 @@ export function stageStartEvent(input: {
     ...(input.workdir === undefined ? {} : { workdir: input.workdir }),
     ...(input.session === undefined ? {} : { session: input.session }),
     ...(input.tools === undefined ? {} : { tools: input.tools }),
-    ...(input.skills === undefined ? {} : { skills: input.skills }), ...(input.access === undefined ? {} : { access: input.access }),
+    ...(input.skills === undefined ? {} : { skills: input.skills }),
   };
-}
-
-export function toolDeniedEvent(input: { ts: string; identity: StageIdentity; tool: string; boundary: string }) {
-  return { ...stageFields(input.ts, "tool_denied" as const, input.identity), tool: input.tool, boundary: input.boundary };
 }
 
 export function promptEvent(input: {
@@ -425,7 +420,6 @@ export const RECORD_EVENT_CONSTRUCTORS = {
   gate_start: gateStartEvent,
   check: checkEvent,
   tool_call: toolCallEvent,
-  tool_denied: toolDeniedEvent,
   subflow_call: subflowCallEvent,
   chose: choseEvent,
   loop_done: loopDoneEvent,

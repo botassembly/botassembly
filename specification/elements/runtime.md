@@ -264,11 +264,9 @@ cause `fault`, including when it is reported by a `LOOP` question or `CHOOSE`.
 
 ## The agent's tools
 
-Without a stage `access` declaration, the model receives read, write, edit, and Bash tools. Direct file tools accept absolute paths. Bot does not confine them to the working directory.
+Every stage model receives read, write, edit, and Bash tools. Direct file tools accept absolute paths. Commands, hooks, gates, aliases, and subprocesses run with the operator's filesystem and network authority. Bot does not confine them to the working directory.
 
-A declared access policy uses the `access` field. Bot enforces the access policy at its model-facing dispatch of direct tool calls. The access policy is an instruction. The access policy does not provide a security boundary or operating-system containment. An allowed executable can reach outside the policy through its configuration, aliases, and subprocesses when the operating system permits it. Hooks and gates also run with the operator's filesystem and network authority.
-
-Bot retains reported direct tool calls in retained model sessions and denied direct calls in the record. Bot does not watch the filesystem or claim a complete list of changes. A command, script, alias, subprocess, or outside actor can change files without a distinct reported tool call. An operator must supply external containment before running an untrusted assembly or model ([invariants](invariants.md)).
+Bot retains reported direct tool calls in retained model sessions. Bot does not watch the filesystem or claim a complete list of changes. A command, script, alias, subprocess, or outside actor can change files without a distinct reported tool call. An operator must supply operating-system or container containment before running an untrusted assembly or model ([invariants](invariants.md)).
 
 ## Model sessions
 
@@ -306,7 +304,7 @@ many retries remain.
 
 This information hiding directs the agent's attention and reduces accidental interference with the machinery. It does not restrict what the operating system lets a process reach.
 
-Bot is not a sandbox. Slots do not hide their values from a shell, and `access` does not contain an allowed process. The retained sessions show only direct tool calls reported by the model harness. The record separately shows denied direct calls. Neither source watches the filesystem or lists every side effect.
+Bot is not a sandbox. Slots do not hide their values from a shell. The retained sessions show only direct tool calls reported by the model harness. They do not watch the filesystem or list every side effect.
 
 ## Running child processes
 

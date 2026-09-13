@@ -1,4 +1,5 @@
 import { isRecordEventName } from "./record-events.ts";
+import { isLegacyRecordEventName, legacyRecordFieldRule } from "./legacy-record-events.ts";
 import { CAUSES } from "./spine.ts";
 
 export type RecordClassification = "valid" | "incomplete" | "invalid";
@@ -180,6 +181,12 @@ function startRule(event: Event, expectedRun: string | undefined): string | unde
   return expectedRun !== undefined && event["run"] !== expectedRun ? "run_start identity must match its enclosing run directory" : undefined;
 }
 
+function eventRule(event: Event, name: unknown): string | undefined {
+  if (!isRecordEventName(name) && !isLegacyRecordEventName(name)) return "unknown event";
+  if (typeof event["ts"] !== "string" || !Number.isFinite(Date.parse(event["ts"]))) return `${name} requires a timestamp`;
+  return legacyRecordFieldRule(event);
+}
+
 /** Validate the ordering and terminal facts needed for a structurally possible
  * story. Operations validate detailed fields and artifacts when they use them. */
 export function classifyStory(events: Event[], sourceLines?: number[], expectedRun?: string, _allowSubflow = false): StoryClassification {
@@ -190,9 +197,9 @@ export function classifyStory(events: Event[], sourceLines?: number[], expectedR
   const state: StoryState = { open: new Set(), closed: new Set(), containers: new Set(), fanouts: new Set(), completedFanouts: new Set(), ended: false };
   for (const [index, event] of events.entries()) {
     const name = event["event"], line = lineNumber(sourceLines, index);
-    if (!isRecordEventName(name)) return rejected(line, "unknown event");
-    if (typeof event["ts"] !== "string" || !Number.isFinite(Date.parse(event["ts"]))) return rejected(line, `${name} requires a timestamp`);
-    const rule = transition(state, event, name, index === 0);
+    const malformed = eventRule(event, name);
+    if (malformed !== undefined) return rejected(line, malformed);
+    const rule = transition(state, event, String(name), index === 0);
     if (rule !== undefined) return rejected(line, rule);
   }
   return { classification: state.ended ? "valid" : "incomplete" };

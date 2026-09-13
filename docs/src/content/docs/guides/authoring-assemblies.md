@@ -232,26 +232,6 @@ Each array entry has exactly `id` and `input`. `bot` sorts items by the bytes of
 
 `bot assembly check` does not walk into the subflow a fan-out selects, so the fan-out row's `options=` field is empty and the child stages never appear.
 
-## Limiting what a stage can reach
-
-By default a stage's agent gets the unrestricted tool set. The stage-only `access` key narrows it:
-
-```yaml
-access:
-  read: [INPUT, PROJECT_DATA]
-  write: [OUTPUT]
-  edit: []
-  bash: [git, python3]
-```
-
-`access` is a mapping with up to four operation keys: `read`, `write`, `edit`, and `bash`. Any other operation is refused. Each takes an array of names with no duplicates. An empty array denies every name for that operation, and `access: {}` denies every operation. Omitting `access` keeps the unrestricted default.
-
-The file operations name managed slot exports, not paths. The runtime slots are `INPUT`, `OUTPUT`, `TMP`, `SKILLS`, and `PWD`, and a declared assembly slot contributes its own uppercase export. `SUBFLOWS` is available only where subflows are in scope. Naming a slot that is not available at that stage is refused.
-
-A bash name authorizes direct dispatch by that name. It does not prove the executable is installed, and it is not a sandbox: a command you allow can do anything that command can do.
-
-`access` belongs to `STAGE` only. A control sentinel carrying it is refused. The full contract is [access](/specification/structure/#access).
-
 ## Skills
 
 A `skills/` folder in the assembly holds reference documents the

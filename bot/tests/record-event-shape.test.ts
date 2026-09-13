@@ -23,7 +23,6 @@ import {
   subflowCallEvent,
   tmpTeardownEvent,
   toolCallEvent,
-  toolDeniedEvent,
   turnEvent,
   unreconciledEvent,
   type RecordEvent,
@@ -47,7 +46,7 @@ const FIELD_COVERAGE = {
   run_end: { ts: true, stage: true, repeat: true, retry: true, exit: true, cause: true, reason: true },
   stage_carried: { ts: true, stage: true, repeat: true, retry: true, from: true, output: true },
   stage_start: { ts: true, stage: true, repeat: true, retry: true, received: true, options: true, slots: true,
-    workdir: true, session: true, tools: true, skills: true, access: true },
+    workdir: true, session: true, tools: true, skills: true },
   prompt: { ts: true, stage: true, repeat: true, retry: true, prompt: true },
   stage_end: { ts: true, stage: true, repeat: true, retry: true, exit: true, cause: true, output: true, sealed: true,
     judged: true, reason: true },
@@ -62,7 +61,6 @@ const FIELD_COVERAGE = {
   gate_start: { ts: true, stage: true, repeat: true, retry: true, file: true, sha256: true },
   check: { ts: true, stage: true, repeat: true, retry: true, check: true, file: true, exit: true, capture: true, sha256: true },
   tool_call: { ts: true, stage: true, repeat: true, retry: true, tool: true, decision: true, evidence: true, reason: true, item: true },
-  tool_denied: { ts: true, stage: true, repeat: true, retry: true, tool: true, boundary: true },
   subflow_call: { ts: true, stage: true, repeat: true, retry: true, call: true, flow: true, input: true, exit: true,
     cause: true, reason: true, child: true, depth: true, started: true, via: true, item: true, output: true },
   chose: { ts: true, stage: true, repeat: true, retry: true, chose: true, declined: true, reason: true },
@@ -93,7 +91,6 @@ const REQUIRED_FIELDS: Record<RecordEventName, readonly string[]> = {
   gate_start: ["ts", "event", "stage", "retry", "file", "sha256"],
   check: ["ts", "event", "stage", "retry", "check", "file", "exit", "capture", "sha256"],
   tool_call: ["ts", "event", "stage", "retry", "tool", "decision", "evidence", "reason", "item"],
-  tool_denied: ["ts", "event", "stage", "retry", "tool", "boundary"],
   subflow_call: ["ts", "event", "stage", "retry", "call", "flow", "input", "exit", "cause", "child", "depth", "started"],
   chose: ["ts", "event", "stage", "retry", "chose", "declined", "reason"],
   loop_done: ["ts", "event", "stage", "retry", "repeats", "ended_by"],
@@ -128,8 +125,7 @@ function fieldSamples(): Record<RecordEventName, Record<string, unknown>> {
       slots: { pwd: "/workspace", input: "/input", output: "/output", tmp: "/workspace/tmp", skills: "/skills",
         subflows: "/subflows" },
       workdir: { authored: null, resolved: "." }, session: "stages/01-work/1/session.jsonl",
-      tools: [{ name: "read", description: "Read" }], skills: [{ name: "review", source: "stage-local" }],
-      access: { read: ["INPUT"] } }),
+      tools: [{ name: "read", description: "Read" }], skills: [{ name: "review", source: "stage-local" }] }),
     prompt: promptEvent({ ts: TS, identity, prompt: [{ source: "workspace", mode: "use", name: "review", path: "skills/review/SKILL.md" }] }),
     stage_end: stageEndEvent({ ts: TS, identity, exit: 0, cause: "success", output: OUTPUT, sealed: true, judged: true, reason: "done" }),
     unreconciled: unreconciledEvent({ ts: TS, identity, started: TS, stopped: TS }),
@@ -144,7 +140,6 @@ function fieldSamples(): Record<RecordEventName, Record<string, unknown>> {
     gate_start: gateStartEvent({ ts: TS, identity, file: "gate/test.sh", sha256: HASH }),
     check: checkEvent({ ts: TS, identity, check: "gate", exit: 0, capture: "checks/gate.txt", file: "gate/test.sh", sha256: HASH }),
     tool_call: toolCallEvent({ ts: TS, identity, tool: "mark", decision: "skipped", item: 1, evidence: "checked", reason: "not applicable" }),
-    tool_denied: toolDeniedEvent({ ts: TS, identity, tool: "read", boundary: "INPUT" }),
     subflow_call: subflowCallEvent({ ts: TS, identity: IDENTITY, call: 1, flow: "child", depth: 1, started: true,
       input: { path: "stages/01-work/1/1/subflows/1/request.json", sha256: HASH, bytes: 4 },
       child: "stages/01-work/1/1/subflows/1", exit: 0, cause: "success", reason: "done",
@@ -190,6 +185,14 @@ test("the constructor registry and field coverage ledger cover every current eve
       expect([sample, ...(additional[name] ?? [])].some((held) => Object.hasOwn(held, field)), `${name}.${field}`).toBe(true);
     }
   }
+});
+
+test("retired access facts remain readable but have no current writer constructor", () => {
+  expect(Object.keys(RECORD_EVENT_CONSTRUCTORS)).not.toContain("tool_denied");
+  expect(recordEventShape({ ...opened(), access: { read: ["INPUT"], bash: ["git"] } })).toBeUndefined();
+  expect(recordEventShape({ ts: TS, event: "tool_denied", ...IDENTITY, tool: "read", boundary: "INPUT" })).toBeUndefined();
+  expect(recordEventShape({ ...opened(), access: { invented: ["INPUT"] } })).toBeDefined();
+  expect(recordEventShape({ ts: TS, event: "tool_denied", ...IDENTITY, tool: "", boundary: "INPUT" })).toBeDefined();
 });
 
 test("a current writer run_start requires a canonical installation identity", () => {
@@ -245,7 +248,6 @@ test("closed nested shapes and conditional groups reject partial or extra member
     { ...stage, workdir: { ...(stage["workdir"] as Record<string, unknown>), extra: true } },
     { ...stage, tools: [{ name: "read", description: "Read", extra: true }] },
     { ...stage, skills: [{ name: "review", source: "stage-local", extra: true }] },
-    { ...stage, access: { read: ["INPUT"], invented: ["OUTPUT"] } },
     { ...promptBase, prompt: [{ source: "request", path: "request.txt", extra: true }] },
     { ...promptBase, prompt: [{ source: "skill", name: "review", path: "skills/review/SKILL.md", extra: true }] },
     { ...promptBase, prompt: [{ source: "workspace", mode: "use", path: "skills/review/SKILL.md", extra: true }] },
@@ -278,8 +280,7 @@ test("the reader schema accepts every current constructor and its conditional fo
       options: [{ name: "timeout", value: 10, rung: "stage" }],
       slots: { pwd: "/workspace", input: "/input", output: "/output", tmp: "/workspace/tmp", skills: "/skills" },
       workdir: { authored: null, resolved: "." }, session: "stages/01-work/1/session.jsonl",
-      tools: [{ name: "read", description: "Read a file" }], skills: [{ name: "review", source: "stage-local" }],
-      access: { read: ["INPUT"] } }),
+      tools: [{ name: "read", description: "Read a file" }], skills: [{ name: "review", source: "stage-local" }] }),
     promptEvent({ ts: TS, identity: IDENTITY, prompt: [
       { source: "assembly", path: "assembly/ASSEMBLY.md" },
       { source: "workspace", mode: "announce", name: "review", path: "$PWD/.agents/skills/review/SKILL.md" },
@@ -307,7 +308,7 @@ test("the reader schema accepts every current constructor and its conditional fo
     toolCallEvent({ ts: TS, identity: IDENTITY, tool: "select", decision: "safe", reason: "safer" }),
     toolCallEvent({ ts: TS, identity: IDENTITY, tool: "clean-temp", decision: "clean" }),
     toolCallEvent({ ts: TS, identity: IDENTITY, tool: "fault", decision: "fault", reason: "broken" }),
-    toolDeniedEvent({ ts: TS, identity: IDENTITY, tool: "write", boundary: "OUTPUT" }),
+    { ts: TS, event: "tool_denied", ...IDENTITY, tool: "write", boundary: "OUTPUT" },
     subflowCallEvent({ ts: TS, identity: IDENTITY, call: 1, flow: "child", depth: 1, started: true,
       input: { text: "", sha256: HASH, bytes: 0 }, child: "stages/01-work/1/1/subflows/1", exit: 0, cause: "success" }),
     subflowCallEvent({ ts: TS, identity: IDENTITY, call: 2, flow: "child", depth: 1, started: true,
@@ -355,7 +356,6 @@ test("the reader schema rejects missing required fields and broken conditional g
     ["gate_start", gateStartEvent({ ts: TS, identity: IDENTITY, file: "gate.sh", sha256: HASH }), "file"],
     ["check", checkEvent({ ts: TS, identity: IDENTITY, check: "output", exit: 0, capture: "checks/output.txt" }), "capture"],
     ["tool_call", toolCallEvent({ ts: TS, identity: IDENTITY, tool: "mark", decision: "done", item: 1, evidence: "done" }), "evidence"],
-    ["tool_denied", toolDeniedEvent({ ts: TS, identity: IDENTITY, tool: "read", boundary: "INPUT" }), "boundary"],
     ["subflow_call", subflowCallEvent({ ts: TS, identity: IDENTITY, call: 1, flow: "child", depth: 1, started: false }), "call"],
     ["chose", choseEvent({ ts: TS, identity: IDENTITY, chose: "safe", declined: [], reason: "safe" }), "chose"],
     ["loop_done", loopDoneEvent({ ts: TS, identity: IDENTITY, repeats: 1, endedBy: "limit" }), "repeats"],

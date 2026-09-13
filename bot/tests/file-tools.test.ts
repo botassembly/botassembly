@@ -64,7 +64,7 @@ test("edit expands $TMP paths and a declared slot expands like a runtime slot", 
 });
 
 // Ticket 0061's tool-availability witness, qualified by Ticket 0184: the
-// runtime provides this complete file-tool set before any stage access policy
+// runtime provides this complete file-tool set to every stage
 // wraps model-facing dispatch. The walk found the shell unwitnessed:
 // `createBashTool` could be deleted from createFileTools with all 337 tests and
 // the whole corpus still green, and this is the test that stops that being

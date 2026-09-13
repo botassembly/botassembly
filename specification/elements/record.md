@@ -85,7 +85,7 @@ step; the prose around it remains the authority for what those names mean.
 | run_start | `record`, `runtime`, `ts`, `event`, `run`, `assembly`, `assembly_hash`, `flow`, `continued_from`, `correlation`, `installation_id`, `request`, `workdir`, `runtime_source`, `runtime_digest`, `lock_sha256`, `node`, `provider_adapter`, `runtime_tree_sha256`, `model_source` |
 | run_end | `ts`, `event`, `stage`, `repeat`, `retry`, `exit`, `cause`, `reason` |
 | stage_carried | `ts`, `event`, `stage`, `repeat`, `retry`, `from`, `output` |
-| stage_start | `ts`, `event`, `stage`, `repeat`, `retry`, `received`, `options`, `slots`, `workdir`, `session`, `tools`, `skills`, `access` |
+| stage_start | `ts`, `event`, `stage`, `repeat`, `retry`, `received`, `options`, `slots`, `workdir`, `session`, `tools`, `skills` |
 | prompt | `ts`, `event`, `stage`, `repeat`, `retry`, `prompt` |
 | stage_end | `ts`, `event`, `stage`, `repeat`, `retry`, `exit`, `cause`, `output`, `sealed`, `judged`, `reason` |
 | unreconciled | `ts`, `event`, `stage`, `repeat`, `retry`, `started`, `stopped` |
@@ -97,7 +97,6 @@ step; the prose around it remains the authority for what those names mean.
 | gate_start | `ts`, `event`, `stage`, `repeat`, `retry`, `file`, `sha256` |
 | check | `ts`, `event`, `stage`, `repeat`, `retry`, `check`, `file`, `exit`, `capture`, `sha256` |
 | tool_call | `ts`, `event`, `stage`, `repeat`, `retry`, `tool`, `decision`, `evidence`, `reason`, `item` |
-| tool_denied | `ts`, `event`, `stage`, `repeat`, `retry`, `tool`, `boundary` |
 | subflow_call | `ts`, `event`, `stage`, `repeat`, `retry`, `call`, `flow`, `input`, `exit`, `cause`, `reason`, `child`, `depth`, `started`, `via`, `item`, `output` |
 | chose | `ts`, `event`, `stage`, `repeat`, `retry`, `chose`, `declined`, `reason` |
 | loop_done | `ts`, `event`, `stage`, `repeat`, `retry`, `repeats`, `ended_by`, `reason` |
@@ -152,10 +151,9 @@ carries `slots`: the exact absolute strings supplied in its runtime environment
 for `pwd`, `input`, `output`, `tmp`, and `skills`. When the runtime environment
 also supplies `$SUBFLOWS`, the object carries that exact string as `subflows`.
 The member is absent when no subflow is in scope. The object appears on every
-attempt; a `CHOOSE` start has no `slots` because it has no `$OUTPUT`. A stage
-with a declared model-tool boundary carries that validated policy in `access`.
-Each denied model call adds a `tool_denied` event with only its attempt
-identity, tool, and stopped boundary.
+attempt; a `CHOOSE` start has no `slots` because it has no `$OUTPUT`.
+
+Record-1 readers retain two fields from the retired authored-access feature. An older `stage_start` may carry its validated policy in `access`, and an older denied model call may appear as `tool_denied` with its attempt identity, tool, and stopped boundary. Current writers produce neither form.
 
 A `prompt` event carries the required prompt-construction sources for its stage
 attempt. It is published after successful prompt construction and, when a

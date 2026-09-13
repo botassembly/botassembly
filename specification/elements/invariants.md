@@ -91,10 +91,10 @@ of where files sit rather than because something at run time arranged it.
 
 ## What is claimed, and what is not
 
-34. Bot does not provide operating-system containment. A stage `access` declaration can refuse direct model-facing calls. It does not contain an allowed process.
-35. Without an access declaration, a stage receives all four direct tools: read, write, edit, and Bash. Direct file tools accept absolute paths.
-36. An agent, hook, gate, allowed command, configuration, alias, or subprocess may reach anything the operating system permits.
-37. Bot retains reported direct tool calls and denied direct calls. It does not watch the filesystem or claim a complete list of changes.
+34. Bot does not provide operating-system containment. The operator supplies that boundary when work needs it.
+35. Every stage receives read, write, edit, and Bash tools. Direct file tools accept absolute paths.
+36. An agent, hook, gate, command, configuration, alias, or subprocess may reach anything the operating system permits.
+37. Bot retains reported direct tool calls. It does not watch the filesystem or claim a complete list of changes.
 38. A subflow call is an invocation. The input goes down as the child run's
     request, the flow's output comes back, and no session crosses in either
     direction ([subflows](subflow.md)).
