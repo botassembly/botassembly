@@ -64,7 +64,12 @@ export class OrdinaryOutput {
 let processOutput: OrdinaryOutput | undefined;
 let rawProcessOutput = false;
 
+/** The one ordinary queue, and the end of any raw latch an earlier pipeline set.
+ *  The latch belongs to the raw command that took stdout; asking for ordinary
+ *  output is the moment it stops (ticket 0281). The queue itself is built once,
+ *  so the clearing cannot live in its construction. */
 export function ordinaryProcessOutput(): OrdinaryOutput {
+  rawProcessOutput = false;
   processOutput ??= new OrdinaryOutput(process.stdout);
   return processOutput;
 }

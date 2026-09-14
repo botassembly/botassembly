@@ -47,15 +47,6 @@ export async function inspectExplain(home: string, prefix: string, stage: string
   return "failed" in run ? run.failed : explainRun(run.directory, run.record.events, stage, json);
 }
 
-export async function inspectRequest(home: string, prefix: string): Promise<InspectionResult> {
-  const request = await selectRequest(home, prefix);
-  if ("failed" in request) return request.failed;
-  const file = await heldRunFile(request.directory, request.path);
-  if (file.kind !== "held") return nothing("This run has no readable request.");
-  if (file.size !== request.bytes || hashBytes(file.bytes) !== request.sha256) return nothing(`The retained request of ${basename(request.directory)} does not match its record.`);
-  return { exitCode: 0, output: file.bytes };
-}
-
 export async function selectRequest(home: string, prefix: string): Promise<
 { directory: string; path: string; sha256: string; bytes: number } | { failed: InspectionResult }> {
   const run = await openRun(home, prefix);

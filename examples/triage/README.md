@@ -37,7 +37,7 @@ flows/triage/FLOW.md  flow-definition  type=FLOW  flow=flows/triage  max_subflow
 02-route  CHOOSE  flow=flows/triage  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
 02-route/routine/01-routine  STAGE  flow=flows/triage  input=classify.json  output=routine.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
 02-route/urgent/01-urgent  STAGE  flow=flows/triage  input=classify.json  output=urgent.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
-03-verify  STAGE  flow=flows/triage  input=routine.txt,urgent.txt  output=verify.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=3600,retries=1,local-context=ignore
+03-verify  STAGE  flow=flows/triage  input=routine.txt  output=verify.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=3600,retries=1,local-context=ignore  possible_inputs=routine.txt,urgent.txt
 $ echo $?
 0
 ```

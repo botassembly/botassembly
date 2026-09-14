@@ -89,12 +89,14 @@ export function processBoundary(): CliBoundary {
   let authLogoutRuntime: Promise<AuthLogoutRuntime> | undefined;
   let catalog: Promise<ModelRuntime> | undefined;
   delete process.env["BOT_HOME"];
-  const output = ordinaryProcessOutput();
+  // Build the ordinary queue here, so its stdout error listener is attached
+  // before any command writes. Each write asks for it again, ending a raw latch.
+  ordinaryProcessOutput();
   return {
     platform: process.platform,
     cwd: process.cwd(), env, stdinIsTTY: process.stdin.isTTY, stderrIsTTY: process.stderr.isTTY,
     readStdin: processStdin,
-    stdout: (bytes) => { output.write(bytes); },
+    stdout: (bytes) => { ordinaryProcessOutput().write(bytes); },
     rawStdout: () => processRawStdout(),
     stderr: (bytes) => { process.stderr.write(bytes); },
     clock,

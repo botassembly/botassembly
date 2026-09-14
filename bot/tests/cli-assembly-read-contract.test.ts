@@ -94,6 +94,60 @@ test("assembly check renders depth-dependent child artifacts in human and JSON m
   expect(human.out).toContain("child_input=&lt;item&gt;.json");
 });
 
+// The merge keeps the child's own possibilities, the way `child_outputs` keeps
+// them for artifacts. A child context whose first arriving file matches the
+// root's still reports the alternatives only it can see (ticket 0281).
+test("a child context reports arriving possibilities the root cannot see", async () => {
+  const home = await homeFixture();
+  const recur = join(home, "assemblies", "deep", "flows", "recur");
+  await Promise.all([
+    mkdir(join(recur, "00-plan"), { recursive: true }),
+    mkdir(join(recur, "01-spread"), { recursive: true }),
+    mkdir(join(recur, "subflows", "recur", "01-result"), { recursive: true }),
+  ]);
+  await Promise.all([
+    writeFile(join(home, "assemblies", "deep", "ASSEMBLY.md"), "---\nintelligence: default\n---\nDeep.\n"),
+    writeFile(join(recur, "DESCEND.md"), "---\ndescription: deep\nmax-depth: 3\n---\n"),
+    writeFile(join(recur, "00-plan", "STAGE.md"), "---\n---\nPlan.\n"),
+    writeFile(join(recur, "00-plan", "schema.json"), "{\"type\":\"object\"}\n"),
+    writeFile(join(recur, "01-spread", "FANOUT.md"), "---\nitems: jobs\nsubflow: recur\nwidth: 1\nmax-items: 2\n---\n"),
+    writeFile(join(recur, "02-finish.md"), "---\n---\nFinish.\n"),
+    writeFile(join(recur, "subflows", "recur", "FLOW.md"), "---\ndescription: revealed helper\n---\n"),
+    writeFile(join(recur, "subflows", "recur", "01-result", "STAGE.md"), "---\n---\nReturn JSON.\n"),
+    writeFile(join(recur, "subflows", "recur", "01-result", "schema.json"), "{\"type\":\"object\"}\n"),
+  ]);
+  const json = await invokeCli(["assembly", "check", "deep/recur", "--json"], { home });
+  expect(json.code, json.err).toBe(0);
+  const data = document(json.out)["data"];
+  if (!mapping(data) || !Array.isArray(data["stages"])) throw new Error("Expected check stages.");
+  expect(data["stages"].find((row) => mapping(row) && row["stage"] === "02-finish")).toMatchObject({
+    input: ["<item>.txt"], child_possible_inputs: ["<item>.txt", "<item>.json"],
+  });
+  const human = await invokeCli(["assembly", "check", "deep/recur"], { home });
+  expect(human.code, human.err).toBe(0);
+  expect(human.out).toContain("child_possible_inputs=&lt;item&gt;.txt,&lt;item&gt;.json");
+});
+
+// The human rendering of an arriving union has its own line and its own witness.
+test("the human check row prints possible_inputs beside possible_outputs", async () => {
+  const home = await homeFixture();
+  const change = join(home, "assemblies", "change", "flows", "change");
+  await mkdir(join(change, "01-decide"), { recursive: true });
+  await Promise.all([
+    writeFile(join(home, "assemblies", "change", "ASSEMBLY.md"), "---\nintelligence: default\n---\nChange.\n"),
+    writeFile(join(change, "FLOW.md"), "---\ndescription: change\n---\n"),
+    writeFile(join(change, "01-decide", "CHOOSE.md"), "---\n---\n\n- `escalate` \u2014 a person has to look\n- `patch` \u2014 fix it where it stands\n"),
+    writeFile(join(change, "01-decide", "escalate.md"), "---\n---\nEscalate.\n"),
+    writeFile(join(change, "01-decide", "patch.md"), "---\n---\nPatch.\n"),
+    writeFile(join(change, "99-done.md"), "---\n---\nDone.\n"),
+  ]);
+  const human = await invokeCli(["assembly", "check", "change/change"], { home });
+  expect(human.code, human.err).toBe(0);
+  const done = human.out.split("\n").find((line) => line.startsWith("99-done  STAGE"));
+  expect(done).toContain("input=escalate.txt  output=done.txt");
+  expect(done).toMatch(/local-context=ignore {2}possible_inputs=escalate\.txt,patch\.txt$/u);
+});
+
 test("assembly check passes a declared dynamic slot to the existing reader", async () => {
   const home = await homeFixture();
   const root = join(home, "assemblies", "slotted");

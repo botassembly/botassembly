@@ -211,3 +211,20 @@ test("refusal codes: the reader's are corpus cases, the home's are pinned by tes
   expect(runtimeOnly.filter((code) => !suite.includes(`toContain(\"${code}\")`)),
     "runtime-only codes with no runtime assertion").toEqual([]);
 });
+
+// An `input` array names the files that arrive together, and a stage refuses
+// two arriving files that share a source name (`input-collision`). A corpus row
+// reporting such a pair would be a shape check itself rejects, so every
+// accepted row must survive the rule its own runtime applies (ticket 0281).
+test("no accepted case reports two arriving inputs that share a source name", () => {
+  const colliding: string[] = [];
+  for (const held of all.filter(({ kind }) => kind === "accept")) {
+    for (const row of parseLines(readFileSync(join(held.dir, "expected.jsonl"), "utf8"))) {
+      const input = row["input"];
+      if (!Array.isArray(input)) continue;
+      const sources = input.map((name) => String(name).replace(/\.[^.]*$/u, ""));
+      if (new Set(sources).size !== sources.length) colliding.push(`${held.name} ${String(row["stage"])}`);
+    }
+  }
+  expect(colliding, "accepted rows whose input array check would refuse if authored").toEqual([]);
+});

@@ -17,6 +17,12 @@ vi.mock("../src/run-files.ts", async (importOriginal) => {
       reads.files.push(`${args[0]}/${args[1]}`);
       return actual.heldRunFile(...args);
     },
+    // The child-agreement reader opens a retained request under the writer's
+    // own ingestion ceiling, so the observation follows that door too.
+    boundedHeldRunFile: async (...args: Parameters<typeof actual.boundedHeldRunFile>) => {
+      reads.files.push(`${args[0]}/${args[1]}`);
+      return actual.boundedHeldRunFile(...args);
+    },
   };
 });
 
@@ -111,7 +117,7 @@ test("count mode reads no descendant record or request", async () => {
     assemblies: [], flows: [], states: [], causes: [], fields: ["id"],
     json: true, count: true, limit: 20,
   };
-  await inspectRunList(held.home, query, TS);
+  await inspectRunList(held.home, query);
   expect(reads.records).toEqual([`${held.directory}/record.jsonl`]);
   expect(reads.files).toEqual([]);
 });

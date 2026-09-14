@@ -122,7 +122,7 @@ export async function readRunState(home: string, id: string, withTokens = true, 
   return runStateFact(directory, id, record, checkSync(directory, RUN_LOCK), withTokens, withUsage);
 }
 
-function runsLines(runs: RunReading[], _readingAt?: string): string[] {
+function runsLines(runs: RunReading[]): string[] {
   return renderTable([
     { label: "run id" },
     { label: "assembly" },
@@ -185,7 +185,7 @@ function limitedRuns(held: HeldRun[], query: RunsQuery): HeldRun[] {
 // a different home from the person reading the table.
 // Keep the public reader's former `(home, json)` call shape while the CLI
 // supplies `(home, query, json)` for bounded queries.
-export async function inspectRuns(home: string, queryOrJson: RunsQuery | boolean = { all: false }, json = false, readingAt?: string): Promise<InspectionResult> {
+export async function inspectRuns(home: string, queryOrJson: RunsQuery | boolean = { all: false }, json = false): Promise<InspectionResult> {
   const query = typeof queryOrJson === "boolean" ? { all: false } : queryOrJson;
   const machine = typeof queryOrJson === "boolean" ? queryOrJson : json;
   const names = await runNames(home);
@@ -197,7 +197,7 @@ export async function inspectRuns(home: string, queryOrJson: RunsQuery | boolean
   const document: RunsDocument = { schemaVersion: 1, runs };
   return {
     exitCode: runs.length === 0 ? 1 : 0,
-    output: output(machine ? [jsonObject(document)] : runs.length === 0 ? [] : runsLines(runs, readingAt)),
+    output: output(machine ? [jsonObject(document)] : runs.length === 0 ? [] : runsLines(runs)),
     diagnostics: runsDiagnostics(home, query, names, shown, held, runs),
   };
 }

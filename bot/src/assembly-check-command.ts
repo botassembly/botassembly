@@ -84,18 +84,22 @@ function definitionLine(held: Record<string, unknown>, type: string, flow: strin
 
 function childDetails(held: Record<string, unknown>): string {
   const childInput = held["child_input"], childOutputs = held["child_outputs"], childOptions = held["child_options"];
+  const childInputs = held["child_possible_inputs"];
+  const possible = childInputs === undefined ? "" : `  child_possible_inputs=${Array.isArray(childInputs) ? childInputs.map(scalar).join(",") : "-"}`;
   const input = childInput === undefined ? "" : `  child_input=${Array.isArray(childInput) ? childInput.map(scalar).join(",") : "-"}`;
   const outputs = childOutputs === undefined ? "" : `  child_outputs=${Array.isArray(childOutputs) ? childOutputs.map(scalar).join(",") : "-"}`;
   const options = childOptions === undefined ? "" : `  child_options=${optionBundle(childOptions)}`;
-  return input + outputs + options;
+  return input + possible + outputs + options;
 }
 
 function executableLine(held: Record<string, unknown>, type: string, flow: string): string {
   const input = Array.isArray(held["input"]) ? held["input"].map(scalar).join(",") : "-";
+  const inputs = Array.isArray(held["possible_inputs"])
+    ? `  possible_inputs=${held["possible_inputs"].map(scalar).join(",")}` : "";
   const possible = Array.isArray(held["possible_outputs"])
     ? `  possible_outputs=${held["possible_outputs"].map(scalar).join(",")}` : "";
   return `${scalar(held["stage"])}  ${type}${flow}  input=${input}  output=${scalar(held["output"])}  options=${optionBundle(held["options"])}`
-    + possible + childDetails(held);
+    + inputs + possible + childDetails(held);
 }
 
 function humanLine(line: string): string {

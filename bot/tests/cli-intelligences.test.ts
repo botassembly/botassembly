@@ -178,6 +178,13 @@ test("--intelligence requires a value, and an unknown intelligence or either spe
   expect(valueless.err).toBe("request-invalid  --intelligence\n  Supply a value for --intelligence.\n");
 
 
+  // A valueless --intelligence names no rung, so the resolver falls to the
+  // home's `default`. A home without that row cannot settle the model, and
+  // invocation.md says that is `intelligence-unresolved` (ticket 0281).
+  const empty = await checked({}, ["--intelligence"], "intelligences:\n  quick:\n    model: shared-model\n    reasoning: low\n", false);
+  expect(empty.code).toBe(2);
+  expect(empty.err).toContain("intelligence-unresolved");
+
   const missing = await checked({ stage: "intelligence: mistyped\n" }, [], TABLE, false);
   expect(missing.code).toBe(2);
   expect(missing.err).toBe("intelligence-unresolved  flows/main/01-work.md\n  Define an intelligence named mistyped in the home configuration, or name one it defines: assembly, command, container, default, flow, stage, task.\n");

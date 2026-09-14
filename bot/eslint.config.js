@@ -263,18 +263,6 @@ export default tseslint.config(
     rules: restrictedSyntax(NO_PI_PATHS, NO_AMBIENT_CLOCK, NO_CATCH, NO_CAST),
   },
   {
-    // Git's bounded metadata and object protocol is one explicit parser state
-    // machine. Its branches classify adversarial records and process facts.
-    files: ["src/stored-git-secrets.ts"],
-    rules: { "complexity": ["error", 43] },
-  },
-  {
-    // The settled Git fixture adapters map each admitted plumbing command to
-    // controlled output while rejecting every unexpected command.
-    files: ["tests/stored-git-secrets.test.ts"],
-    rules: { "complexity": ["error", 18] },
-  },
-  {
     // CLI composition root/process boundary: cli.ts legitimately reads argv,
     // stdio, cwd, and BOT_HOME/XDG_DATA_HOME from process.env, and constructs
     // the one injected wall/monotonic clock handed to the runtime.

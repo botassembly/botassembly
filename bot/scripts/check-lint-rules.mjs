@@ -4,8 +4,10 @@
 // lint rule nobody has seen fail is decoration (invariant 50). Each case lints
 // a snippet as if it were the named src/ file, with the rule options resolved
 // from the real eslint.config.js, so allowlists are exercised for real.
+import { globSync } from "node:fs";
 import { ESLint, Linter } from "eslint";
 import tseslint from "typescript-eslint";
+import config from "../eslint.config.js";
 
 const CWD = new URL("..", import.meta.url).pathname;
 const RULES = new Set(["no-restricted-syntax", "no-restricted-properties"]);
@@ -96,7 +98,34 @@ const cases = [
   { rule: "planning-prose", path: "tests/probe.test.ts", code: "export const s = \"../../specification/conformance.md\";", expect: null },
 ];
 
+// An allowlist for a file nobody has is an allowance waiting for a future file
+// to inherit in silence: ticket 0272 deleted two modules and left their
+// complexity grants behind, and a complete gate passed (ticket 0281). So every
+// `files:` pattern in the real config must name at least one path on disk.
+// The exception is declared here, and it is the virtual targets above: this
+// script lints snippets AS those paths, which is why they need no file.
+const VIRTUAL_TARGETS = ["src/probe.ts", "tests/probe.test.ts"];
+
+function resolvesToNothing(pattern) {
+  return !VIRTUAL_TARGETS.includes(pattern) && globSync(pattern, { cwd: CWD }).length === 0;
+}
+
+const patterns = config.flatMap((block) => (Array.isArray(block?.files) ? block.files.flat() : []))
+  .filter((pattern) => typeof pattern === "string");
+const dead = patterns.filter(resolvesToNothing);
+
 let failures = 0;
+// The check has to be seen to fire, like every rule below it.
+if (!resolvesToNothing("src/no-such-module.ts")) {
+  failures += 1;
+  console.error("FAIL [files] the dead-pattern check does not report a pattern that names nothing");
+}
+for (const pattern of dead) {
+  failures += 1;
+  console.error(`FAIL [files] eslint.config.js names ${pattern}, which resolves to no file`);
+}
+if (dead.length === 0) console.log(`pass [files] all ${String(patterns.length)} eslint files patterns name a real path`);
+
 for (const held of cases) {
   const messages = await messagesFor(held.path, held.code);
   const fatal = messages.find((message) => message.fatal === true);

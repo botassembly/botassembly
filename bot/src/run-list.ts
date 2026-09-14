@@ -188,7 +188,7 @@ function project(summary: RunSummary, fields: readonly RunListField[]): Record<s
   return Object.fromEntries(fields.map((name) => [name, summary[name]]));
 }
 
-function humanValue(summary: RunSummary, field: RunListField, _now: string): string {
+function humanValue(summary: RunSummary, field: RunListField): string {
   const value = summary[field];
   if (value === null) return "-";
   if (field === "duration") return `${String(value)}ms`;
@@ -196,17 +196,17 @@ function humanValue(summary: RunSummary, field: RunListField, _now: string): str
   return String(value);
 }
 
-function cellWarnings(summary: RunSummary, fields: readonly RunListField[], now: string): Warning[] {
+function cellWarnings(summary: RunSummary, fields: readonly RunListField[]): Warning[] {
   return fields.flatMap((field) => {
-    const omitted = inert(humanValue(summary, field, now), RUN_LIST_CONTRACT.output.cellBytes).omitted;
+    const omitted = inert(humanValue(summary, field), RUN_LIST_CONTRACT.output.cellBytes).omitted;
     return omitted === 0 ? [] : [warning(summary.id, "cell-truncated", `Run ${summary.id} field ${field} omits ${String(omitted)} escaped bytes.`)];
   });
 }
 
-function markdown(rows: readonly RunSummary[], fields: readonly RunListField[], now: string): Buffer {
+function markdown(rows: readonly RunSummary[], fields: readonly RunListField[]): Buffer {
   if (rows.length === 0) return Buffer.from("No runs match.\n");
   const heading = `| ${fields.join(" | ")} |`, rule = `| ${fields.map(() => "---").join(" | ")} |`;
-  const body = rows.map((row) => `| ${fields.map((field) => inert(humanValue(row, field, now), RUN_LIST_CONTRACT.output.cellBytes).text).join(" | ")} |`);
+  const body = rows.map((row) => `| ${fields.map((field) => inert(humanValue(row, field), RUN_LIST_CONTRACT.output.cellBytes).text).join(" | ")} |`);
   return Buffer.from(`${[heading, rule, ...body].join("\n")}\n`);
 }
 
@@ -240,7 +240,7 @@ function isFailure(value: Selection | CliFailure): value is CliFailure {
   return "code" in value;
 }
 
-async function scan(home: string, query: RunListQuery, names: readonly string[], now: string): Promise<Scan> {
+async function scan(home: string, query: RunListQuery, names: readonly string[]): Promise<Scan> {
   const rows: RunSummary[] = [], warnings: Warning[] = [];
   let matched = 0, warningCount = 0;
   let examined: string | undefined;
@@ -250,7 +250,7 @@ async function scan(home: string, query: RunListQuery, names: readonly string[],
     if (one.summary === undefined || !matches(one.summary, query)) continue;
     matched += 1;
     if (!query.count) rows.push(one.summary);
-    const foundWarnings = [...one.warnings, ...cellWarnings(one.summary, query.fields, now)];
+    const foundWarnings = [...one.warnings, ...cellWarnings(one.summary, query.fields)];
     warningCount += foundWarnings.length;
     for (const found of foundWarnings) if (warnings.length < RUN_LIST_CONTRACT.warnings.count) warnings.push(found);
     if (!query.count && matched >= query.limit) break;
@@ -270,7 +270,7 @@ function countResult(query: RunListQuery, selection: Selection, scanned: Scan): 
   return { exit: 0, stdout: Buffer.from(`${jsonObject(document)}\n`), stderr: Buffer.alloc(0) };
 }
 
-function pageResult(home: string, query: RunListQuery, now: string, selection: Selection, scanned: Scan): RunListResult {
+function pageResult(home: string, query: RunListQuery, selection: Selection, scanned: Scan): RunListResult {
   const complete = scanned.examined === undefined || selection.candidates.indexOf(scanned.examined) === selection.candidates.length - 1;
   const next = complete || selection.through === null || scanned.examined === undefined ? null : cursorText({
     version: 1, homeHash: hashBytes(Buffer.from(home)), through: selection.through, after: scanned.examined,
@@ -285,7 +285,7 @@ function pageResult(home: string, query: RunListQuery, now: string, selection: S
   if (query.json) return { exit: 0, stdout: Buffer.from(`${jsonObject(document)}\n`), stderr: Buffer.alloc(0) };
   const warningLines = warningOutput(scanned).toString("utf8").trimEnd().split("\n").filter((line) => line.length > 0);
   const stderr = [...warningLines, ...notice];
-  return { exit: 0, stdout: markdown(scanned.rows, query.fields, now), stderr: Buffer.from(stderr.length === 0 ? "" : `${stderr.join("\n")}\n`) };
+  return { exit: 0, stdout: markdown(scanned.rows, query.fields), stderr: Buffer.from(stderr.length === 0 ? "" : `${stderr.join("\n")}\n`) };
 }
 
 function warningOutput(scanned: Scan): Buffer {
@@ -313,18 +313,18 @@ async function homeFault(home: string): Promise<CliFailure | undefined> {
   return failure("dependency-failed", runs.cause ?? "path-not-directory", "Run list could not inspect the runs directory.", 4, runs.kind === "error");
 }
 
-async function inspected(home: string, query: RunListQuery, now: string): Promise<RunListResult> {
+async function inspected(home: string, query: RunListQuery): Promise<RunListResult> {
   const unavailable = await homeFault(home);
   if (unavailable !== undefined) return errorResult(unavailable, query.json);
   const descending = [...await runNames(home)].sort((first, second) => bytewise(second, first));
   const selection = selected(home, query, descending);
   if (isFailure(selection)) return errorResult(selection, query.json);
-  const scanned = await scan(home, query, selection.candidates, now);
-  return query.count ? countResult(query, selection, scanned) : pageResult(home, query, now, selection, scanned);
+  const scanned = await scan(home, query, selection.candidates);
+  return query.count ? countResult(query, selection, scanned) : pageResult(home, query, selection, scanned);
 }
 
-export async function inspectRunList(home: string, query: RunListQuery, now: string): Promise<RunListResult> {
-  return inspected(home, query, now).then(
+export async function inspectRunList(home: string, query: RunListQuery): Promise<RunListResult> {
+  return inspected(home, query).then(
     (result) => result,
     (reason: unknown) => errorResult(failure("dependency-failed", errorCode(reason) ?? "filesystem-error", "Run list could not read the Bot home.", 4, true), query.json),
   );

@@ -7,7 +7,6 @@ interface Boundary {
   env: NodeJS.ProcessEnv;
   stdout(bytes: string | Uint8Array): void;
   stderr(bytes: string | Uint8Array): void;
-  clock: { timestamp(): string };
 }
 
 function write(boundary: Boundary, result: RunListResult): number {
@@ -35,5 +34,5 @@ export async function runListCommand(args: string[], boundary: Boundary): Promis
   if (home === undefined) return 2;
   const parsed = parseRunList(held.args);
   if ("failure" in parsed) return write(boundary, runListFailure(parsed.failure, json));
-  return write(boundary, await inspectRunList(home, parsed.query, boundary.clock.timestamp()));
+  return write(boundary, await inspectRunList(home, parsed.query));
 }

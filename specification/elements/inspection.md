@@ -90,13 +90,24 @@ Fan-out lists its width and maximum without predicting an item count. Static
 checking does not predict model selections, loop continuation, call counts, or
 future execution order.
 
+`input` names the files that arrive together at one node. Every branch of a
+parallel arrives at once, so each branch file stays in `input`. A choice sends
+one file, named after the alternative that ran, so the stage after a choice
+reports the bytewise-first alternative in `input` and lists every alternative in
+`possible_inputs`. A node whose arriving files differ across exact depth states
+reports the first state's `input` and the same union in `possible_inputs`. No
+reported `input` holds two files sharing a source name.
+
 Child-only flows resolve options without the selected root's command and task
 rungs and start from `request.<runtime>`. A selected flow reachable again as a
-child keeps root `options` and `input`, then adds `child_options` and a differing
-`child_input`. Its `output` stays the selected-root string; `child_outputs`
-lists every child-context possibility when re-entry can change the artifact. A
-child-only node keeps the first reachable `output` string and adds
-`possible_outputs` with every possibility when exact depth states disagree.
+child keeps root `options` and `input`, then adds a differing `child_options`
+and a differing `child_input`. `child_possible_inputs` lists the arriving
+alternatives a child context sees when they differ from the selected root's.
+Its `output` stays the selected-root string;
+`child_outputs` lists every child-context possibility when re-entry can change
+the artifact. A child-only node keeps the first reachable `output` string and
+adds `possible_outputs` with every possibility when exact depth states
+disagree.
 Traversal revisits a flow at distinct call positions and self-call depths while
 output emits each definition and node once. Definitions beyond the ceiling
 remain validated but do not appear. JSON returns one newline-terminated

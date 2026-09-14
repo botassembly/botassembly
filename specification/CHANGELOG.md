@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-14
+
+Ticket 0281 repairs runtime defects an independent review confirmed. One 4 MiB request limit now governs both writing a child request and reading it back, so a child born with any admitted request is verified and its ancestor totals complete tokens. `bot assembly check` states arriving input honestly: `input` holds the files that arrive together, and `possible_inputs` lists every alternative when a choice or an exact depth state changes what arrives. The stage after a choice reports one arriving file, and no reported `input` holds a pair the checker would itself refuse. `child_options` now appears only when the child context differs. A valueless `--intelligence` with no resolvable row refuses with `intelligence-unresolved`. The raw output latch ends when a command asks for ordinary output, and the raw command keeps its own exit code and single diagnostic.
+
 ## 2026-09-13
 
 Ticket 0280 adds permanent Linux and macOS platform qualification for installation, examples, process cleanup, signals, locks, requests, output pipes, and the two retained cleanup observations. Native Windows now refuses every invocation before Bot operation work and directs the operator to WSL. WSL still requires a clean-clone release-candidate qualification. The runtime makes no generic POSIX certification claim.

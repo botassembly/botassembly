@@ -268,3 +268,86 @@ test("a definition first reachable beyond ten child edges is validated but not r
   expect(rows.some(({ flow: path }) => typeof path === "string" && path.endsWith("child-11"))).toBe(false);
   expect(faults.some(({ code, path }) => code === "intelligence-unresolved" && path.includes("child-11/01-work.md"))).toBe(true);
 });
+
+/** Every `input` array an author could write: a stage refuses two arriving
+ *  files that share a source name, so check must never report a pair it would
+ *  itself refuse (inspection.md, ticket 0281). */
+function collidingInputs(rows: Record<string, unknown>[]): unknown[] {
+  return rows.filter((row) => {
+    const input = row["input"];
+    if (!Array.isArray(input)) return false;
+    const sources = input.map((name) => String(name).replace(/\.[^.]*$/u, ""));
+    return new Set(sources).size !== sources.length;
+  });
+}
+
+function renderedRows(root: string, name: string, held: Invocation = invocation): Record<string, unknown>[] {
+  const assembly = readAssembly(root, {}), flow = assembly.flows.get(name);
+  if (flow === undefined) throw new Error(`fixture lost ${name}`);
+  const rows = renderFlow(held, assembly, flow, { options: {}, intelligences: {
+    default: { model: "default-model", reasoning: "low" },
+  } }, assembly.faults, root).map((line) => JSON.parse(line) as Record<string, unknown>);
+  expect(assembly.faults).toEqual([]);
+  return rows;
+}
+
+const CHOICE = "---\n---\n\n- `escalate` — a person has to look\n- `patch` — fix it where it stands\n";
+
+async function branchFixture(prefix: string, kind: "CHOOSE" | "PARALLEL"): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  roots.push(root);
+  await mkdir(join(root, "flows/main/01-decide"), { recursive: true });
+  await Promise.all([
+    writeFile(join(root, "ASSEMBLY.md"), "---\nintelligence: default\n---\nAssembly.\n"),
+    writeFile(join(root, "flows/main/FLOW.md"), "---\ndescription: main\n---\n"),
+    writeFile(join(root, `flows/main/01-decide/${kind}.md`), kind === "CHOOSE" ? CHOICE : "---\nwidth: 2\n---\n"),
+    writeFile(join(root, "flows/main/01-decide/escalate.md"), "---\n---\nEscalate.\n"),
+    writeFile(join(root, "flows/main/01-decide/patch.md"), "---\n---\nPatch.\n"),
+    writeFile(join(root, "flows/main/99-done.md"), "---\n---\nDone.\n"),
+  ]);
+  return root;
+}
+
+async function depthChoiceFixture(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "bot-procedure-choose-depth-"));
+  roots.push(root);
+  await mkdir(join(root, "flows/recur/01-decide"), { recursive: true });
+  await Promise.all([
+    writeFile(join(root, "ASSEMBLY.md"), "---\nintelligence: default\n---\nAssembly.\n"),
+    writeFile(join(root, "flows/recur/DESCEND.md"), "---\ndescription: recur\nmax-depth: 2\n---\n"),
+    writeFile(join(root, "flows/recur/01-decide/CHOOSE.md"), CHOICE),
+    writeFile(join(root, "flows/recur/01-decide/escalate.md"), "---\n---\nEscalate.\n"),
+    writeFile(join(root, "flows/recur/01-decide/patch.md"), "---\n---\nPatch.\n"),
+    writeFile(join(root, "flows/recur/99-done.md"), "---\n---\nDone.\n"),
+  ]);
+  return root;
+}
+
+test("the stage after a choice arrives with one file and lists every alternative", async () => {
+  const rows = renderedRows(await branchFixture("bot-procedure-choose-", "CHOOSE"), "main");
+  expect(rows.find(({ stage }) => stage === "99-done")).toMatchObject({
+    input: ["escalate.txt"], possible_inputs: ["escalate.txt", "patch.txt"],
+  });
+  expect(collidingInputs(rows)).toEqual([]);
+});
+
+test("the stage after a parallel keeps every branch file in its arriving input", async () => {
+  const rows = renderedRows(await branchFixture("bot-procedure-parallel-", "PARALLEL"), "main");
+  const done = rows.find(({ stage }) => stage === "99-done");
+  expect(done).toMatchObject({ input: ["escalate.txt", "patch.txt"] });
+  expect(done).not.toHaveProperty("possible_inputs");
+});
+
+test("a choice inside a depth variant keeps every alternative", async () => {
+  const rows = renderedRows(await depthChoiceFixture(), "recur");
+  expect(rows.find(({ stage }) => stage === "99-done")).toMatchObject({
+    input: ["escalate.txt"], possible_inputs: ["escalate.txt", "patch.txt"],
+  });
+  expect(collidingInputs(rows)).toEqual([]);
+});
+
+test("identical child options are omitted from every row", async () => {
+  const plain: Invocation = { ...invocation, requestExtension: "txt", taskOptions: {}, commandOptions: {} };
+  const rows = renderedRows(await depthChoiceFixture(), "recur", plain);
+  expect(rows.filter((row) => "child_options" in row)).toEqual([]);
+});

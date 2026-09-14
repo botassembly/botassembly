@@ -2,7 +2,8 @@ import { basename, join } from "node:path";
 import type { HeldRecord } from "./record-lines.ts";
 import { mapping } from "./model.ts";
 import { hashBytes } from "./record.ts";
-import { heldRunFile } from "./run-files.ts";
+import { REQUEST_MAX_BYTES } from "./request-limit.ts";
+import { boundedHeldRunFile } from "./run-files.ts";
 
 function requestName(value: string): boolean {
   return /^request\.[A-Za-z0-9]{1,247}$/u.test(value);
@@ -40,7 +41,9 @@ async function requestAgrees(
 ): Promise<boolean> {
   const request = started?.["request"], input = parent["input"];
   if (!mapping(request) || !mapping(input) || typeof request["path"] !== "string" || !requestName(request["path"])) return false;
-  const held = await heldRunFile(join(directory, ...reference.split("/")), request["path"]);
+  // The consumption reader carries the writer's ingestion ceiling: a request
+  // Bot admitted is a request Bot can read back (request-limit.ts, ticket 0281).
+  const held = await boundedHeldRunFile(join(directory, ...reference.split("/")), request["path"], REQUEST_MAX_BYTES);
   if (held.kind !== "held") return false;
   const sha256 = hashBytes(held.bytes);
   return held.size === request["bytes"] && held.size === input["bytes"]

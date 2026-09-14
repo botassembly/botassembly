@@ -95,7 +95,7 @@ test("verified consumption follows an authorized child and keeps selected-root u
   expect(JSON.parse(publicJson.output.toString())).toMatchObject({
     schemaVersion: 1, runs: [{ id: root.run, tokens: 7, tokensStatus: "complete", usage: [{ total: 2 }] }],
   });
-  const publicHuman = await inspectRuns(root.home, { all: true }, false, "2099-01-01T00:00:00.000Z");
+  const publicHuman = await inspectRuns(root.home, { all: true }, false);
   expect(publicHuman.output.toString()).toMatch(new RegExp(`${TS}  0/success\\s+7  complete`, "u"));
 });
 
@@ -296,4 +296,35 @@ test("conflicting references for one call slot authorize neither child", async (
     { ...start("1", "subflow"), flow: "child" }, stageStart, turn(7), stageEnd, runEnd,
   ]));
   await expect(readRunState(root.home, root.run)).resolves.toMatchObject({ tokens: 2, tokensStatus: "partial" });
+});
+
+// One ingestion ceiling governs a request from the moment it is written to the
+// moment its record is read back (ticket 0281). A child born with a legal
+// request is evidence, not an unreadable file, so its ancestor totals it.
+async function largeRequestTree(size: number): Promise<{ home: string; run: string }> {
+  const body = "a".repeat(size), reference = "stages/01-work/1/1/subflows/1";
+  const descriptor = { path: `${reference}/request.txt`, bytes: size, sha256: hashBytes(body) };
+  const root = await runDirectory([
+    start(), stageStart, turn(2),
+    { event: "subflow_call", ts: TS, stage: "01-work", retry: 1, call: 1, flow: "child", depth: 1,
+      input: descriptor, started: true, child: reference, exit: 0, cause: "success" },
+    stageEnd, runEnd,
+  ]);
+  const childDirectory = join(root.directory, reference);
+  await mkdir(childDirectory, { recursive: true });
+  await writeFile(join(childDirectory, "request.txt"), body);
+  await writeFile(join(childDirectory, "record.jsonl"), currentRecord([
+    { record: 1, event: "run_start", ts: TS, run: "1", assembly: "review", assembly_sha256: HASH, flow: "child",
+      request: { path: "request.txt", bytes: size, sha256: hashBytes(body), via: "subflow" } },
+    stageStart, turn(5), stageEnd, runEnd,
+  ]));
+  return { home: root.home, run: root.run };
+}
+
+test("a child request of any admitted size is verified and one above the limit is refused", async () => {
+  const admitted = await largeRequestTree(2 * 1024 * 1024);
+  await expect(readRunState(admitted.home, admitted.run)).resolves.toMatchObject({ tokens: 7, tokensStatus: "complete" });
+
+  const refused = await largeRequestTree(4 * 1024 * 1024 + 1);
+  await expect(readRunState(refused.home, refused.run)).resolves.toMatchObject({ tokens: 2, tokensStatus: "partial" });
 });

@@ -142,6 +142,39 @@ test("a paused ordinary reader receives every byte in order before exit", async 
   expect(observed.subarray(4 << 20).every((byte) => byte === 0x62)).toBe(true);
 }, BOUNDARY_MS);
 
+// The raw pipeline takes stdout for its own fixed extent and leaves the exit
+// path on a branch that never drains the ordinary queue. That branch belongs to
+// the raw command alone: an ordinary command running after it in the same
+// process delivers every byte it wrote (ticket 0281).
+test("an ordinary command after a raw one drains its queue to a paused reader", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bot-cli-raw-then-ordinary-"));
+  roots.push(root);
+  const harness = join(root, "harness.mjs");
+  await writeFile(harness, [
+    `import { processBoundary } from ${JSON.stringify(cliPath)};`,
+    `import { exitFlushed } from ${JSON.stringify(new URL("../src/process-output.ts", import.meta.url).pathname)};`,
+    "const boundary = processBoundary();",
+    "const raw = boundary.rawStdout();",
+    "await new Promise((resolve) => { raw.end(Buffer.from('raw'), resolve); });",
+    "boundary.stdout('a'.repeat(4 << 20));",
+    "boundary.stdout('b'.repeat(4 << 20));",
+    "exitFlushed(0);",
+    "",
+  ].join("\n"));
+  const child = spawn(process.execPath, [harness], { stdio: ["ignore", "pipe", "pipe"] });
+  const output: Buffer[] = [], errors: Buffer[] = [];
+  child.stdout.pause();
+  child.stdout.on("data", (bytes: Buffer) => { output.push(bytes); });
+  child.stderr.on("data", (bytes: Buffer) => { errors.push(bytes); });
+  await new Promise<void>((resolve) => { setTimeout(resolve, 50); });
+  child.stdout.resume();
+  const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
+  expect(code, Buffer.concat(errors).toString()).toBe(0);
+  const observed = Buffer.concat(output);
+  expect(observed.length).toBe(3 + (8 << 20));
+  expect(observed.subarray(0, 3).toString()).toBe("raw");
+}, BOUNDARY_MS);
+
 test("exitFlushed is the exported exit seam", () => {
   expect(typeof exitFlushed).toBe("function");
 });

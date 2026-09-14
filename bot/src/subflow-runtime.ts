@@ -218,12 +218,12 @@ export async function runSubflowChild(
   prepared?: PreparedSubflowInput,
 ): Promise<SubflowToolDetail> {
   const flow = input.scope.get(request.flow);
-  const childDepth = depth(input, flow);
-  const childCallChainDepth = input.currentCallChainDepth + 1;
   const recordedDepth = callDepth(input, flow);
   if (flow === undefined) {
     return { call, flow: request.flow, depth: recordedDepth, started: false, reason: `Subflow ${request.flow} is not in scope.` };
   }
+  const childDepth = depth(input, flow);
+  const childCallChainDepth = input.currentCallChainDepth + 1;
   // The input seam: a call whose input cannot be read is an outcome, not an
   // exception. A rejection past this point (writer, runChild) still escapes to
   // runSubflowBatch's throw — which the harness turns into an error tool

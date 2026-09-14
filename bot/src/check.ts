@@ -66,6 +66,19 @@ function extensionOf(sequence: Sequence): string {
   }
 }
 
+/** What reaches the next node: the files the first variant delivers, and every
+ *  file some alternative could deliver in their place. A choice sends one file,
+ *  named after the alternative that ran (graph.md). */
+interface Arriving { input: string[]; possible: string[] }
+
+function certain(input: string[]): Arriving {
+  return { input, possible: [] };
+}
+
+function possibleInputs(arriving: Arriving): Record<string, unknown> {
+  return arriving.possible.length === 0 ? {} : { possible_inputs: arriving.possible };
+}
+
 function namedOutputs(branches: Branch[]): string[] {
   return branches
     .map((branch) => `${branch.name}.${extensionOf(branch.sequence)}`)
@@ -102,7 +115,7 @@ function containerOptions(containers: readonly ContainerNode[]): AuthoredOptions
 function nodeOptions(context: RenderContext, node: Node, from: "stage" | "container", containers: ContainerNode[]): ResolvedOptions {
   const { options, intelligenceTrouble } = resolvedOptions(context, node.options, from, containerOptions(containers));
   const runs = node.kind === "STAGE" || node.kind === "CHOOSE";
-  if (runs && intelligenceTrouble !== undefined && !context.invocation.valueless.has("intelligence")) {
+  if (runs && intelligenceTrouble !== undefined) {
     fault(context.faults, "intelligence-unresolved", node.path, intelligenceTrouble);
   }
   return options;
@@ -125,24 +138,25 @@ function fanoutOutput(node: Extract<Node, { kind: "FANOUT" }>, context: RenderCo
   return `<item>.${tail.extension}`;
 }
 
-function renderFanout(node: Extract<Node, { kind: "FANOUT" }>, input: string[], context: RenderContext): string[] {
+function renderFanout(node: Extract<Node, { kind: "FANOUT" }>, arriving: Arriving, context: RenderContext): Arriving {
   const output = fanoutOutput(node, context);
   context.lines.push({
     stage: stagePath(node, context.flow), flow: context.flow.path, type: "FANOUT", items: node.items, subflow: node.subflow,
-    width: node.width, max_items: node.maxItems, input, ...(output === undefined ? {} : { output }),
+    width: node.width, max_items: node.maxItems, input: arriving.input, ...(output === undefined ? {} : { output }),
+    ...possibleInputs(arriving),
   });
-  return output === undefined ? [] : [output];
+  return certain(output === undefined ? [] : [output]);
 }
 
 function renderNode(
   node: Node,
-  input: string[],
+  arriving: Arriving,
   containers: ContainerNode[],
   context: RenderContext,
-): string[] {
+): Arriving {
   if (node.kind === "STAGE") {
     validateStageWorkdir(context, node);
-    checkCollision(input, node.path, context.faults);
+    checkCollision(arriving.input, node.path, context.faults);
     // One flattening, shared with the run (skills.ts). What `$PWD` lends under
     // `local-context: use` is a fact of the tree a run is pointed at, not of
     // the assembly, so check reports the option and not its harvest.
@@ -151,16 +165,21 @@ function renderNode(
       stage: stagePath(node, context.flow),
       flow: context.flow.path,
       type: "STAGE",
-      input,
+      input: arriving.input,
       output: `${node.name}.${node.extension}`,
       files: node.files,
       ...(node.workdir === undefined ? {} : { workdir: node.workdir }),
       ...(skills.length === 0 ? {} : { skills }),
       options: nodeOptions(context, node, "stage", containers),
+      ...possibleInputs(arriving),
     });
-    return [`${node.name}.${node.extension}`];
+    return certain([`${node.name}.${node.extension}`]);
   }
-  if (node.kind === "FANOUT") return renderFanout(node, input, context);
+  if (node.kind === "FANOUT") return renderFanout(node, arriving, context);
+  return renderContainer(node, arriving, containers, context);
+}
+
+function renderContainer(node: ContainerNode, arriving: Arriving, containers: ContainerNode[], context: RenderContext): Arriving {
   const line: Record<string, unknown> = {
     stage: stagePath(node, context.flow),
     flow: context.flow.path,
@@ -172,22 +191,28 @@ function renderNode(
   context.lines.push(line);
   const nested = [node, ...containers];
   if (node.kind === "LOOP") {
-    const prior = extensionOf(node.sequence);
-    renderSequence(node.sequence, [...input, tailOutput(node.sequence)], nested, context);
-    return [`${node.name}.${prior}`];
+    const prior = extensionOf(node.sequence), tail = tailOutput(node.sequence);
+    renderSequence(node.sequence, {
+      input: [...arriving.input, tail],
+      possible: arriving.possible.length === 0 ? [] : [...arriving.possible, tail],
+    }, nested, context);
+    return certain([`${node.name}.${prior}`]);
   }
   const branches = node.kind === "PARALLEL" ? node.branches : node.alternatives;
-  for (const branch of branches) renderSequence(branch.sequence, input, nested, context);
-  return namedOutputs(branches);
+  for (const branch of branches) renderSequence(branch.sequence, arriving, nested, context);
+  const named = namedOutputs(branches);
+  // A parallel delivers every branch file at once; a choice delivers exactly
+  // one of them, so the alternatives are possibilities and not companions.
+  return node.kind === "PARALLEL" || named.length < 2 ? certain(named) : { input: named.slice(0, 1), possible: named };
 }
 
 function renderSequence(
   sequence: Sequence,
-  input: string[],
+  arriving: Arriving,
   containers: ContainerNode[],
   context: RenderContext,
-): string[] {
-  let current = input;
+): Arriving {
+  let current = arriving;
   for (const node of sequence.nodes) current = renderNode(node, current, containers, context);
   return current;
 }
@@ -275,7 +300,7 @@ function flowRows(
   const selected = child ? childInvocation(invocation) : invocation;
   const request = child ? ["request.<runtime>"] : [`request.${invocation.requestExtension}`];
   const context = renderContext(selected, assembly, flow, home, faults, workdir, request, state.callPosition, state.selfDepth);
-  renderSequence(flow.sequence, context.request, [], context);
+  renderSequence(flow.sequence, certain(context.request), [], context);
   return context.lines;
 }
 
@@ -317,11 +342,14 @@ function values(rows: readonly Record<string, unknown>[], field: string): unknow
   return found;
 }
 
+/** Every file that could arrive at one node across traversal states: each
+ *  variant contributes its own possibilities where it carries them. */
 function inputs(rows: readonly Record<string, unknown>[]): unknown[] {
   const found: unknown[] = [];
   for (const row of rows) {
-    if (!Array.isArray(row["input"])) continue;
-    for (const value of row["input"]) if (!found.includes(value)) found.push(value);
+    const held = row["possible_inputs"] ?? row["input"];
+    if (!Array.isArray(held)) continue;
+    for (const value of held) if (!found.includes(value)) found.push(value);
   }
   return found;
 }
@@ -331,27 +359,41 @@ function consolidateRows(variants: Record<string, unknown>[][]): Record<string, 
   return first.map((row, index) => {
     const alternatives = variants.flatMap((held) => held[index] === undefined ? [] : [held[index]]);
     const input = inputs(alternatives), outputs = values(alternatives, "output");
+    const settled = input.length === 0 || JSON.stringify(input) === JSON.stringify(row["input"]);
     return {
       ...row,
-      ...(input.length === 0 ? {} : { input }),
+      ...(settled ? {} : { possible_inputs: input }),
       ...(outputs.length > 1 ? { possible_outputs: outputs } : {}),
     };
   });
+}
+
+/** What arrives at a child context and the root cannot see, kept the way
+ *  `child_outputs` keeps its artifacts. */
+function childInputDifference(row: Record<string, unknown>, other: Record<string, unknown>): Record<string, unknown> {
+  const held = other["possible_inputs"];
+  return {
+    ...(JSON.stringify(row["input"]) === JSON.stringify(other["input"]) ? {} : { child_input: other["input"] }),
+    ...(held === undefined || JSON.stringify(held) === JSON.stringify(row["possible_inputs"])
+      ? {} : { child_possible_inputs: held }),
+  };
+}
+
+function childOutputDifference(row: Record<string, unknown>, other: Record<string, unknown>): Record<string, unknown> {
+  const held = Array.isArray(other["possible_outputs"]) ? other["possible_outputs"] : other["output"] === undefined ? [] : [other["output"]];
+  return held.length === 0 || held.length === 1 && held[0] === row["output"] ? {} : { child_outputs: held };
 }
 
 function mergeChildRows(root: Record<string, unknown>[], child: Record<string, unknown>[]): Record<string, unknown>[] {
   return root.map((row, index) => {
     const other = child[index];
     if (other === undefined) return row;
-    const childOutputs = Array.isArray(other["possible_outputs"])
-      ? other["possible_outputs"]
-      : other["output"] === undefined ? [] : [other["output"]];
     return {
       ...row,
-      ...(other["options"] === undefined ? {} : { child_options: other["options"] }),
-      ...(JSON.stringify(row["input"]) === JSON.stringify(other["input"]) ? {} : { child_input: other["input"] }),
-      ...(childOutputs.length === 0 || childOutputs.length === 1 && childOutputs[0] === row["output"]
-        ? {} : { child_outputs: childOutputs }),
+      ...(other["options"] === undefined || JSON.stringify(row["options"]) === JSON.stringify(other["options"])
+        ? {} : { child_options: other["options"] }),
+      ...childInputDifference(row, other),
+      ...childOutputDifference(row, other),
     };
   });
 }
@@ -390,7 +432,7 @@ function validateAllContexts(
  *  no higher rung to relieve it, so its model is required here (ADR 0018). */
 function wholeModel(context: RenderContext, faults: Refusal[]): ResolvedOptions {
   const { options, intelligenceTrouble } = resolvedOptions(context, {}, "stage", []);
-  if (intelligenceTrouble !== undefined && !context.invocation.valueless.has("intelligence")) {
+  if (intelligenceTrouble !== undefined) {
     fault(faults, "intelligence-unresolved", "ASSEMBLY.md", intelligenceTrouble);
   }
   return options;

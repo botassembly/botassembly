@@ -49,12 +49,12 @@ The raw exit path keeps its own failure ownership: `bot run output --raw` to a f
 ## Size decision
 
 - Starting production size: 18483 nonblank lines
-- Ending production size:
-- Simpler approach tried:
-- Why insufficient alternatives were rejected:
-- Production code added:
-- Production code deleted:
-- Accepted cost:
+- Ending production size: 18524 nonblank lines
+- Simpler approach tried: keep `renderNode` passing a plain `string[]` and correct only the merged row in `consolidateRows`, adding no type and no new field at render time.
+- Why insufficient alternatives were rejected: the union after a `CHOOSE` is built inside one render pass, not across traversal states, so `consolidateRows` never sees it. A root flow with a choice is rendered once and never consolidated at all, so that row would have stayed wrong. Carrying the arriving files and their alternatives together is the only place both cases meet.
+- Production code added: 102 lines across ten modules. The arriving-input type and its helpers in `check.ts`, the `possible_inputs` and `child_possible_inputs` fields in the JSON row and the human line, the two child-difference helpers the complexity rule requires, the request ceiling in `child-record.ts`, and the latch clearing in `process-output.ts`.
+- Production code deleted: 59 lines. The unreferenced `inspectRequest` reader, the two unused clock parameters and their plumbing through `inspectRunList` and `inspectRuns`, the unused clock member of the run-list boundary, and the two valueless `--intelligence` guards.
+- Accepted cost: 41 net lines. I looked for duplication and bloat to remove first: `inspectRequest` duplicated `run-output-command.ts`'s retained-request read and is gone; the clock plumbing threaded three call layers for nothing and is gone; `certain` and `possibleInputs` replace five and two repeated literals rather than adding them. The remaining growth is the arriving-input concept itself, which the specification now names.
 
 ## Complexity
 
