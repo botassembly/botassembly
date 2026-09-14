@@ -15,7 +15,7 @@ async function assembly(home: string): Promise<void> {
   const flow = join(home, "assemblies/review/flows/main");
   await mkdir(flow, { recursive: true });
   await Promise.all([
-    writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n"),
+    writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n  fast: { provider: faux, model: faux-1, reasoning: low }\n"),
     writeFile(join(home, "assemblies/review/ASSEMBLY.md"), "---\nintelligence: default\n---\nReview.\n"),
     writeFile(join(flow, "FLOW.md"), "---\ndescription: main\n---\n"),
     ...["plan", "review", "code"].map((name, index) =>
@@ -23,7 +23,7 @@ async function assembly(home: string): Promise<void> {
   ]);
 }
 
-async function donor(home: string, root: string): Promise<string> {
+async function donor(home: string, root: string, controls: string[] = []): Promise<string> {
   const out: Buffer[] = [], err: Buffer[] = [];
   const { held, faux } = realBoundary(root, home, out, err);
   faux.setResponses([
@@ -31,7 +31,7 @@ async function donor(home: string, root: string): Promise<string> {
     writes("$OUTPUT", "review"), fauxAssistantMessage("done"),
     fauxAssistantMessage("done"),
   ]);
-  await expect(main(["run", "start", "review/main", "request", "--retries", "0"], held)).resolves.toBe(1);
+  await expect(main(["run", "start", "review/main", "request", "--retries", "0", ...controls], held)).resolves.toBe(1);
   return (await runsIn(home))[0] ?? "";
 }
 
@@ -249,4 +249,55 @@ test("human resume preserves accepted output behavior", async () => {
     await expect(main(["run", "resume", donorRun], held)).resolves.toBe(0);
     expect(Buffer.concat(out)).toEqual(Buffer.from("fixed"));
     expect(Buffer.concat(err)).toEqual(Buffer.alloc(0));
+});
+
+const MODEL_OPTIONS = ["provider", "model", "reasoning", "intelligence"];
+
+/** The four model option entries of a record's first `stage_start`, in ladder order. */
+function modelLadder(record: Record<string, unknown>[]): { name: string; value: unknown; rung: string }[] {
+  const first = record.find((event) => event["event"] === "stage_start");
+  expect(first).toBeDefined();
+  const options = (first as { options: { name: string; value: unknown; rung: string }[] }).options;
+  return options.filter(({ name }) => MODEL_OPTIONS.includes(name));
+}
+
+async function resumedLadder(home: string, root: string, donorRun: string): Promise<{
+  donor: { name: string; value: unknown; rung: string }[]; resumed: { name: string; value: unknown; rung: string }[];
+}> {
+  const held = await resumeJson(home, root, donorRun);
+  expect(held.code).toBe(0);
+  expect(held.err).toEqual(Buffer.alloc(0));
+  const data = (JSON.parse(held.out.toString()) as { data: Record<string, unknown> }).data;
+  return {
+    donor: modelLadder(await events(join(home, "runs", donorRun, "record.jsonl"))),
+    resumed: modelLadder(await events(join(home, "runs", String(data["run"]), "record.jsonl"))),
+  };
+}
+
+test("resume inherits the donor's command-rung intelligence", async () => {
+  const { root, home } = await roots.scratch("bot-run-resume-intelligence-");
+  await assembly(home);
+  const donorRun = await donor(home, root, ["--intelligence", "fast"]);
+  const ladders = await resumedLadder(home, root, donorRun);
+  expect(ladders.donor).toEqual([
+    { name: "provider", value: "faux", rung: "command" },
+    { name: "model", value: "faux-1", rung: "command" },
+    { name: "reasoning", value: "low", rung: "command" },
+    { name: "intelligence", value: "fast", rung: "command" },
+  ]);
+  expect(ladders.resumed).toEqual(ladders.donor);
+});
+
+test("resume resolves as before when the donor named no intelligence", async () => {
+  const { root, home } = await roots.scratch("bot-run-resume-no-intelligence-");
+  await assembly(home);
+  const donorRun = await donor(home, root);
+  const ladders = await resumedLadder(home, root, donorRun);
+  expect(ladders.donor).toEqual([
+    { name: "provider", value: "faux", rung: "assembly" },
+    { name: "model", value: "faux-1", rung: "assembly" },
+    { name: "reasoning", value: "medium", rung: "assembly" },
+    { name: "intelligence", value: "default", rung: "assembly" },
+  ]);
+  expect(ladders.resumed).toEqual(ladders.donor);
 });

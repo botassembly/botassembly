@@ -42,7 +42,7 @@ Start the donor with `--intelligence fast`, resume it, read the first `stage_sta
 ## Size decision
 
 - Starting production size: 18899 nonblank lines
-- Ending production size: 18910 nonblank lines
+- Ending production size: 19079 nonblank lines
 - Production code added: about 11 lines in `bot/src/resume.ts`.
 - Production code deleted: None.
 - Simpler approach tried: accept `--intelligence` on resume.

@@ -1,6 +1,7 @@
 import { readAssemblyTree, resolveInvocationTokens } from "./reader.ts";
 import { runOnlyOptions, takeHome } from "./flags.ts";
 import { resumeDonor, type ResumeDonor } from "./continuation.ts";
+import { mapping } from "./model.ts";
 import { prehashAssembly } from "./record.ts";
 import { runCommand, type RunDependencies } from "./run.ts";
 import type { Refusal } from "./spine.ts";
@@ -35,6 +36,24 @@ function changed(donor: ResumeDonor): Refusal {
 }
 function donorTarget(donor: ResumeDonor): string { return donor.flow === undefined ? donor.assembly : `${donor.assembly}/${donor.flow}`; }
 
+/** The intelligence name the donor's command rung named, from its first
+ *  `stage_start`. The stage option ladder is the only record of the name; a
+ *  donor that recorded no stage, or named none on the command line, inherits
+ *  nothing and resolves through the assembly, the home, and the defaults. */
+function donorIntelligence(donor: ResumeDonor): string | undefined {
+  const options = donor.events.find((event) => event["event"] === "stage_start")?.["options"];
+  if (!Array.isArray(options)) return undefined;
+  for (const entry of options) {
+    if (mapping(entry) && entry["name"] === "intelligence" && entry["rung"] === "command" && typeof entry["value"] === "string") return entry["value"];
+  }
+  return undefined;
+}
+function carrying(donor: ResumeDonor, resolved: PreparedResume["resolved"]): PreparedResume["resolved"] {
+  const name = donorIntelligence(donor);
+  if (name === undefined) return resolved;
+  return { ...resolved, invocation: { ...resolved.invocation, commandOptions: { intelligence: name } } };
+}
+
 async function prepare(input: ResumeArguments, boundary: ResumeBoundary, writers: Writers): Promise<PreparedResume | undefined> {
   const donor = await resumeDonor(input.home, input.donor);
   if ("code" in donor) { writers.faults([donor]); return undefined; }
@@ -48,7 +67,7 @@ async function prepare(input: ResumeArguments, boundary: ResumeBoundary, writers
   }
   const hash = await prehashAssembly(resolved.assemblyRoot).then((held) => held.sha256, () => undefined);
   if (hash !== donor.assemblyHash) { writers.faults([changed(donor)]); return undefined; }
-  return { donor, resolved, ...(input.idFile === undefined ? {} : { idFile: input.idFile }) };
+  return { donor, resolved: carrying(donor, resolved), ...(input.idFile === undefined ? {} : { idFile: input.idFile }) };
 }
 
 export async function resumeOperation(
