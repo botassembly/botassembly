@@ -10,7 +10,7 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Four implementation outcomes remain. Tickets 0270 and 0272 through 0278 completed the first eight. Assembly checking, outcome 9, is the next accepted implementation outcome. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count is a forecast, not a quota. Shape one reviewed ready ticket when each outcome becomes next. Keep no draft or calendar-hold queue.
+Three implementation outcomes remain. Tickets 0270 and 0272 through 0279 completed the first nine. Platform qualification, outcome 10, is next. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count is a forecast, not a quota. Shape one reviewed ready ticket when each outcome becomes next. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
@@ -20,7 +20,7 @@ Four implementation outcomes remain. Tickets 0270 and 0272 through 0278 complete
 6. **Completed in ticket 0276:** request ingestion has one 4 MiB limit, fresh and resumed refusals precede run birth, and ordinary command output settles with honest pipe and delivery status while raw inspection keeps its fixed-extent path.
 7. **Completed in ticket 0277:** existing Pi authentication and command-capable model configuration used by an operation must be effective-user-owned private real files; ordinary environment inheritance and recognized provider credential scrubbing remain.
 8. **Completed in ticket 0278:** run summaries total verified root and authorized-descendant tokens with an evidence status, preserve exact timestamps, and reject early endings.
-9. Align assembly checking: admit authored descent depths 1 through 11, retain the separate ten-call mixed-flow ceiling, and describe each statically reachable flow definition and stage once with resolved options and honest dynamic limits.
+9. **Completed in ticket 0279:** assembly checking admits authored descent depths 1 through 11, retains the separate ten-call mixed-flow ceiling, and describes each statically reachable flow definition and node once with resolved options and honest dynamic limits.
 10. Establish permanent Linux and macOS checks for installation, cleanup, signals, locking, and examples. Native Windows refuses with WSL guidance. Actual WSL clean-clone qualification belongs to the release candidate and sends failures back to implementation.
 11. Make missing or unavailable model failures actionable without claiming that a local catalog miss proves provider retirement or global unavailability.
 12. Review current public documentation and examples as a first-time user after behavior settles. Preserve historical provenance and the existing biomedical vocabulary guard while removing confirmed stale references and inaccurate current claims.
