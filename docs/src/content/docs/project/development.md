@@ -20,7 +20,7 @@ read an older record. Version 1.0 is the first promised cross-version compatibil
 is set for it.
 
 
-## The three checks, and when to run each
+## The checks, and when to run each
 
 **The gate** is the everyday check: deterministic, offline, and free — it calls no model. It runs the full test suite, the entire conformance corpus against the reader, lint, a type check, dependency and cycle checks, and a size ratchet.
 
@@ -42,9 +42,15 @@ make smoke SMOKE=3   # one rung
 make installcheck
 ```
 
+**The platform check** runs scratch installation, shipped-example resolution, and a narrow set of process, signal, lock, input, output, and cleanup tests. It accepts Linux and macOS only. It stays offline and never installs into your ordinary home.
+
+```sh
+make platformcheck
+```
+
 ## What the hosted checks run
 
-GitHub Actions fetches the complete public branch and tag history, runs `sh sdlc/scripts/install`, and runs `make check` on every push and pull request, on Ubuntu with the pinned Node version. A second workflow builds this site and publishes it when a push to `main` changes anything under `docs/` or under `specification/`. The hosted gate calls the same scripts you call locally, so a green `make check` on your machine is the check the repository runs.
+GitHub Actions keeps the complete Ubuntu `make check` job and also runs `make platformcheck` on Ubuntu and macOS with the pinned Node version. A second workflow builds this site and publishes it when a push to `main` changes anything under `docs/` or under `specification/`; publication waits for both runtime jobs. Native Windows refuses before command work and directs operators to WSL. A clean-clone WSL qualification remains part of the final release-candidate check.
 
 ## Where work is tracked
 

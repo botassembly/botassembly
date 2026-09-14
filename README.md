@@ -31,7 +31,7 @@ Bot writes an ordered `record.jsonl` inside the run folder. It records stage out
 
 ## Install
 
-Linux with Node 22.22 or newer is the supported platform, because the checks prove it there. macOS may work and is not verified. Windows is not supported. You also need `git` and `~/.local/bin` on your `PATH`.
+Linux and macOS with Node 22.22 or newer are checked native platforms. Native Windows refuses every command and points to WSL. A clean-clone WSL qualification still belongs to the final release-candidate check. You also need `git`, a POSIX shell, and `~/.local/bin` on your `PATH`.
 
 ```sh
 git clone https://github.com/botassembly/botassembly.git
@@ -93,7 +93,7 @@ The format is a folder contract with a versioned specification and a conformance
 - **Bot is not a sandbox.** Every stage receives read, write, edit, and Bash tools. Commands, hooks, gates, and subprocesses use your filesystem and network authority. The record retains direct tool calls reported by the model harness. Bot does not watch the filesystem or claim a complete list of changes. Run only trusted assemblies, or contain the process with the operating system or a container.
 - **No run-wide budget.** A stage carries a timeout and concurrency has a width. Nothing bounds a run as a whole: no deadline, no cost budget, no disk cap.
 - **Pre-1.0.** Assembly and record contracts may change without migrations before 1.0.
-- **Linux only.** macOS may work and is not verified. Windows is not supported.
+- **Unix runtime.** Linux and macOS are checked. Windows runs through WSL after its final clean-clone qualification; native Windows is refused because Bot depends on POSIX shell launchers, executable bits, owner and mode checks, Unix signals, and process groups.
 
 ## Read next
 
@@ -101,6 +101,6 @@ From `examples/`, run `bot assembly check ./triage/triage` and read the resolved
 
 - [The site](https://botassembly.org) holds the guides, the specification, and the runtime reference.
 - [`specification/`](specification/) defines the format, and [`specification/conformance.md`](specification/conformance.md) lists the corpus.
-- Development: run `sh sdlc/scripts/install`, then `make check` for the complete offline check. Preparation installs exact npm dependencies and the pinned secret scanner. Checks stay offline. The scanner examines the working directory and every patch reachable from the Git refs available locally. Hosted checks fetch branches and tags. It cannot inspect deleted or inaccessible server objects, and pattern matching cannot prove that a repository contains no secrets. `make smoke` contacts a live provider and spends money.
+- Development: run `sh sdlc/scripts/install`, then `make check` for the complete offline Linux check. Run `make platformcheck` for the narrow Linux or macOS installation, examples, process, signal, lock, input, and pipe qualification. Preparation installs exact npm dependencies and the pinned secret scanner. Checks stay offline. The scanner examines the working directory and every patch reachable from the Git refs available locally. Hosted checks fetch branches and tags. It cannot inspect deleted or inaccessible server objects, and pattern matching cannot prove that a repository contains no secrets. `make smoke` contacts a live provider and spends money.
 
 [Contribution guidance](CONTRIBUTING.md), the [security policy](SECURITY.md), and the [MIT license](LICENSE) are in this repository.

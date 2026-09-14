@@ -11,15 +11,58 @@ import { closeSync, existsSync, openSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
-import { exitFlushed } from "../src/cli.ts";
-import { BOUNDARY_MS, cliPath, piped } from "./boundary.ts";
+import { afterEach, expect, test, vi } from "vitest";
+import { exitFlushed, main, platformRefusal, type CliBoundary } from "../src/cli.ts";
+import { BOUNDARY_MS, cliPath, piped, spawned } from "./boundary.ts";
 import { currentRecord } from "./current-record.ts";
 
 const roots: string[] = [];
+const windows = "Bot does not support native Windows. Install WSL and run Bot inside its Linux shell.\n";
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+function refusing(platform: string): { boundary: CliBoundary; out: string[]; err: string[]; touched: ReturnType<typeof vi.fn> } {
+  const out: string[] = [], err: string[] = [], touched = vi.fn();
+  const boundary = {
+    platform, cwd: "/never", env: {}, stdinIsTTY: false, stderrIsTTY: false,
+    get readStdin() { touched(); return () => Promise.resolve(Buffer.alloc(0)); },
+    get clock() {
+      touched();
+      return { milliseconds: () => 0, timestamp: () => "", setTimeout, clearTimeout };
+    },
+    stdout: (bytes: string | Uint8Array) => { out.push(bytes.toString()); },
+    stderr: (bytes: string | Uint8Array) => { err.push(bytes.toString()); },
+  } as CliBoundary;
+  return { boundary, out, err, touched };
+}
+
+test.each([{ argv: [] }, { argv: ["--help"] }, { argv: ["capabilities"] }, { argv: ["run", "start"] }])("native Windows refuses $argv before command work", async ({ argv }) => {
+  const held = refusing("win32");
+  await expect(main(argv, held.boundary)).resolves.toBe(2);
+  expect(held.out).toEqual([]);
+  expect(held.err).toEqual([windows]);
+  expect(held.touched).not.toHaveBeenCalled();
+});
+
+test.each(["linux", "darwin"])("%s reaches ordinary help and command dispatch", async (platform) => {
+  const out: string[] = [], err: string[] = [];
+  const boundary: CliBoundary = {
+    platform, cwd: "/", env: {}, stdinIsTTY: false, stderrIsTTY: false,
+    readStdin: () => Promise.resolve(Buffer.alloc(0)),
+    stdout: (bytes) => { out.push(bytes.toString()); }, stderr: (bytes) => { err.push(bytes.toString()); },
+    clock: { milliseconds: () => 0, timestamp: () => "2026-09-13T00:00:00.000Z", setTimeout, clearTimeout },
+  };
+  await expect(main(["--help"], boundary)).resolves.toBe(0);
+  expect(out.join("")).toMatch(/\nusage: bot /u);
+  out.length = 0;
+  await expect(main(["unknown"], boundary)).resolves.toBe(2);
+  expect(err.join("")).toMatch(/^request-invalid/u);
+});
+
+test("another platform gets the generic refusal", () => {
+  expect(platformRefusal("aix")).toBe("Bot does not support aix. Run Bot on Linux or macOS.\n");
 });
 
 test("exitFlushed exits despite a lingering handle and delivers every piped byte", async () => {
@@ -114,14 +157,9 @@ test.skipIf(!existsSync("/dev/full"))("ordinary help reports /dev/full once with
 }, BOUNDARY_MS);
 
 test("ordinary help treats an early-closing reader as quiet success", async () => {
-  const child = spawn("bash", ["-o", "pipefail", "-c", '"$1" "$2" --help | head -c 0', "bash", process.execPath, cliPath], {
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  const output: Buffer[] = [], errors: Buffer[] = [];
-  child.stdout.on("data", (bytes: Buffer) => { output.push(bytes); });
-  child.stderr.on("data", (bytes: Buffer) => { errors.push(bytes); });
-  const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
-  expect({ code, stdout: Buffer.concat(output), stderr: Buffer.concat(errors) }).toEqual({
-    code: 0, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+  const running = spawned([cliPath, "--help"], process.env);
+  running.child.stdout?.destroy();
+  await expect(running.ended).resolves.toEqual({
+    code: 0, signal: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
   });
 }, BOUNDARY_MS);

@@ -73,7 +73,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
-import { cliPath } from "./boundary.ts";
+import { BOUNDARY_MS, cliPath, spawned } from "./boundary.ts";
 import { invokeCliBytes } from "./invoke.ts";
 import { copyHeldRunFile, holdRunFile } from "../src/run-files.ts";
 import { hashBytes } from "../src/record.ts";
@@ -234,21 +234,12 @@ test.skipIf(!existsSync("/dev/full"))("the real CLI owns a /dev/full stdout fail
 
 test("the real CLI keeps a closed raw-output pipe quiet", async () => {
   const where = await fixture(Buffer.alloc(8 * 1024 * 1024, "x"));
-  const child = spawn("bash", ["-o", "pipefail", "-c", '"$1" "$2" run record "$3" --raw | head -c 0',
-    "bash", process.execPath, cliPath, RUN], {
-    env: { ...process.env, BOT_HOME: where.home },
-    stdio: ["ignore", "pipe", "pipe"],
+  const running = spawned([cliPath, "run", "record", RUN, "--raw"], { ...process.env, BOT_HOME: where.home });
+  running.child.stdout?.destroy();
+  await expect(running.ended).resolves.toEqual({
+    code: 0, signal: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
   });
-  const stdout: Buffer[] = [], stderr: Buffer[] = [];
-  child.stdout.on("data", (bytes: Buffer) => stdout.push(bytes));
-  child.stderr.on("data", (bytes: Buffer) => stderr.push(bytes));
-  const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
-    child.once("close", (code, signal) => { resolve({ code, signal }); });
-  });
-  expect(outcome).toEqual({ code: 0, signal: null });
-  expect(Buffer.concat(stdout)).toEqual(Buffer.alloc(0));
-  expect(Buffer.concat(stderr)).toEqual(Buffer.alloc(0));
-});
+}, BOUNDARY_MS);
 
 test("the real CLI completes exact output after its reader resumes", async () => {
   const bytes = Buffer.alloc(1024 * 1024, "x");

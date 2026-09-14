@@ -66,7 +66,7 @@ import Walkthrough from '../../components/Walkthrough.astro';
 
 	**Pre-1.0.** Assembly and record contracts may change without migrations before 1.0. Version 1.0 is the first promised compatibility boundary.
 
-	**Linux only.** Linux with Node 22.22 or newer is the supported platform, because the checks prove it there. macOS may work and is not verified. Windows is not supported.
+	**Unix runtime.** Linux and macOS with Node 22.22 or newer are checked. Native Windows refuses because Bot depends on POSIX shell launchers, executable bits, owner and mode checks, Unix signals, and process groups. Use WSL after the final clean-clone qualification.
 </Aside>
 
 <footer class="ba-footer">

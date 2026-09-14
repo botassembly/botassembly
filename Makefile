@@ -1,4 +1,4 @@
-.PHONY: help check smoke install uninstall installcheck
+.PHONY: help check smoke install uninstall installcheck platformcheck
 
 # The root coordinates the existing offline project checks. `bot/Makefile`
 # owns their implementation. Smoke remains the separate live-model ladder.
@@ -13,6 +13,7 @@ help:
 	@echo '  make install       write the bot launcher to ~/.local/bin'
 	@echo '  make uninstall     remove that launcher'
 	@echo '  make installcheck  test install from a path containing a space'
+	@echo '  make platformcheck qualify the supported Linux or macOS platform'
 	@echo '  make smoke         the LIVE ladder — costs money, run deliberately'
 
 check:
@@ -101,6 +102,9 @@ install:
 # tests the two targets above it. Run it after touching either of them.
 installcheck:
 	@scripts/installcheck.sh
+
+platformcheck:
+	@sh sdlc/scripts/platformcheck
 
 uninstall:
 	@if [ ! -e '$(LAUNCHER)' ]; then \

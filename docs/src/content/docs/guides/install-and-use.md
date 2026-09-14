@@ -25,6 +25,8 @@ guide: [Authoring assemblies](/guides/authoring-assemblies/).
 
 ## One-time setup
 
+Bot checks native Linux and macOS. Native Windows refuses before command work and directs you to WSL. The final release candidate still needs a clean-clone WSL qualification. Bot depends on POSIX shell launchers, executable bits, owner and mode checks, Unix signals, and process groups.
+
 Install the runtime once, using the recipe in [Your first assembly](/guides/first-assembly/): clone, `sh sdlc/scripts/install`, `make install`. That is the only install recipe. It writes a launcher to `~/.local/bin/bot` that runs the CLI out of the checkout, so `git pull` followed by `sh sdlc/scripts/install` is the upgrade path and moving the checkout means running `make install` again. `make -C botassembly uninstall` removes it.
 
 That page also covers the two things a run cannot start without: a home that is mode `0700`, and an intelligence named `default` in the home's `config.yaml`. Do both before your first run.

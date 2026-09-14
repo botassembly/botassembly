@@ -19,6 +19,8 @@ const EXPECTED_USES = [
 	{ workflow: 'docs.yml', path: 'jobs.deploy.steps[0].uses', value: 'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346' },
 	{ workflow: 'runtime.yml', path: 'jobs.check.steps[0].uses', value: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' },
 	{ workflow: 'runtime.yml', path: 'jobs.check.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
+	{ workflow: 'runtime.yml', path: 'jobs.platform.steps[0].uses', value: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' },
+	{ workflow: 'runtime.yml', path: 'jobs.platform.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
 ];
 const EXPECTED_PERMISSIONS = [
 	{ workflow: 'docs.yml', path: 'permissions', value: { contents: 'read' } },
@@ -30,6 +32,7 @@ const REQUIRED_ABSENCES = [
 	['docs.yml', 'jobs.build'],
 	['docs.yml', 'jobs.check'],
 	['runtime.yml', 'jobs.check'],
+	['runtime.yml', 'jobs.platform'],
 ];
 
 async function currentWorkflows() {
@@ -115,10 +118,10 @@ test('the workflow policy inventories every maintained workflow', async () => {
 	validate(workflows);
 	const found = inventory(workflows);
 	assert.equal(workflows.length, 2);
-	assert.equal(found.uses.length, 7);
+	assert.equal(found.uses.length, 9);
 	assert.equal(found.permissions.filter(({ path }) => path === 'permissions').length, 2);
 	assert.equal(found.permissions.filter(({ path }) => path.endsWith('.permissions')).length, 1);
-	assert.equal(REQUIRED_ABSENCES.filter(([workflow, path]) => !Object.hasOwn(at(workflows, workflow, path), 'permissions')).length, 3);
+	assert.equal(REQUIRED_ABSENCES.filter(([workflow, path]) => !Object.hasOwn(at(workflows, workflow, path), 'permissions')).length, 4);
 });
 
 function clone(workflows) {

@@ -9,7 +9,7 @@ An assembly is a folder of markdown files that tells agents what to do, stage by
 
 ## Install
 
-Linux with Node 22.22 or newer is the supported platform, because the checks prove it there. macOS may work and is not verified. Windows is not supported. You also need `git` and `~/.local/bin` on your `PATH`. This is the one install recipe, and every other page on the site points back at it:
+Linux and macOS with Node 22.22 or newer are checked native platforms. Native Windows refuses and directs you to WSL. The final release-candidate check still has to qualify a clean WSL clone. You also need `git`, a POSIX shell, and `~/.local/bin` on your `PATH`. This is the one install recipe, and every other page on the site points back at it:
 
 ```sh
 git clone https://github.com/botassembly/botassembly.git

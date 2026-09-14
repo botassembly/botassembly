@@ -15,6 +15,8 @@ import { CLI_CONTRACTS } from "./cli-contract.ts";
 import type { Models, Provider } from "@earendil-works/pi-ai";
 
 export interface CliBoundary extends RunCommandBoundary {
+  /** Node's platform spelling. Tests inject this without changing global state. */
+  platform?: string;
   /** Whether a terminal is watching, which is what decides progress. */
   stdout(bytes: string | Uint8Array): void; rawStdout?(): Writable; stderr(bytes: string | Uint8Array): void;
   /** How a login reads one typed line, injectable like `models` below so a
@@ -89,6 +91,7 @@ export function processBoundary(): CliBoundary {
   delete process.env["BOT_HOME"];
   const output = ordinaryProcessOutput();
   return {
+    platform: process.platform,
     cwd: process.cwd(), env, stdinIsTTY: process.stdin.isTTY, stderrIsTTY: process.stderr.isTTY,
     readStdin: processStdin,
     stdout: (bytes) => { output.write(bytes); },
@@ -127,8 +130,13 @@ function usage(command: string, message: string, boundary: CliBoundary): number 
 
 export const commandNames = CLI_CONTRACTS.map((descriptor) => descriptor.command.join(" "));
 
-export async function main(argv: string[], supplied?: CliBoundary): Promise<number> {
-  const base = supplied ?? processBoundary();
+export function platformRefusal(platform: string): string | undefined {
+  if (platform === "linux" || platform === "darwin") return undefined;
+  if (platform === "win32") return "Bot does not support native Windows. Install WSL and run Bot inside its Linux shell.\n";
+  return `Bot does not support ${platform}. Run Bot on Linux or macOS.\n`;
+}
+
+async function admittedMain(argv: string[], base: CliBoundary): Promise<number> {
   let warned = false;
   const boundary: CliBoundary = {
     ...base,
@@ -150,6 +158,13 @@ export async function main(argv: string[], supplied?: CliBoundary): Promise<numb
   const newCommand = dispatchNewCommand(argv, boundary);
   if (newCommand !== undefined) return newCommand;
   return usage(command.length === 0 ? "bot" : command, `Use ${commandNames.join(", ")}.`, boundary);
+}
+
+export async function main(argv: string[], supplied?: CliBoundary): Promise<number> {
+  const base = supplied ?? processBoundary();
+  const refusal = platformRefusal(base.platform ?? process.platform);
+  if (refusal !== undefined) { base.stderr(refusal); return 2; }
+  return admittedMain(argv, base);
 }
 
 // upstream: pi-ai holds provider connections (global-fetch keep-alive sockets)

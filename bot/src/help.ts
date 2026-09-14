@@ -74,6 +74,7 @@ usage: bot <command> [arguments]
 ${CLI_CONTRACTS.map(overviewLine).join("\n")}
 
 \`bot <command> --help\` describes one command.
+Platforms: native Linux and macOS; Windows through WSL. Native Windows refuses before command work.
 `;
 
 const RUN_RECORD_DESCRIPTOR = descriptor("run.record");

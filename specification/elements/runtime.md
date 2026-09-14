@@ -18,7 +18,7 @@ reproducible — the reading of the folder is
 
 ## Command-line contract
 
-On Linux, macOS, and WSL, the runtime preserves request and result bytes, separates standard output from standard error, observes standard-output backpressure, treats an early-closing reader as quiet success, reports other delivery failures through its exit status, and retains signal exit meanings. This contract does not claim formal POSIX certification or native Windows support.
+The maintained runtime checks this command-line behavior on native Linux and macOS. WSL follows the Linux path, but the final release candidate still requires a clean-clone WSL qualification. Native Windows refuses every invocation before command work and directs the operator to WSL. Bot depends on POSIX shell launchers, executable bits, owner and mode checks, Unix signals, and process groups. On admitted platforms, the runtime preserves request and result bytes, separates standard output from standard error, observes standard-output backpressure, treats an early-closing reader as quiet success, reports other delivery failures through its exit status, and retains signal exit meanings. This contract does not claim formal POSIX certification.
 
 ### Exit codes
 
