@@ -21,6 +21,7 @@ const EXPECTED_USES = [
 	{ workflow: 'runtime.yml', path: 'jobs.check.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
 	{ workflow: 'runtime.yml', path: 'jobs.platform.steps[0].uses', value: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' },
 	{ workflow: 'runtime.yml', path: 'jobs.platform.steps[1].uses', value: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' },
+	{ workflow: 'runtime.yml', path: 'jobs.wsl.steps[0].uses', value: 'Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364' },
 ];
 const EXPECTED_PERMISSIONS = [
 	{ workflow: 'docs.yml', path: 'permissions', value: { contents: 'read' } },
@@ -107,7 +108,7 @@ function validate(workflows) {
 		'docs/**', 'specification/**', 'examples/**', '.github/workflows/docs.yml',
 	]);
 	assert.deepEqual(at(workflows, 'runtime.yml', 'on'), {
-		pull_request: null, push: { branches: ['main'] }, workflow_call: null,
+		pull_request: null, push: { branches: ['main'], tags: ['v*'] }, workflow_call: null, workflow_dispatch: null,
 	});
 	assert.equal(Object.hasOwn(at(workflows, 'docs.yml', 'jobs.build'), 'if'), false,
 		'docs.yml jobs.build must remain unconditional');
@@ -118,7 +119,7 @@ test('the workflow policy inventories every maintained workflow', async () => {
 	validate(workflows);
 	const found = inventory(workflows);
 	assert.equal(workflows.length, 2);
-	assert.equal(found.uses.length, 9);
+	assert.equal(found.uses.length, 10);
 	assert.equal(found.permissions.filter(({ path }) => path === 'permissions').length, 2);
 	assert.equal(found.permissions.filter(({ path }) => path.endsWith('.permissions')).length, 1);
 	assert.equal(REQUIRED_ABSENCES.filter(([workflow, path]) => !Object.hasOwn(at(workflows, workflow, path), 'permissions')).length, 4);

@@ -13,6 +13,11 @@ const { parse } = require('yaml');
 const workflow = join(repository, '.github', 'workflows', 'runtime.yml');
 const CHECKOUT = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
 const SETUP_NODE = 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020';
+const SETUP_WSL = 'Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364';
+const WSL_IF = "github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')";
+const WSL_CLONE = 'git init /home/builder/repo\ncd /home/builder/repo\ngit remote add origin "$SERVER/$REPOSITORY.git"\ngit fetch --depth 1 origin "$SHA"\ngit checkout FETCH_HEAD\n';
+const WSL_NODE_INSTALL = 'cd /home/builder\ncurl -fsSLO https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz\necho "9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37  node-v22.22.0-linux-x64.tar.xz" | sha256sum -c -\nmkdir -p /home/builder/node\ntar -xJf node-v22.22.0-linux-x64.tar.xz -C /home/builder/node --strip-components=1\n';
+const wslStep = (script) => `export PATH="/home/builder/node/bin:$PATH"\ncd /home/builder/repo\n${script}\n`;
 const ANCESTRY_GUARD = "git cat-file -e 'HEAD^{commit}' || exit 1; commit=$(git cat-file commit HEAD) || exit 1; header=$(printf '%s\\n' \"$commit\" | sed -n '2p') || exit 1; case \"$header\" in parent\\ *) git rev-parse --verify HEAD^ >/dev/null 2>&1;; author\\ *) true;; *) exit 1;; esac";
 const FETCH_REFS = "git fetch --force --tags origin '+refs/heads/*:refs/remotes/origin/*'";
 
@@ -27,9 +32,11 @@ function action(steps, name) {
 function validate(document) {
 	assert.deepEqual(Object.keys(document), ['name', 'on', 'permissions', 'jobs']);
 	assert.equal(document.name, 'runtime');
-	assert.deepEqual(document.on, { pull_request: null, push: { branches: ['main'] }, workflow_call: null });
+	assert.deepEqual(document.on, {
+		pull_request: null, push: { branches: ['main'], tags: ['v*'] }, workflow_call: null, workflow_dispatch: null,
+	});
 	assert.deepEqual(document.permissions, { contents: 'read' });
-	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check', 'platform']);
+	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check', 'platform', 'wsl']);
 	const job = document.jobs.check;
 	assert.deepEqual(Object.keys(job ?? {}).sort(), ['env', 'runs-on', 'steps']);
 	assert.equal(job['runs-on'], 'ubuntu-latest');
@@ -67,6 +74,27 @@ function validate(document) {
 		{ run: 'make platformcheck' },
 	]);
 	assert.equal(Object.hasOwn(platform, 'needs'), false);
+	const wsl = document.jobs.wsl;
+	assert.deepEqual(Object.keys(wsl ?? {}).sort(), ['defaults', 'if', 'runs-on', 'steps', 'timeout-minutes']);
+	// The wsl job runs only on a manual dispatch or a v* tag push; an
+	// ordinary pull_request or push to main must skip it and pay nothing.
+	assert.equal(wsl.if, WSL_IF);
+	assert.equal(wsl['runs-on'], 'windows-2025');
+	assert.equal(wsl['timeout-minutes'], 90);
+	assert.deepEqual(wsl.defaults, { run: { shell: 'wsl-bash {0}' } });
+	assert.deepEqual(wsl.steps, [
+		{ uses: SETUP_WSL, with: {
+			distribution: 'Debian-13', 'wsl-version': 2,
+			'additional-packages': 'git curl ca-certificates xz-utils make', 'wsl-shell-user': 'builder',
+		} },
+		{ env: {
+			SERVER: '${{ github.server_url }}', REPOSITORY: '${{ github.repository }}', SHA: '${{ github.sha }}',
+		}, run: WSL_CLONE },
+		{ run: WSL_NODE_INSTALL },
+		{ run: wslStep('test "$(id -u)" -ne 0') },
+		{ run: wslStep('make -C bot install') },
+		{ run: wslStep('make platformcheck') },
+	]);
 	const source = JSON.stringify(document).toLowerCase();
 	for (const forbidden of ['make smoke', 'deploy-pages', 'upload-pages', 'npm publish', 'provider_api_key']) {
 		assert.equal(source.includes(forbidden), false, `workflow contains forbidden ${forbidden}`);
@@ -82,6 +110,7 @@ test('the runtime workflow runs the complete offline check from a clean non-root
 	validate(parse(source));
 	assert.ok(source.includes(`${CHECKOUT} # v7.0.1`));
 	assert.ok(source.includes(`${SETUP_NODE} # v7.0.0`));
+	assert.ok(source.includes(`${SETUP_WSL} # v7.0.0`));
 });
 
 test('the workflow contract rejects each weakened essential and prohibited work', async () => {
@@ -124,6 +153,16 @@ test('the workflow contract rejects each weakened essential and prohibited work'
 		(document) => { command(document.jobs.platform.steps, 'make -C bot install').run = 'npm install'; },
 		(document) => { command(document.jobs.platform.steps, 'make platformcheck').run = 'make check'; },
 		(document) => { command(document.jobs.platform.steps, 'make platformcheck')['continue-on-error'] = true; },
+		(document) => { delete document.jobs.wsl.if; },
+		(document) => { document.jobs.wsl.if = 'true'; },
+		(document) => { document.jobs.wsl.if = "github.event_name == 'workflow_dispatch'"; },
+		(document) => { document.jobs.wsl['runs-on'] = 'ubuntu-latest'; },
+		(document) => { delete document.jobs.wsl['timeout-minutes']; },
+		(document) => { document.jobs.wsl.defaults.run.shell = 'bash {0}'; },
+		(document) => { action(document.jobs.wsl.steps, 'Vampire/setup-wsl').uses = 'Vampire/setup-wsl@v7'; },
+		(document) => { action(document.jobs.wsl.steps, 'Vampire/setup-wsl').with['wsl-shell-user'] = 'root'; },
+		(document) => { document.jobs.wsl.steps.push({ uses: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' }); },
+		(document) => { document.jobs.wsl.steps[4].run = document.jobs.wsl.steps[4].run.replace('make -C bot install', 'npm install'); },
 	];
 	for (const mutate of mutations) {
 		const changed = structuredClone(original);
