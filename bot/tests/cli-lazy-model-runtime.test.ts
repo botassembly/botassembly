@@ -117,6 +117,7 @@ describe("lazy Pi command boundary", () => {
       { operation: "capabilities", args: ["capabilities", "--json"], exit: 0 },
       { operation: "home.busy", args: ["home", "busy", root, "--home", home, "--json"], exit: 0 },
       { operation: "home.show", args: ["home", "show", "--home", home, "--json"], exit: 0 },
+      { operation: "intelligence.list", args: ["intelligence", "list", "--home", home, "--json"], exit: 0 },
       { operation: "run.check", args: ["run", "check", "absent", "gate", "--home", home, "--json"], exit: 1, channel: "stderr", contains: '"operation":"run.check","cause":"run-missing"' },
       { operation: "run.checklist", args: ["run", "checklist", "absent", "--home", home, "--json"], exit: 1, channel: "stderr", contains: '"operation":"run.checklist","cause":"run-missing"' },
       { operation: "run.events", args: ["run", "events", "absent", "--home", home, "--json"], exit: 1 },
@@ -137,7 +138,7 @@ describe("lazy Pi command boundary", () => {
     // any concurrent form — even a bounded pool — narrows that race rather
     // than closing it, and a burst of cold `node` children raises this
     // machine's peak load, against the ticket's own goal. Only the fragment
-    // trim above stands; the twenty invocations keep running one at a time.
+    // trim above stands; the twenty-one invocations keep running one at a time.
     for (const held of cases) {
       const result = await invoke(held.args, root, agentDir);
       expect(result.exit, held.operation).toBe(held.exit);

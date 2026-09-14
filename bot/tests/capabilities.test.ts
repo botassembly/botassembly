@@ -211,7 +211,7 @@ test("every advertised command dispatches and owns descriptor-generated help", a
     for (const option of allOptions) expectOption(help.out, option);
     const machineReadable = ["auth.list", "run.list"].includes(held.operation);
     const dispatched = await invoke([...held.command, ...(machineReadable ? ["-j"] : [])]);
-    expect(dispatched.code, held.operation).toBe(["auth.list", "capabilities", "model.list"].includes(held.operation) ? 0
+    expect(dispatched.code, held.operation).toBe(["auth.list", "capabilities", "intelligence.list", "model.list"].includes(held.operation) ? 0
       : ["assembly.list", "run.list"].includes(held.operation) ? 1 : held.operation === "assembly.update" ? 4 : 2);
     if (held.operation === "run.list") expect(object(dispatched.err)).toMatchObject({ error: { operation: held.operation } });
   }
