@@ -38,6 +38,10 @@ fail() {
 checkout="$scratch/sp ace/checkout"
 bindir="$scratch/sp ace/bin"
 mkdir -p "$checkout/bot" "$bindir"
+# macOS spells temporary paths through /var. Its physical directory lives under
+# /private/var. The Make recipe resolves the checkout with pwd. Compare the
+# launcher with that same complete physical spelling.
+physical_checkout=$(CDPATH= cd -- "$checkout" && pwd -P)
 
 # The least that makes a launcher runnable: the Makefile under test, the CLI
 # source, and the package.json whose "type": "module" decides how node reads it.
@@ -56,7 +60,7 @@ fi
 
 # The launcher must name the checkout whole. Before the fix it named
 # "$scratch/sp" — success on stdout, a truncated path in the file.
-if ! grep -qF "$checkout/bot/src/cli.ts" "$launcher"; then
+if ! grep -qF "$physical_checkout/bot/src/cli.ts" "$launcher"; then
 	fail 'launcher does not name the checkout:' "$launcher"
 fi
 
