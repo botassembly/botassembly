@@ -29,7 +29,7 @@ cat > "$HOME_DIR/config.yaml" <<'YAML'
 intelligences:
   default:
     provider: google
-    model: gemini-2.5-flash-lite
+    model: gemini-3.5-flash-lite
     reasoning: low
 YAML
 

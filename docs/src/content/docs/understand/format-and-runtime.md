@@ -25,7 +25,7 @@ The corpus calls no model, so passing it proves static behavior only. The format
 
 ## Where they meet
 
-`bot assembly check` is the seam. It reads an assembly, refuses it if the format says it is malformed, and otherwise prints every statically reachable flow definition and node. Each node carries its resolved options and the file each value came from. It calls no model and spends no money.
+`bot assembly check` is the seam. It reads an assembly, refuses it if the format says it is malformed, and otherwise prints every statically reachable flow definition and node, 20 rows to a page. Each node carries its resolved options and the file each value came from. It calls no model and spends no money.
 
 ```sh
 bot assembly check ./triage/triage

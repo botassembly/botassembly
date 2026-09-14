@@ -37,6 +37,8 @@ It suits a trivial single-call task poorly. It is the wrong central coordinator 
 
 One runtime implements the format. It is called `bot`. The format is written down as a specification, and 143 conformance cases judge an implementation against it. Four example assemblies ship in the repository and every check runs them.
 
+Nothing is released yet. This publication targets `0.1.0`, the first public alpha, and the release that sets that string is the one that ships. Install it from a clone until then.
+
 Assembly and record contracts may change before 1.0 without a migration. Version 1.0 is the first promised compatibility boundary. No date is set for it.
 
 Next: [install `bot`](/start/install/) and prove it works without calling a model.

@@ -28,20 +28,23 @@ A target that begins with `/`, `./`, or `../` is a path on disk. Anything else i
 
 Run this from `examples/`.
 
-```sh
-bot assembly check ./triage/triage
-```
-
-```text
+```console
+$ bot assembly check ./triage/triage
 flows/triage/FLOW.md  flow-definition  type=FLOW  flow=flows/triage  max_subflow_calls=10
-01-classify  STAGE  flow=flows/triage  input=request.txt  output=classify.json  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=300,retries=1,local-context=ignore
-02-route  CHOOSE  flow=flows/triage  input=-  output=-  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=120,retries=1,local-context=ignore
-02-route/routine/01-routine  STAGE  flow=flows/triage  input=classify.json  output=routine.txt  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=120,retries=2,local-context=ignore
-02-route/urgent/01-urgent  STAGE  flow=flows/triage  input=classify.json  output=urgent.txt  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=120,retries=2,local-context=ignore
-03-verify  STAGE  flow=flows/triage  input=routine.txt,urgent.txt  output=verify.txt  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=3600,retries=1,local-context=ignore
+01-classify  STAGE  flow=flows/triage  input=request.txt  output=classify.json  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
+02-route  CHOOSE  flow=flows/triage  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+02-route/routine/01-routine  STAGE  flow=flows/triage  input=classify.json  output=routine.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
+02-route/urgent/01-urgent  STAGE  flow=flows/triage  input=classify.json  output=urgent.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
+03-verify  STAGE  flow=flows/triage  input=routine.txt  output=verify.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=3600,retries=1,local-context=ignore  possible_inputs=routine.txt,urgent.txt
+$ echo $?
+0
 ```
 
-Exit is `0`. The first line is the flow definition. Each line after it is one node the run could reach, in the order you wrote them. `CHOOSE` marks a branch point, and both of its branches are listed because either could run.
+The first line is the flow definition. Each line after it is one node the run could reach, in the order you wrote them. `CHOOSE` marks a branch point, and both of its branches are listed because either could run.
+
+The `provider`, `model`, and `reasoning` values are whatever your own `config.yaml` names under `default`, so yours will differ. This paste was taken against a home whose `default` is `google` / `gemini-3.5-flash-lite` / `low`. Everything else is the assembly.
+
+`03-verify` follows the choice, so it carries two input fields. `input` holds the files that arrive together, which is one branch's output. `possible_inputs` holds the union of what could arrive. A node that only ever receives one set of files prints `input` alone.
 
 The command returns 20 rows at a time. A larger assembly does not fall off the end silently. Bot then writes `More assembly stages remain. Continue with --after <cursor>.` to standard error, so it can arrive before the rows on your screen and stays out of a redirected file. Passing that cursor to `--after` returns the next page. `--limit N` changes the page size, up to 200.
 

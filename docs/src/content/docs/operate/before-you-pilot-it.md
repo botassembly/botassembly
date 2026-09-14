@@ -36,7 +36,9 @@ Every stage, every attempt, gets four file-and-shell tools: `read`, `write`, `ed
 - Temporary files land under the stage's `$TMP`. `TMPDIR` points there too. That directory is scratch, kept for debugging and removed with the run.
 - A path starting with `~` is refused with a sentence asking for the path in full. That is a guardrail against addressing your files by shorthand, not containment. Absolute paths still reach anywhere.
 
-The format's five control tools are `mark`, `refuse`, `continue`, `select`, and `subflow`. `subflow` is wired only when the stage has subflows in scope. A working stage sees `refuse`, plus `mark` only when it has a checklist. The agent of a branch sees `refuse` and `select`. `continue` appears only after the work has passed every check, when a loop's question is finally asked. Every call is recorded with its decision and its evidence.
+The format has seven control tools. Six are one closed list: `mark`, `refuse`, `fault`, `continue`, `select`, and `clean-temp`. `subflow` is the seventh and is granted separately, only when the stage has subflows in scope.
+
+`refuse` belongs to every stage, and says the stage cannot be completed. `fault` says the stage cannot continue. `clean-temp` empties that stage's own `$TMP` and nothing else. `mark` is asked for only where a stage carries a checklist. `select` is asked for only from the agent of a `CHOOSE` whose body asks. `continue` is asked for only after the work has passed every check, when a loop's question is finally put. Every call is recorded with its decision and its evidence.
 
 ## What the agent is not told
 

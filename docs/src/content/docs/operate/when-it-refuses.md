@@ -69,11 +69,13 @@ $ bot assembly check ./hello/hello --json
 {"schemaVersion":1,"kind":"error","error":{"code":"request-invalid","operation":"assembly.check","cause":"assembly-invalid","message":"The assembly is not valid.","retryable":false,"details":{"faults":[{"code":"flow-unknown","path":"flows/hello","sentence":"Name a flow that exists."}]}}}
 ```
 
-Pipe it through `jq` to read one fault at a time.
+A refusal document goes to standard error, because it is a diagnostic. Standard output stays empty. Redirect the two streams before piping.
 
 ```sh
-bot assembly check ./hello/hello --json | jq '.error.details.faults'
+bot assembly check ./hello/hello --json 2>&1 >/dev/null | jq '.error.details.faults'
 ```
+
+A command that succeeds writes its `--json` document to standard output instead.
 
 [Explore a refusal](/operate/refusals-explorer/) takes any code and shows the folder that causes it, the file at fault, and the repair.
 

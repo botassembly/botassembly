@@ -20,7 +20,7 @@ sh sdlc/scripts/install  # once, and after dependency changes
 make check               # the whole gate
 ```
 
-**The smoke ladder** is the deliberate check: eleven live runs against a real model with real credentials, proving that real auth, a real clock, and a real provider still produce correct sealed records. It costs money, so it is never part of the gate and never runs by accident. Bare `make` at the repository root prints help instead of spending.
+**The smoke ladder** is the deliberate check: eleven rungs, ten of them live runs against a real model with real credentials, proving that real auth, a real clock, and a real provider still produce correct sealed records. Rung 6 spends no tokens and inspects what the live rungs left behind, so it runs last. The order is 1 through 5, then 7 through 11, then 6. It costs money, so it is never part of the gate and never runs by accident. Bare `make` at the repository root prints help instead of spending.
 
 ```sh
 make smoke           # the whole ladder, from the repository root

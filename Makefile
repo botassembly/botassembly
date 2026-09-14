@@ -21,7 +21,7 @@ check:
 	sh sdlc/scripts/lint
 	sh sdlc/scripts/test
 
-# The smoke ladder (ticket 0062): five live-model acceptance runs and one
+# The smoke ladder (ticket 0062): ten live-model acceptance runs and one
 # post-run inspection rung, deliberate and never part of `make check`.
 # The complete check calls no model. `make smoke SMOKE=3` runs one
 # rung. A fresh worktree needs `make -C bot install` first.

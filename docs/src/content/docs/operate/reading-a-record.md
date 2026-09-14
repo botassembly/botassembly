@@ -37,7 +37,9 @@ The record is append-only, so a run in progress reads the same way a finished on
 
 ## `bot run show`
 
-`bot run show RUN -j` is one structured document for a script rather than a reader. It carries identity, stage, repeat, attempt, state, exit, cause, and a scratch path per stage, and nothing more. It does not carry the choice, the gates, the hooks, or the cost. Read `bot run events` for those.
+`bot run show RUN -j` is one structured document for a script rather than a reader. `data` carries the run's own facts, one row per stage, and one row per subflow call. A stage row holds identity, stage, repeat, attempt, state, exit, cause, and a scratch path. A subflow row holds the calling stage, the attempt, the call, the subflow, the item, whether it started, the child, the exit, and the cause. Beside `data` sit a `summary` of what was counted and omitted and a bounded `warnings` array.
+
+It does not carry the choice, the gates, the hooks, or the cost. Read `bot run events` for those.
 
 ## `bot run output`
 

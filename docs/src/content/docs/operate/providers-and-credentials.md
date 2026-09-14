@@ -86,7 +86,13 @@ Rows expose only the provider name, the method, which is `login`, `key`, or `amb
 
 `bot auth list` accepts `--offset` and `--limit`, with a default page of 50 providers and a maximum of 200.
 
-Older `bot` credential files remain preserved but inactive. Commands that need authentication warn once when such a file exists. `bot auth import SOURCE` copies one compatible retired file into an empty Pi store. It never merges, never overwrites, never changes the source, and never resolves a credential value. Both stores must be owner-only files in owner-only directories.
+Older `bot` credential files remain preserved but inactive. That file is `credentials.json` under `bot` in your config directory, which is `~/.config/bot/credentials.json` unless `XDG_CONFIG_HOME` moves it. While it exists, the first command in each process that needs authentication writes one line to standard error.
+
+```text
+The retired Bot credential store is inactive; this command uses Pi's auth.json.
+```
+
+The line is a notice rather than a fault. It goes to standard error, so a redirected standard output never carries it. Delete or move the retired file to stop it. `bot auth import SOURCE` copies one compatible retired file into an empty Pi store. It never merges, never overwrites, never changes the source, and never resolves a credential value. Both stores must be owner-only files in owner-only directories.
 
 `bot auth list`, `bot model list`, and `bot capabilities` all refuse `--home`.
 

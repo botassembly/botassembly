@@ -69,10 +69,10 @@ The grammar is [the three ways to give a request](/specification/running/#the-th
 | --- | --- | --- |
 | `--home DIR` | running, reading, and managing commands | names one home for this command |
 | `--in DIR` | `run start`, `run resume`, `assembly check` | the root directory where the run starts work |
-| `--intelligence NAME` | `run start`, `run resume`, `assembly check` | overrides the assembly's model choice for one run |
-| `--timeout SECONDS` | `run start`, `run resume`, `assembly check` | overrides the stage timeout |
-| `--retries N` | `run start`, `run resume`, `assembly check` | overrides the send-back budget |
-| `--local-context MODE` | `run start`, `run resume`, `assembly check` | `ignore`, `announce`, or `use` |
+| `--intelligence NAME` | `run start`, `assembly check` | overrides the assembly's model choice for one run |
+| `--timeout SECONDS` | `run start`, `assembly check` | overrides the stage timeout |
+| `--retries N` | `run start`, `assembly check` | overrides the send-back budget |
+| `--local-context MODE` | `run start`, `assembly check` | `ignore`, `announce`, or `use` |
 | `--id-file PATH` | `run start`, `run resume` | writes the new run's name to a file |
 | `--correlation TEXT` | `run start`, `run resume` | bounded opaque metadata carried into the record |
 | `--limit N` | `assembly check`, `run list`, `run session`, `auth list`, `model list` | how many rows or messages one page returns |
@@ -117,10 +117,14 @@ Which donor runs are accepted, and what a carried prefix is, is [resuming a run]
 | `0` | the command succeeded, or the run finished and passed its checks |
 | `1` | the run ran and did not pass, or a reading found nothing |
 | `2` | the request or the assembly was impossible |
-| `3` | conflicting cursor arguments |
+| `3` | a continuation conflicts with the state it continues |
 | `4` | an unexpected filesystem or synchronous output failure |
 | `5` | an integrity, installation, or confinement fault |
+| `126` | reserved: found but not executable |
+| `127` | reserved: not found |
 | `128+n` | a signal ended the run; `n` is the signal's number |
+
+A malformed or oversized cursor is a bad argument and exits `2`. Exit `3` is for a cursor that parses and then no longer matches what it continues, such as a home whose membership changed under it.
 
 [When it refuses or fails](/operate/when-it-refuses/) works through each of these.
 

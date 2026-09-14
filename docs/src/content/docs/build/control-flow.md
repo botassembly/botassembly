@@ -67,6 +67,10 @@ An agent calls a subflow with a tool. A `FANOUT.md` calls one per item. `DESCEND
 
 A `CHOOSE` lists every alternative, because any of them could run. A `LOOP` lists its contents once, because how many repeats there will be is not knowable without running. A fan-out row keeps its authored width and maximum without claiming how many items a run will contain.
 
+A node whose arriving files are not always the same carries two input fields. `input` holds one set that arrives together, and `possible_inputs` holds the union of every set that could arrive. A node after a `CHOOSE` is one such node, and so is a node whose input differs across depth states. A `PARALLEL` keeps every branch file in `input`, because they do all arrive.
+
+The rows come 20 at a time. A larger flow is paged rather than truncated, and `bot` says so on standard error. [Command reference](/reference/commands/) holds the page sizes.
+
 The whole law of the graph is [the graph](/specification/graph/).
 
 ## Next
