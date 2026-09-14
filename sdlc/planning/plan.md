@@ -45,6 +45,8 @@ The 13 issue files retained on 2026-09-12 are resolved into the sequence above o
 
 Git retains every original observation and disposition. A recurrence or real consumer can establish a new issue with new evidence.
 
+Ruled by Ian, 2026-09-14: a whole-run spending ceiling is not a Bot feature. The issue filed that day closes. Per-stage limits stay as they are.
+
 ## Current boundaries
 
 - Pi source under `~/foss/pi` is reference material only. Bot does not patch, wrap, or publish Pi.
