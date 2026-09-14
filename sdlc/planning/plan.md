@@ -39,7 +39,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 25. **Completed in ticket 0293:** pin the specification's operation inventory sentence to `CLI_CONTRACTS` with a test that checks both directions, and add the missing `auth.import`.
 26. **Completed in ticket 0294:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
 27. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
-28. **Planned:** add one read-only operation that lists the home's intelligence table.
+28. **Completed in ticket 0297:** `bot intelligence list` reports the home's intelligence table.
 29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
 30. **Completed in ticket 0296:** `bot run resume` inherits the donor's recorded command-rung intelligence.
 31. **Completed in ticket 0295:** export `run.output` and `run.request` through the `run-readings` door ticket 0291 opened, by driving their handlers with a collecting boundary, so `copySelected` stays module-private and the exported reading returns the command's own bytes.
