@@ -37,7 +37,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 23. **Planned:** admit the nine mutating operations to the export door under Ian's child-process ruling, and replace the internals assertion at `importable-readers.test.ts:60` with one that names what stays private.
 24. **Planned:** declare `types` and the compatibility rule for every export path in `bot/package.json`.
 25. **Completed in ticket 0293:** pin the specification's operation inventory sentence to `CLI_CONTRACTS` with a test that checks both directions, and add the missing `auth.import`.
-26. **Planned:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
+26. **Completed in ticket 0294:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
 27. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
 28. **Planned:** add one read-only operation that lists the home's intelligence table.
 29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
