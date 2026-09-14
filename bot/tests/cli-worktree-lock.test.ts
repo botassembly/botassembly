@@ -27,14 +27,19 @@ async function assembly(home: string): Promise<void> {
   ensureTestInstallation(home);
 }
 
-function busy(directory: string, home: string, defaultHome: string) {
-  return piped([cliPath, "home", "busy", directory, "--quiet", "--home", home], { ...process.env, BOT_HOME: defaultHome });
-}
-
-async function answers(directory: string, home: string, defaultHome: string, code: 0 | 1): Promise<void> {
-  await expect(busy(directory, home, defaultHome)).resolves.toMatchObject({
-    code, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
-  });
+// D3 (ticket 0287): in-process through `main`, the boundary the file already
+// imports for its real-run tests. None of these four callers observe process
+// identity, a signal, or a pipe; they read records and heartbeats and assert
+// an exit code, so the child `busy()` subprocess proved nothing `main` does
+// not. `env.BOT_HOME` is overridden per call, as home-busy.test.ts does, so
+// the proof that `--home` beats the ambient home survives the conversion.
+async function answers(root: string, directory: string, home: string, defaultHome: string, code: 0 | 1): Promise<void> {
+  const out: Buffer[] = [], err: Buffer[] = [];
+  const { held } = realBoundary(root, defaultHome, out, err);
+  const result = await main(["home", "busy", directory, "--quiet", "--home", home], held);
+  expect(result).toBe(code);
+  expect(Buffer.concat(out)).toEqual(Buffer.alloc(0));
+  expect(Buffer.concat(err)).toEqual(Buffer.alloc(0));
 }
 
 function start(run: string, workdir: string): Record<string, unknown> {
@@ -94,7 +99,7 @@ test("busy uses the named home for a live run and creates no holder registry", a
   await atStage;
 
   try {
-    await answers(workdir, home, defaultHome, 0);
+    await answers(root, workdir, home, defaultHome, 0);
     expect(existsSync(join(home, "worktrees"))).toBe(false);
   } finally {
     resume();
@@ -144,12 +149,12 @@ test("busy derives live directories from run records and heartbeats", async () =
   try {
     // An unreadable record cannot tell the probe what it holds, so its live
     // heartbeat makes even another directory unsafe to delete.
-    await answers(uncertain, home, elsewhere, 0);
+    await answers(root, uncertain, home, elsewhere, 0);
     releaseUnreadable();
     unreadableHeld = false;
 
-    await Promise.all([runRoot, branch, child].map(async (directory) => answers(directory, home, elsewhere, 0)));
-    await Promise.all([finished, missing].map(async (directory) => answers(directory, home, elsewhere, 1)));
+    await Promise.all([runRoot, branch, child].map(async (directory) => answers(root, directory, home, elsewhere, 0)));
+    await Promise.all([finished, missing].map(async (directory) => answers(root, directory, home, elsewhere, 1)));
 
     // The child remains its own live run after its parent has gone stale.
     releaseParent();
@@ -157,13 +162,13 @@ test("busy derives live directories from run records and heartbeats", async () =
     await mkdir(`${parentDirectory}.lock`);
     const stale = new Date(Date.now() - 60_000);
     await utimes(`${parentDirectory}.lock`, stale, stale);
-    await answers(child, home, elsewhere, 0);
+    await answers(root, child, home, elsewhere, 0);
 
     releaseChild();
     childHeld = false;
     await mkdir(`${childDirectory}.lock`);
     await utimes(`${childDirectory}.lock`, stale, stale);
-    await answers(child, home, elsewhere, 1);
+    await answers(root, child, home, elsewhere, 1);
   } finally {
     if (parentHeld && existsSync(`${parentDirectory}.lock`)) releaseParent();
     if (childHeld && existsSync(`${childDirectory}.lock`)) releaseChild();
@@ -189,7 +194,7 @@ test("busy fails closed when a live run's child tree cannot be traversed", async
   const release = lockSync(directory, { realpath: false });
 
   try {
-    await answers(uncertain, home, join(root, "default-home"), 0);
+    await answers(root, uncertain, home, join(root, "default-home"), 0);
   } finally {
     if (existsSync(`${directory}.lock`)) release();
   }
@@ -207,10 +212,10 @@ test("busy treats every malformed live workdir as unknown ownership", async () =
   try {
     for (const resolved of ["", "..", "nested/../sibling", "nested//sibling", "nested\\sibling", join(root, "outside")]) {
       await record(directory, [start(run, runRoot), stageStart("01-work", resolved)]);
-      await answers(uncertain, home, join(root, "default-home"), 0);
+      await answers(root, uncertain, home, join(root, "default-home"), 0);
     }
     await record(directory, [start(run, "relative-root")]);
-    await answers(uncertain, home, join(root, "default-home"), 0);
+    await answers(root, uncertain, home, join(root, "default-home"), 0);
   } finally {
     if (existsSync(`${directory}.lock`)) release();
   }
@@ -226,8 +231,8 @@ test("a live root stage owns the run root and no unrelated directory", async () 
   await record(directory, [start(run, runRoot), stageStart("01-work", ".")]);
   const release = lockSync(directory, { realpath: false });
   try {
-    await answers(runRoot, home, join(root, "default-home"), 0);
-    await answers(unrelated, home, join(root, "default-home"), 1);
+    await answers(root, runRoot, home, join(root, "default-home"), 0);
+    await answers(root, unrelated, home, join(root, "default-home"), 1);
   } finally {
     if (existsSync(`${directory}.lock`)) release();
   }

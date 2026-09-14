@@ -12,6 +12,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # bot/vitest.config.ts halves the cores by default (ticket 0287); this
+      # runner has four and none of it is shared, so it stays uncapped.
+      BOT_TEST_WORKERS: "4"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,6 +31,7 @@ jobs:
       - run: test "$(id -u)" -ne 0
       - run: git cat-file -e 'HEAD^{commit}' || exit 1; commit=$(git cat-file commit HEAD) || exit 1; header=$(printf '%s\n' "$commit" | sed -n '2p') || exit 1; case "$header" in parent\ *) git rev-parse --verify HEAD^ >/dev/null 2>&1;; author\ *) true;; *) exit 1;; esac
       - run: make check
+      - run: make -C bot coverage
   platform:
     strategy:
       fail-fast: false

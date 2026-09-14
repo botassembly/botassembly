@@ -1,4 +1,4 @@
-.PHONY: check lint catch-budget typecheck test knip cycles ratchet pinned-deps install fuzz
+.PHONY: check lint catch-budget typecheck test coverage knip cycles ratchet pinned-deps install fuzz
 
 check: lint catch-budget typecheck test knip cycles ratchet pinned-deps
 
@@ -23,6 +23,13 @@ typecheck:
 	npm run typecheck
 
 test:
+	npm run test
+
+# The inventory proof: every production module is reported across four
+# dimensions (ticket 0287). It does not change between two runs of one
+# commit, and it costs over 100% of the suite's wall time instrumented, so it
+# is the completion gate's and the hosted check's, not every local gate's.
+coverage:
 	npm run test:coverage
 
 knip:

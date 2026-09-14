@@ -31,8 +31,11 @@ function validate(document) {
 	assert.deepEqual(document.permissions, { contents: 'read' });
 	assert.deepEqual(Object.keys(document.jobs ?? {}), ['check', 'platform']);
 	const job = document.jobs.check;
-	assert.deepEqual(Object.keys(job ?? {}).sort(), ['runs-on', 'steps']);
+	assert.deepEqual(Object.keys(job ?? {}).sort(), ['env', 'runs-on', 'steps']);
 	assert.equal(job['runs-on'], 'ubuntu-latest');
+	// Ticket 0287: bot/vitest.config.ts halves the cores by default; this
+	// runner is not shared, so it stays uncapped.
+	assert.deepEqual(job.env, { BOT_TEST_WORKERS: '4' });
 	const steps = job.steps ?? [];
 	const checkout = action(steps, 'actions/checkout');
 	const setup = action(steps, 'actions/setup-node');
@@ -48,6 +51,9 @@ function validate(document) {
 		{ run: 'test "$(id -u)" -ne 0' },
 		{ run: ANCESTRY_GUARD },
 		{ run: 'make check' },
+		// Ticket 0287: the inventory proof left every local gate; the hosted
+		// check job is now where it runs once per commit.
+		{ run: 'make -C bot coverage' },
 	]);
 	const platform = document.jobs.platform;
 	assert.deepEqual(Object.keys(platform ?? {}).sort(), ['runs-on', 'steps', 'strategy']);

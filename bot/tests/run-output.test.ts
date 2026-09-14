@@ -54,24 +54,34 @@ test("run output preserves bytes and exits for root, stage, missing, changed, an
   await expect(parity(home, ["missing"])).resolves.toMatchObject({ code: 1, out: Buffer.alloc(0) });
 });
 
+// D2 (ticket 0287): merges "the compiled output command preserves the exact
+// retained byte boundary" in here. Its 1,048,576-byte assertion survives as
+// the `boundary` case below; only its separate scratch home and retained run
+// are gone, since this test already proves byte-exact retrieval above 1 MiB.
 test("the compiled output command returns a large accepted output", async () => {
     const { home } = await roots.scratch("bot-run-output-limit-");
     const bytes = Buffer.alloc(1_048_577, "x"), stage = Buffer.alloc(1_048_578, "y");
     await retainedRun(home, RUN, bytes, stage);
-    await expect(invokeCliBytes(["run", "output", RUN, "--raw"], {
+    const root = await invokeCliBytes(["run", "output", RUN, "--raw"], {
       home, env: { TMPDIR: join(home, "absent-temporary-directory") },
-    }))
-      .resolves.toEqual({ code: 0, out: bytes, err: Buffer.alloc(0) });
-    await expect(invokeCliBytes(["run", "output", RUN, "01-inner", "--raw"], { home }))
-      .resolves.toEqual({ code: 0, out: stage, err: Buffer.alloc(0) });
-});
+    });
+    expect(root.code).toBe(0);
+    expect(root.err).toEqual(Buffer.alloc(0));
+    expect(root.out.length).toBe(bytes.length);
+    expect(root.out.equals(bytes)).toBe(true);
+    const named = await invokeCliBytes(["run", "output", RUN, "01-inner", "--raw"], { home });
+    expect(named.code).toBe(0);
+    expect(named.err).toEqual(Buffer.alloc(0));
+    expect(named.out.length).toBe(stage.length);
+    expect(named.out.equals(stage)).toBe(true);
 
-test("the compiled output command preserves the exact retained byte boundary", async () => {
-  const { home } = await roots.scratch("bot-run-output-boundary-");
-  const bytes = Buffer.alloc(1_048_576, "x");
-  await retainedRun(home, RUN, bytes);
-  const held = await parity(home, [RUN]);
-  expect(held).toMatchObject({ code: 0, out: bytes });
+    const boundaryHome = (await roots.scratch("bot-run-output-boundary-")).home;
+    const boundary = Buffer.alloc(1_048_576, "x");
+    await retainedRun(boundaryHome, RUN, boundary);
+    const held = await parity(boundaryHome, [RUN]);
+    expect(held.code).toBe(0);
+    expect(held.out.length).toBe(boundary.length);
+    expect(held.out.equals(boundary)).toBe(true);
 });
 
 test("real start and resume descriptors resolve to their exact retained output", async () => {
@@ -102,7 +112,10 @@ test("real start and resume descriptors resolve to their exact retained output",
       path: "stages/01-answer/1/1/output.txt", sha256: sha256(bytes), contentIncluded: false,
     });
     const fetched = await invokeCliBytes(["run", "output", data.run, "--raw"], { home });
-    expect(fetched).toEqual({ code: 0, out: bytes, err: Buffer.alloc(0) });
+    expect(fetched.code).toBe(0);
+    expect(fetched.err).toEqual(Buffer.alloc(0));
+    expect(fetched.out.length).toBe(bytes.length);
+    expect(fetched.out.equals(bytes)).toBe(true);
   };
 
   await assertResult(await execute(

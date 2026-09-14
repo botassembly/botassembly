@@ -15,3 +15,5 @@ make check
 ```
 
 Run `make smoke` only for deliberate live-provider work. Never commit `.env`, `credentials.json`, `auth.json`, or other secrets. `make check` scans ignored and untracked working files plus every patch reachable from the refs in the local repository. The hosted check fetches public branches and tags. Gitleaks recognizes known patterns and inherits the pinned upstream defaults and their exceptions. It cannot establish that a repository contains no secrets, and some filesystem open failures can be silent. Reported scanner warnings and errors fail the check.
+
+`make check` does not instrument coverage. The primary agent runs `make -C bot coverage` before writing a completion record, and the record cites it; the hosted check job runs it too. One broad gate (`make check`, a timed `sdlc/scripts/test` run, or `make -C bot coverage`) runs per repository at a time; reviewers run focused test files while a broad gate is in progress, never another broad gate.

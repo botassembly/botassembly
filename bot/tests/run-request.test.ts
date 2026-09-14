@@ -28,14 +28,10 @@ async function retained(home: string, bytes: Buffer, recorded: { bytes?: number;
   return directory;
 }
 
-test("run request returns a large retained request", async () => {
-  const { home } = await roots.scratch("bot-run-request-large-");
-  const bytes = Buffer.alloc(1_048_577, "r");
-  await retained(home, bytes);
-  await expect(invokeCliBytes(["run", "request", RUN, "--raw"], { home }))
-    .resolves.toEqual({ code: 0, out: bytes, err: Buffer.alloc(0) });
-});
-
+// D1 (ticket 0287): "run request returns a large retained request" (a
+// hand-written record) proved strictly less than this test, which produces
+// the same 1,048,577-byte retrieval through a real `run start`. Deleted here
+// with no loss.
 test("run request retrieves a large request retained by a real run", async () => {
   const { root, home } = await roots.scratch("bot-run-request-real-");
   const flow = join(home, "assemblies/review/flows/main");
@@ -50,8 +46,12 @@ test("run request retrieves a large request retained by a real run", async () =>
   faux.setResponses([writes("$OUTPUT", "answer"), fauxAssistantMessage("done")]);
   expect(await main(["run", "start", "review/main", request, "-j"], held)).toBe(0);
   const run = (JSON.parse(Buffer.concat(out).toString()) as { data: { run: string } }).data.run;
-  await expect(invokeCliBytes(["run", "request", run, "--raw"], { home }))
-    .resolves.toEqual({ code: 0, out: Buffer.from(request), err: Buffer.alloc(0) });
+  const retrieved = await invokeCliBytes(["run", "request", run, "--raw"], { home });
+  const expected = Buffer.from(request);
+  expect(retrieved.code).toBe(0);
+  expect(retrieved.err).toEqual(Buffer.alloc(0));
+  expect(retrieved.out.length).toBe(expected.length);
+  expect(retrieved.out.equals(expected)).toBe(true);
 });
 
 test.each([Buffer.alloc(0), Buffer.from([0, 0xff, 0x7c])])("run request keeps empty and binary bytes exact", async (bytes) => {

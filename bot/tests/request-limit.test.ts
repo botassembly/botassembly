@@ -78,7 +78,9 @@ test("stdin retains at most maximum plus one and settles overflow before EOF", a
   const exact = new PassThrough();
   const exactReading = readByteStream(exact);
   exact.end(Buffer.alloc(REQUEST_MAX_BYTES, 0x61));
-  await expect(exactReading).resolves.toEqual(Buffer.alloc(REQUEST_MAX_BYTES, 0x61));
+  const exactRead = await exactReading;
+  expect(exactRead.length).toBe(REQUEST_MAX_BYTES);
+  expect(exactRead.equals(Buffer.alloc(REQUEST_MAX_BYTES, 0x61))).toBe(true);
 
   const input = new PassThrough();
   const before = ["data", "end", "error"].map((event) => input.listenerCount(event));
@@ -130,8 +132,11 @@ test("resume admits an exact-maximum donor and gives an oversized historical don
   await expect(resumeDonor(excess.home, excess.name)).resolves.toEqual({
     code: "request-invalid", path: excess.name, sentence: REQUEST_TOO_LARGE_SENTENCE,
   });
-  await expect(invokeCliBytes(["run", "request", excess.name, "--raw"], { home: excess.home }))
-    .resolves.toEqual({ code: 0, out: Buffer.alloc(REQUEST_MAX_BYTES + 1), err: Buffer.alloc(0) });
+  const excessRequest = await invokeCliBytes(["run", "request", excess.name, "--raw"], { home: excess.home });
+  expect(excessRequest.code).toBe(0);
+  expect(excessRequest.err).toEqual(Buffer.alloc(0));
+  expect(excessRequest.out.length).toBe(REQUEST_MAX_BYTES + 1);
+  expect(excessRequest.out.equals(Buffer.alloc(REQUEST_MAX_BYTES + 1))).toBe(true);
 
   const id = join(excessRoot, "resume-id"), capture = { out: [] as Buffer[], err: [] as Buffer[] };
   const boundary = boundaryFor(excessRoot, excess.home, capture);

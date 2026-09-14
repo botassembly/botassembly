@@ -34,7 +34,10 @@ test.each([
 ])("run record preserves %s exactly through the established reader", async (_name, bytes) => {
   const where = await fixture(bytes);
   const modern = await invokeCliBytes(["run", "record", RUN, "--raw"], { home: where.home });
-  expect(modern).toEqual({ code: 0, out: bytes, err: Buffer.alloc(0) });
+  expect(modern.code).toBe(0);
+  expect(modern.err).toEqual(Buffer.alloc(0));
+  expect(modern.out.length).toBe(bytes.length);
+  expect(modern.out.equals(bytes)).toBe(true);
 });
 
 test("run record requires one run, one raw flag, and at most one valued home", async () => {

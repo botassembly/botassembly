@@ -33,7 +33,9 @@ test("delivery needs no output-sized temporary storage", async () => {
   const held = await source(), out: Buffer[] = [];
   await expect(copyVerifiedOutput(held.selected, sink(out)))
     .resolves.toEqual({ kind: "copied" });
-  expect(Buffer.concat(out)).toEqual(held.bytes);
+  const delivered = Buffer.concat(out);
+  expect(delivered.length).toBe(held.bytes.length);
+  expect(delivered.equals(held.bytes)).toBe(true);
 });
 
 test("a change to unread first-pass bytes fails before stdout", async () => {
@@ -65,7 +67,9 @@ test("a late in-place change is delivered but fails its second hash", async () =
   await expect(copyVerifiedOutput(held.selected, sink(out), {
     afterVerified: () => writeFile(held.file, changed),
   })).resolves.toEqual({ kind: "mismatch" });
-  expect(Buffer.concat(out)).toEqual(changed);
+  const delivered = Buffer.concat(out);
+  expect(delivered.length).toBe(changed.length);
+  expect(delivered.equals(changed)).toBe(true);
 });
 
 test.each([
@@ -79,7 +83,9 @@ test.each([
   await expect(copyVerifiedOutput(held.selected, sink(out), {
     afterVerified: () => mutate(held.file, held.bytes),
   })).resolves.toEqual({ kind: "copied" });
-  expect(Buffer.concat(out)).toEqual(held.bytes);
+  const delivered = Buffer.concat(out);
+  expect(delivered.length).toBe(held.bytes.length);
+  expect(delivered.equals(held.bytes)).toBe(true);
 });
 
 test("truncation after verification retains its delivery failure and partial bytes", async () => {
@@ -89,7 +95,9 @@ test("truncation after verification retains its delivery failure and partial byt
     afterVerified: () => truncate(held.file, retained),
   });
   expect(result).toMatchObject({ kind: "fault", phase: "delivery" });
-  expect(Buffer.concat(out)).toEqual(held.bytes.subarray(0, retained));
+  const delivered = Buffer.concat(out), expected = held.bytes.subarray(0, retained);
+  expect(delivered.length).toBe(expected.length);
+  expect(delivered.equals(expected)).toBe(true);
 });
 
 test("stdout failure exposes only a verified source prefix", async () => {
@@ -104,8 +112,10 @@ test("stdout failure exposes only a verified source prefix", async () => {
     },
   }));
   expect(result).toMatchObject({ kind: "fault", phase: "delivery", error: failure });
-  expect(Buffer.concat(out).length).toBeGreaterThan(0);
-  expect(Buffer.concat(out)).toEqual(held.bytes.subarray(0, Buffer.concat(out).length));
+  const delivered = Buffer.concat(out);
+  expect(delivered.length).toBeGreaterThan(0);
+  const expected = held.bytes.subarray(0, delivered.length);
+  expect(delivered.equals(expected)).toBe(true);
 });
 
 test("EPIPE remains a quiet successful delivery", async () => {
