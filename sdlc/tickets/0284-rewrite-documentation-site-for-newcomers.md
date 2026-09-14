@@ -1,85 +1,84 @@
 ---
 flow: build
 priority: 2
-deps: [0283]
+deps: []
 ---
 # Rewrite the documentation site for newcomers
 
 ## Outcome
 
-A first-time reader goes from the landing page to a running shipped example, then to their own assembly, then to reading a record and handling a refusal. Every term is defined before use. No step on that path sends the reader into the specification. The site keeps every accurate claim, removes the eleven accuracy problems the 2026-09-14 review lists, and adopts the reviewed page structure.
+A newcomer follows one journey on the rebuilt site: the landing page, a running shipped example, their own assembly, reading a record, handling a refusal. No authored page uses a term before defining it, and no step links into the specification. Every retired URL redirects to its replacement.
 
 ## Current facts
 
-- 69% of the words and 13 of 30 sidebar entries are generated specification.
-- `guides/first-assembly.md` asks for nine prerequisites and about 700 words before the reader writes one file.
-- The site teaches `<assembly>/<flow>` with only `triage/triage`. The other shipped flows are `greet`, `plan`, and `brief`, so a reader who follows the site to `hello` gets `The assembly is not valid.` and nothing more.
-- "Intelligence", "Pi", "slot", "rung", and "sentinel" appear before definition, or are defined only in the specification.
+Verified at HEAD `9699a10`.
+
+- 69% of the site's words and 13 of 30 sidebar entries are generated specification.
+- `guides/first-assembly.md` asks for nine prerequisites and about 700 words before the reader writes a file.
+- The site names `triage/triage` eleven times and names `greet`, `plan`, or `brief` zero times, so a reader who follows it to `hello` types a target that does not exist.
+- "Intelligence", "Pi", "slot", "rung", and "sentinel" appear on authored pages before definition, or only in the specification.
 - No guide links to `/format/refusals-explorer/`, and there is no troubleshooting page.
-- The site announces released version `0.0.1`. Nothing is published and the release rule names `v0.1.0`. Five pages leak the internal WSL clean-clone milestone into user prose.
-- `docs/scripts/generate-specification.mjs` wipes and rewrites `src/content/docs/specification/` on every build, so no fix belongs in those eleven pages.
-- `sdlc/scripts/examples` runs `bot assembly check` for each example and discards stdout. Each example README carries a transcript, and `docs/scripts/walkthrough-steps.mjs` republishes one on the site. No check compares a transcript to real output (review note M8).
+- Authored pages carry the accuracy problems this ticket owns: the `0.0.1` release claim at `format-and-runtime.md:14,42` and `project/development.md:16`; the release-candidate WSL milestone at `index.mdx:69`, `install-and-use.md:28`, and `first-assembly.md:12`, against `principles.md:28` asserting WSL as checked; two credential routes at `install-and-use.md:36`, `:41`, and `first-assembly.md:64`; the Pi `0.85.1` pin at `reference/auth.md:31`; release-note prose at `auth.md:43-55` and `inspection.md:84`.
+- `docs/scripts/generate-specification.mjs` wipes and rewrites `src/content/docs/specification/` on every build. `navigation.test.mjs` parses the sidebar out of `docs/astro.config.mjs`.
 
 ## Scope
 
 Rebuild the sidebar as six groups. Each page does one job.
 
-- **Start.** *What it is* (home): land the idea and show a folder becoming a record. *Why not a script*: answer "compared to what", from the README's four questions. *Install*: get `bot` working and prove it with one `bot assembly check` that succeeds and calls no model. *Run the shipped example*: first run, first record. *Write your own*: four files, check, one run, from `examples/hello`.
+- **Start.** *What it is* (home): land the idea and show a folder becoming a record. *Why not a script*: answer "compared to what", from the README's four questions. *Install*: get `bot` working, proved by one `bot assembly check` that calls no model. *Run the shipped example*: first run, first record. *Write your own*: four files, check, one run, from `examples/hello`.
 - **Build.** *Stages and checks*. *Control flow*. *Skills and slots*. *Sharing an assembly*. *Explore an assembly*.
-- **Operate.** *Reading a record*. *Providers, models, and credentials*, which defines "intelligence" once. *When it refuses or fails*, a new page covering exit 1, exit 2, signal exits, the 0700 home fault, `intelligence-unresolved`, and the flow-name trap. *Explore a refusal*. *Before you pilot it*, merging the trust boundary, agent tools, and limits.
+- **Operate.** *Reading a record*. *Providers, models, and credentials*, which defines "intelligence" once. *When it refuses or fails*, a new page covering exit 1, exit 2, signal exits, the 0700 home fault, and the flow-name trap. *Explore a refusal*. *Before you pilot it*, merging trust boundary, agent tools, and limits.
 - **Understand.** *A folder in, a record out*. *The format and the runtime*. *Principles*.
 - **Reference.** *Command reference*, one table. *Specification*, the generated pages in one collapsed group.
 - **Project.** *Development and testing*.
 
-Merges, moves, and cuts: `first-assembly.md` and `install-and-use.md` split across the Start pages, Reading a record, and When it refuses or fails. `authoring-assemblies.md` splits across the Build pages. `reference/invocation.md` and `reference/resume.md` become the command reference. `reference/trust-boundary.md`, `agent-tools.md`, and `limits.md` merge into Before you pilot it, which also takes the home caution box. Cut the back half of `reference/management.md`, the release-note prose in `reference/auth.md` and `reference/inspection.md`, and `reading-list`. `AssemblyExplorer` moves to Build, `RefusalExplorer` moves to Operate, and `Walkthrough` stays home.
+Merges, moves, and cuts: `first-assembly.md` and `install-and-use.md` split across Start, Reading a record, and When it refuses or fails. `authoring-assemblies.md` splits across Build. `invocation.md` and `resume.md` become the command reference. `trust-boundary.md`, `agent-tools.md`, and `limits.md` merge into Before you pilot it, which takes the home caution box. Cut the back half of `management.md`, the release-note prose, and `reading-list`. `AssemblyExplorer` moves to Build, `RefusalExplorer` to Operate, and `Walkthrough` stays home.
 
-Writing rules for every authored page: one fact per sentence; subject, verb, object; define a term at first use; one job per page; transcripts only from real command output; no release-note prose about the current implementation; no project-internal milestone; no per-page taxonomy disclaimer.
+Every authored page that changes slug keeps a redirect to its replacement. No retired `/guides/` or `/reference/` URL 404s.
 
-Fix the eleven accuracy problems. The check-refusal claims, the flow names, the stderr warn-once line, and check pagination are runtime facts, so reverify each by command. The version claims in generated pages come from `specification/README.md` and `specification/elements/record.md`, which ticket 0282 owns.
+Writing rules for authored pages, not generated ones: one fact per sentence; subject, verb, object; define a term at first use; one job per page; no sentence about the site or the page itself; no release-note prose; no project-internal milestone; no per-page taxonomy disclaimer; transcripts only from real command output.
 
-Add one offline test that runs `bot assembly check` for each shipped example and compares its output to the transcript in that example's README. Use the command `sdlc/scripts/examples` already runs.
+Accuracy problems this ticket removes, numbered from the assessment: 2, 5, 7, 8, 9, 10, and 11. Problems 1, 3, and 4 turn on runtime output that tickets 0281 and 0283 change, so ticket 0285 owns them. Problem 6 lives in `specification/`, which ticket 0282 owns.
 
-Out of scope: `bot/src`, `specification/` (ticket 0282), and the blog's historical post except one provenance line if the rewrite makes it inaccurate.
+Out of scope: `bot/src`, `specification/`, example transcripts, and the blog's historical post except one provenance line if the rewrite makes it inaccurate.
 
 ## Acceptance
 
-Start with the failing transcript test.
-
 - `cd docs && npm run build` exits 0 with no new warning.
-- `node --test docs/scripts/*.test.mjs` passes. `navigation.test.mjs` moves with the sidebar and still proves every page sits in exactly one group and every root-relative link resolves. `no-domain-words.test.mjs` keeps the biomedical vocabulary guard unchanged. `published-runtime-contracts.test.mjs`, `extract-walkthrough.test.mjs`, `extract-corpus.test.mjs`, `generate-specification.test.mjs`, and `models-migration.test.mjs` move with the text they pin. The walkthrough keeps its synthetic-evidence and defined-words proofs.
-- The new transcript test fails on a hand-edited README and passes on every shipped example.
+- A new test lists every retired authored slug, proves each has a redirect, and proves each target builds.
+- `node --test docs/scripts/*.test.mjs` passes. `navigation.test.mjs` moves with the sidebar and still proves one group per page and a resolving target for every root-relative link. `no-domain-words.test.mjs` keeps the biomedical vocabulary guard unchanged. `published-runtime-contracts.test.mjs`, `extract-walkthrough.test.mjs`, `extract-corpus.test.mjs`, `generate-specification.test.mjs`, and `models-migration.test.mjs` move with the text they pin. The walkthrough keeps its synthetic-evidence and defined-words proofs.
 - A scripted link check of the built site reports no broken internal link or anchor.
 - `make check` passes.
 - One reviewer reads the Start path as a newcomer, without the repository open, and records that read-through as a code-review finding.
 
 ## Dependencies
 
-Ticket 0283 owns the model failure text. This ticket rebases onto 0283 before its accuracy pass, so no page claims a local catalog miss proves provider retirement. Ticket 0282 owns the version statement the generated pages repeat.
+None. This ticket starts now in a parallel worktree. Ticket 0285 follows it, after 0281 and 0283.
 
 ## Risk facts
 
-Every published URL under `/guides/` and `/reference/` changes. External links and search results break unless redirects are added. The transcript test binds the examples to installed runtime output, so a later runtime change reddens this gate.
+Every published URL under `/guides/` and `/reference/` changes. A missed redirect breaks an external link and a search result. Merging reference pages loses per-page anchors other pages cite. The restructure reddens `navigation.test.mjs` until that test moves with it.
 
 ## Size decision
 
-Production size does not change. This ticket edits `docs/` content, `docs/astro.config.mjs`, example READMEs, and test scripts. It adds no runtime code.
+Production size does not change. This ticket edits `docs/` content, `docs/astro.config.mjs`, and documentation tests.
 
 ## Complexity
 
 - Contract score: 1
 - State and timing score: 0
-- Reach score: 1
+- Reach score: 2
 - Proof score: 2
 - Cost of error score: 1
-- Total: 5
+- Total: 6
 - Minimum level floor: none
-- Final level: 2
-- Reasons: The work is large, and each claim is still checkable against one command or one document. Proof scores 2 for the exact-output transcript comparison.
-- Selected model: `claude-opus-5` with medium reasoning for design review, implementation, and code review. The rubric routes level 2 to Sonnet; Ian's workspace rule sends build work to Opus, and a site rewrite judged on prose quality is build work.
+- Final level: 3
+- Reasons: Reach scores 2 for a deployed public URL surface that is retired and republished. Proof scores 2 because the redirects prove compatibility with the old paths.
+- Selected model: the rubric routes level 3 to the build tier, and Ian's mapping sends build work to Opus. `claude-opus-5` with medium reasoning implements. Independent design review and code review also use `claude-opus-5` with medium reasoning.
 
 ## Review
 
-- Origin: plan outcome 12, pulled forward on 2026-09-14 and widened into a full rewrite. Evidence: `sdlc/planning/notes/2026-09-14-review-docs-site.md` and finding M8 in `2026-09-14-review-recent-work.md`.
-- Deviation: the review proposed publishing the blog post `a-folder-in-a-record-out.md` as the Understand page. That post is out of scope, so the page is written fresh from the home page's story and the post stays a draft.
-- Design review: pending
+- Origin: plan outcome 14, from `sdlc/planning/notes/2026-09-14-review-docs-site.md`. Design review rejected the first draft for carrying two outcomes, so the accuracy pass and the transcript test became ticket 0285.
+- Deviation: the review proposed publishing the draft blog post as the Understand page. That post is out of scope, so the page is written fresh from the home page's story.
+- Design review: accepted after one rejection and a split.
 - Code review: pending
