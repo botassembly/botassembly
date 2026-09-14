@@ -60,6 +60,6 @@ test("omission resolves default from home", async () => {
   ]);
   const capture: Capture = { out: [], err: [] };
   await expect(semanticCheck([ "review/main", "--json"], boundaryFor(root, home, capture))).resolves.toBe(0);
-  const parsed = JSON.parse(text(capture.out).trim()) as { options: { intelligence: unknown } };
+  const parsed = JSON.parse(text(capture.out).trim().split("\n")[1] ?? "") as { options: { intelligence: unknown } };
   expect(parsed.options.intelligence).toEqual({ value: "default", from: "home" });
 });

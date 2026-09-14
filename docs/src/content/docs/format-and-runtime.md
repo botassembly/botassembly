@@ -25,7 +25,7 @@ That is the point of keeping the two apart. An assembly is markdown and scripts 
 
 ## Where they meet
 
-`bot assembly check` is the seam. It reads an assembly, refuses it if the format says it is malformed, and otherwise prints every stage in the order it would run with every option resolved and the rung each value came from. It calls no model and spends no money.
+`bot assembly check` is the seam. It reads an assembly, refuses it if the format says it is malformed, and otherwise prints every statically reachable flow definition and node within the ten-child-call ceiling. Nodes carry resolved options and the rung each value came from. It calls no model and spends no money.
 
 ```sh
 bot assembly check ./reading-list/digest

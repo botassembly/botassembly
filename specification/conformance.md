@@ -103,11 +103,20 @@ A real CHOOSE run proves that current `chose` events carry the selection, declin
 
 ## The check output contract
 
-`--json` writes one object per stage, in execution order:
+The reader returns one JSON object per procedure row. A named flow starts with
+its definition. Other reachable definitions follow in bytewise path order,
+each immediately before that flow's nodes:
 
 ```json
 {
+  "stage": "flows/review/FLOW.md",
+  "flow": "flows/review",
+  "type": "FLOW",
+  "max_subflow_calls": 10
+}
+{
   "stage": "02-assess/risk",
+  "flow": "flows/review",
   "type": "STAGE",
   "input": ["read.txt"],
   "output": "risk.json",
@@ -124,6 +133,15 @@ A real CHOOSE run proves that current `chose` events carry the selection, declin
   }
 }
 ```
+
+A `DESCEND` definition also carries `max_depth`. Definitions carry no input,
+output, files, skills, or model options. Each named-flow node carries `flow` as
+its assembly-relative flow path. A child-only flow starts from
+`request.<runtime>` and resolves options without root command or task rungs. A
+selected flow reachable again as a child keeps its root `input` and `options`
+and adds `child_input` and `child_options` when the child context differs. A
+depth-dependent selected-root artifact adds `child_outputs`; a child-only row
+adds `possible_outputs` when its exact reachable states disagree.
 
 Every option carries the rung it came from, and `from` is one fixed word per
 rung ([the eight rungs](elements/invocation.md#options-and-where-they-resolve)):
@@ -169,11 +187,15 @@ is not knowable without running, and a `CHOOSE` lists every alternative, because
 any of them could be the one that runs.
 
 Given no flow — `bot assembly check review` — it validates the whole assembly exactly as
-any invocation would, and reports the assembly agent as the one stage that
-would run: `stage` is `assembly`, `type` is `ASSEMBLY`, `files` lists
+any invocation would, and reports the assembly agent first: `stage` is `assembly`, `type` is `ASSEMBLY`, `files` lists
 `ASSEMBLY.md`, `output` is `assembly.txt` (no schema — text), and a `scope`
 field names the flows and root subflows the agent could call, in name order
-([running the assembly](elements/invocation.md#running-the-assembly)).
+([running the assembly](elements/invocation.md#running-the-assembly)). Reachable
+flow definitions and nodes follow. Traversal keeps exact flow identity,
+mixed-flow call position, and consecutive self-call depth through ten child
+edges while emitted definitions and nodes remain unique. Static output lists
+all choice alternatives and one loop body but predicts no selection, repeat,
+call, or fan-out item count. Definitions beyond the ceiling remain validated.
 
 Everything this does is deterministic, which is what makes it the backbone of
 this corpus.

@@ -22,20 +22,23 @@ import {
 import { childInvocation, resolvedOptions, type OptionContext, type ResolvedOptions } from "./options.ts";
 import { visibleSkills } from "./skills.ts";
 import type { Refusal } from "./spine.ts";
+import { MAX_SUBFLOW_CALLS, scopedSubflows } from "./subflow-scope.ts";
 import { stageWorkdir } from "./workdir.ts";
 
 interface RenderContext extends OptionContext {
   request: string[];
   faults: Refusal[];
   lines: Record<string, unknown>[];
-  children: Flow[];
   workdir: string;
+  callPosition: number;
+  selfDepth: number;
 }
 
 function renderContext(
   invocation: Invocation, assembly: Assembly, flow: Flow, home: HomeConfig, faults: Refusal[], workdir: string,
+  request = [`request.${invocation.requestExtension}`], callPosition = 0, selfDepth = 1,
 ): RenderContext {
-  return { invocation, assembly, flow, home, request: [`request.${invocation.requestExtension}`], faults, lines: [], children: [], workdir };
+  return { invocation, assembly, flow, home, request, faults, lines: [], workdir, callPosition, selfDepth };
 }
 
 function validateStageWorkdir(context: RenderContext, node: StageNode | ChooseNode): void {
@@ -105,24 +108,30 @@ function nodeOptions(context: RenderContext, node: Node, from: "stage" | "contai
   return options;
 }
 
-function renderFanout(node: Extract<Node, { kind: "FANOUT" }>, input: string[], context: RenderContext): string[] {
-  const scope = new Map([...context.assembly.subflows, ...context.flow.subflows]);
-  if (scope.get(context.flow.name) === context.flow) scope.delete(context.flow.name);
+function fanoutOutput(node: Extract<Node, { kind: "FANOUT" }>, context: RenderContext): string | undefined {
+  const scope = scopedSubflows(context.assembly.subflows, context.flow, undefined, context.selfDepth, context.callPosition);
   const child = scope.get(node.subflow);
-  const tail = child?.sequence.nodes.at(-1);
   if (child === undefined) {
-    fault(context.faults, "flow-unknown", node.path, `Name a subflow in scope, not ${node.subflow}.`);
-  } else if (tail?.kind !== "STAGE") {
-    fault(context.faults, "value-invalid", node.path, "Name a subflow whose final node is an ordinary stage.");
-  } else {
-    context.children.push(child);
+    if (context.callPosition < MAX_SUBFLOW_CALLS) {
+      fault(context.faults, "flow-unknown", node.path, `Name a subflow in scope, not ${node.subflow}.`);
+    }
+    return undefined;
   }
-  const extension = tail?.kind === "STAGE" ? tail.extension : "txt";
+  const tail = child.sequence.nodes.at(-1);
+  if (tail?.kind !== "STAGE") {
+    fault(context.faults, "value-invalid", node.path, "Name a subflow whose final node is an ordinary stage.");
+    return undefined;
+  }
+  return `<item>.${tail.extension}`;
+}
+
+function renderFanout(node: Extract<Node, { kind: "FANOUT" }>, input: string[], context: RenderContext): string[] {
+  const output = fanoutOutput(node, context);
   context.lines.push({
-    stage: stagePath(node, context.flow), type: "FANOUT", items: node.items, subflow: node.subflow,
-    width: node.width, max_items: node.maxItems, input, output: `<item>.${extension}`,
+    stage: stagePath(node, context.flow), flow: context.flow.path, type: "FANOUT", items: node.items, subflow: node.subflow,
+    width: node.width, max_items: node.maxItems, input, ...(output === undefined ? {} : { output }),
   });
-  return [`<item>.${extension}`];
+  return output === undefined ? [] : [output];
 }
 
 function renderNode(
@@ -134,13 +143,13 @@ function renderNode(
   if (node.kind === "STAGE") {
     validateStageWorkdir(context, node);
     checkCollision(input, node.path, context.faults);
-    context.children.push(...node.subflows.values());
     // One flattening, shared with the run (skills.ts). What `$PWD` lends under
     // `local-context: use` is a fact of the tree a run is pointed at, not of
     // the assembly, so check reports the option and not its harvest.
     const skills = [...visibleSkills(context.assembly, context.flow, containers, node, new Map()).keys()].sort(bytewise);
     context.lines.push({
       stage: stagePath(node, context.flow),
+      flow: context.flow.path,
       type: "STAGE",
       input,
       output: `${node.name}.${node.extension}`,
@@ -154,6 +163,7 @@ function renderNode(
   if (node.kind === "FANOUT") return renderFanout(node, input, context);
   const line: Record<string, unknown> = {
     stage: stagePath(node, context.flow),
+    flow: context.flow.path,
     type: node.kind,
     ...(node.kind === "LOOP" ? { repeat: node.repeat } : {}),
     ...(node.kind === "PARALLEL" ? { width: node.width } : {}),
@@ -182,26 +192,197 @@ function renderSequence(
   return current;
 }
 
-/** Every reachable subflow, rendered as its own child: a run walks them all
- *  before it starts (machinery.ts's modelFaults), so check refuses the same
- *  tree, same code at the same path (inspection.md). A child inherits none of
- *  the invocation (subflow.md); the identity guard terminates the walk, one
- *  flow re-entering under every scope that holds it; faults are kept and lines
- *  dropped, so `--json` stays the invoked flow's own. Ruled divergences: D1,
- *  check holds no Models catalogue by spec (inspection.md) — presence and
- *  intelligence resolution only, as at the root; D2, check's container-trouble
- *  superset (a bad container choice faults at the container's path AND the
- *  stage's) reaches children as it reaches the root, and stands. */
-function walkChildren(context: RenderContext): void {
-  const { assembly, home, faults } = context;
-  const queue = [...assembly.subflows.values(), ...context.flow.subflows.values(), ...context.children];
-  const seen = new Set<Flow>();
+interface FlowState { flow: Flow; callPosition: number; selfDepth: number }
+
+interface ReachableFlows {
+  flows: Set<Flow>;
+  states: Map<Flow, FlowState[]>;
+}
+
+function nodeScopes(node: Node, state: FlowState, assembly: Assembly): Flow[] {
+  if (node.kind === "STAGE" || node.kind === "CHOOSE") {
+    return [...scopedSubflows(assembly.subflows, state.flow, node.kind === "STAGE" ? node : undefined,
+      state.selfDepth, state.callPosition).values()];
+  }
+  if (node.kind !== "FANOUT") return [];
+  const target = scopedSubflows(assembly.subflows, state.flow, undefined, state.selfDepth, state.callPosition).get(node.subflow);
+  return target === undefined ? [] : [target];
+}
+
+function nestedSequences(node: Node): Sequence[] {
+  if (node.kind === "LOOP") return [node.sequence];
+  if (node.kind === "PARALLEL") return node.branches.map((branch) => branch.sequence);
+  if (node.kind === "CHOOSE") return node.alternatives.map((branch) => branch.sequence);
+  return [];
+}
+
+function agentScopes(sequence: Sequence, state: FlowState, assembly: Assembly): Flow[] {
+  const found: Flow[] = [];
+  const visit = (held: Sequence): void => {
+    for (const node of held.nodes) {
+      found.push(...nodeScopes(node, state, assembly));
+      for (const nested of nestedSequences(node)) visit(nested);
+    }
+  };
+  visit(sequence);
+  return found;
+}
+
+function reachableFlows(assembly: Assembly, starts: FlowState[]): ReachableFlows {
+  // Scope can change at the same flow as either ceiling advances. Keep those
+  // traversal states exact; the separate flow sets deduplicate only output.
+  const queue = [...starts], seen = new Map<Flow, Set<string>>(), flows = new Set<Flow>();
+  const states = new Map<Flow, FlowState[]>();
+  for (let state = queue.shift(); state !== undefined; state = queue.shift()) {
+    const key = `${String(state.callPosition)}\0${String(state.selfDepth)}`, held = seen.get(state.flow) ?? new Set<string>();
+    if (held.has(key)) continue;
+    held.add(key);
+    seen.set(state.flow, held);
+    flows.add(state.flow);
+    states.set(state.flow, [...states.get(state.flow) ?? [], state]);
+    for (const flow of agentScopes(state.flow.sequence, state, assembly)) {
+      queue.push({ flow, callPosition: state.callPosition + 1, selfDepth: flow.path === state.flow.path ? state.selfDepth + 1 : 1 });
+    }
+  }
+  return { flows, states };
+}
+
+function validationFlows(initial: readonly Flow[], assembly: Assembly): Set<Flow> {
+  // Validation covers the authored tree even when the reachable report stops
+  // at the runtime ceiling. This preserves check's complete fault set.
+  const found = new Set<Flow>(), queue = [...assembly.subflows.values(), ...initial];
   for (let flow = queue.shift(); flow !== undefined; flow = queue.shift()) {
-    if (seen.has(flow)) continue;
-    seen.add(flow);
-    const child = renderContext(childInvocation(context.invocation), assembly, flow, home, faults, context.workdir);
-    renderSequence(flow.sequence, child.request, [], child);
-    queue.push(...flow.subflows.values(), ...child.children);
+    if (found.has(flow)) continue;
+    found.add(flow);
+    queue.push(...flow.subflows.values());
+    const visit = (sequence: Sequence): void => {
+      for (const node of sequence.nodes) {
+        if (node.kind === "STAGE") queue.push(...node.subflows.values());
+        else if (node.kind === "LOOP") visit(node.sequence);
+        else if (node.kind === "PARALLEL") for (const branch of node.branches) visit(branch.sequence);
+        else if (node.kind === "CHOOSE") for (const branch of node.alternatives) visit(branch.sequence);
+      }
+    };
+    visit(flow.sequence);
+  }
+  return found;
+}
+
+function flowRows(
+  invocation: Invocation, assembly: Assembly, flow: Flow, home: HomeConfig, faults: Refusal[], workdir: string,
+  state: FlowState, child: boolean,
+): Record<string, unknown>[] {
+  const selected = child ? childInvocation(invocation) : invocation;
+  const request = child ? ["request.<runtime>"] : [`request.${invocation.requestExtension}`];
+  const context = renderContext(selected, assembly, flow, home, faults, workdir, request, state.callPosition, state.selfDepth);
+  renderSequence(flow.sequence, context.request, [], context);
+  return context.lines;
+}
+
+function addFaults(target: Refusal[], candidates: readonly Refusal[]): void {
+  for (const candidate of candidates) {
+    if (!target.some(({ code, path, sentence }) => code === candidate.code && path === candidate.path && sentence === candidate.sentence)) {
+      target.push(candidate);
+    }
+  }
+}
+
+function stateRows(
+  invocation: Invocation, assembly: Assembly, state: FlowState, home: HomeConfig, faults: Refusal[], workdir: string,
+  child: boolean,
+): Record<string, unknown>[] {
+  const found: Refusal[] = [];
+  const rows = flowRows(invocation, assembly, state.flow, home, found, workdir, state, child);
+  addFaults(faults, found);
+  return rows;
+}
+
+function definition(flow: Flow): Record<string, unknown> {
+  const descend = flow.maxDepth !== undefined;
+  return {
+    stage: `${flow.path}/${descend ? "DESCEND.md" : "FLOW.md"}`,
+    flow: flow.path,
+    type: descend ? "DESCEND" : "FLOW",
+    max_subflow_calls: MAX_SUBFLOW_CALLS,
+    ...(descend ? { max_depth: flow.maxDepth } : {}),
+  };
+}
+
+function values(rows: readonly Record<string, unknown>[], field: string): unknown[] {
+  const found: unknown[] = [];
+  for (const row of rows) {
+    const value = row[field];
+    if (value !== undefined && !found.some((held) => JSON.stringify(held) === JSON.stringify(value))) found.push(value);
+  }
+  return found;
+}
+
+function inputs(rows: readonly Record<string, unknown>[]): unknown[] {
+  const found: unknown[] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row["input"])) continue;
+    for (const value of row["input"]) if (!found.includes(value)) found.push(value);
+  }
+  return found;
+}
+
+function consolidateRows(variants: Record<string, unknown>[][]): Record<string, unknown>[] {
+  const first = variants[0] ?? [];
+  return first.map((row, index) => {
+    const alternatives = variants.flatMap((held) => held[index] === undefined ? [] : [held[index]]);
+    const input = inputs(alternatives), outputs = values(alternatives, "output");
+    return {
+      ...row,
+      ...(input.length === 0 ? {} : { input }),
+      ...(outputs.length > 1 ? { possible_outputs: outputs } : {}),
+    };
+  });
+}
+
+function mergeChildRows(root: Record<string, unknown>[], child: Record<string, unknown>[]): Record<string, unknown>[] {
+  return root.map((row, index) => {
+    const other = child[index];
+    if (other === undefined) return row;
+    const childOutputs = Array.isArray(other["possible_outputs"])
+      ? other["possible_outputs"]
+      : other["output"] === undefined ? [] : [other["output"]];
+    return {
+      ...row,
+      ...(other["options"] === undefined ? {} : { child_options: other["options"] }),
+      ...(JSON.stringify(row["input"]) === JSON.stringify(other["input"]) ? {} : { child_input: other["input"] }),
+      ...(childOutputs.length === 0 || childOutputs.length === 1 && childOutputs[0] === row["output"]
+        ? {} : { child_outputs: childOutputs }),
+    };
+  });
+}
+
+function procedureRows(
+  invocation: Invocation, assembly: Assembly, reachable: ReturnType<typeof reachableFlows>, root: Flow | undefined,
+  home: HomeConfig, faults: Refusal[], workdir: string,
+): Record<string, unknown>[] {
+  const ordered = [...reachable.flows].filter((flow) => flow !== root).sort((a, b) => bytewise(a.path, b.path));
+  if (root !== undefined) ordered.unshift(root);
+  return ordered.flatMap((flow) => {
+    const states = reachable.states.get(flow) ?? [];
+    const rootState = root === flow ? states.find(({ callPosition }) => callPosition === 0) : undefined;
+    const childStates = states.filter(({ callPosition }) => callPosition > 0);
+    const childRows = consolidateRows(childStates.map((state) => stateRows(invocation, assembly, state, home, faults, workdir, true)));
+    const held = rootState === undefined
+      ? childRows
+      : childStates.length === 0
+        ? stateRows(invocation, assembly, rootState, home, faults, workdir, false)
+        : mergeChildRows(stateRows(invocation, assembly, rootState, home, faults, workdir, false), childRows);
+    return [definition(flow), ...held];
+  });
+}
+
+function validateAllContexts(
+  invocation: Invocation, assembly: Assembly, initial: readonly Flow[], root: Flow | undefined,
+  home: HomeConfig, faults: Refusal[], workdir: string,
+): void {
+  for (const flow of validationFlows(initial, assembly)) {
+    if (flow !== root) flowRows(invocation, assembly, flow, home, faults, workdir,
+      { flow, callPosition: 1, selfDepth: 1 }, true);
   }
 }
 
@@ -222,10 +403,9 @@ export function renderFlow(
   home: HomeConfig,
   faults: Refusal[], workdir: string,
 ): string[] {
-  const context = renderContext(invocation, assembly, flow, home, faults, workdir);
-  renderSequence(flow.sequence, context.request, [], context);
-  walkChildren(context);
-  return context.lines.map((line) => JSON.stringify(line));
+  const reachable = reachableFlows(assembly, [{ flow, callPosition: 0, selfDepth: 1 }]);
+  validateAllContexts(invocation, assembly, [flow], flow, home, faults, workdir);
+  return procedureRows(invocation, assembly, reachable, flow, home, faults, workdir).map((line) => JSON.stringify(line));
 }
 
 export function renderAssemblyAgent(
@@ -239,12 +419,14 @@ export function renderAssemblyAgent(
   };
   const context = renderContext(invocation, assembly, placeholder, home, faults, workdir);
   const options = wholeModel(context, faults);
-  // A flowless invocation runs a synthetic scope of every flow and every subflow (run.ts), all of it validated first.
-  context.children.push(...assembly.flows.values());
-  walkChildren(context);
+  // A flowless invocation can name every top-level flow and subflow from its synthetic scope.
+  const starts = [...assembly.flows.values(), ...assembly.subflows.values()]
+    .map((flow): FlowState => ({ flow, callPosition: 1, selfDepth: 1 }));
+  const reachable = reachableFlows(assembly, starts);
+  validateAllContexts(invocation, assembly, [...assembly.flows.values()], undefined, home, faults, workdir);
   const collisions = [...assembly.flows.keys()].filter((name) => assembly.subflows.has(name));
   for (const name of collisions) fault(faults, "input-collision", `subflows/${name}`, `Rename the colliding flow ${name}.`);
-  return [JSON.stringify({
+  const assemblyRow = JSON.stringify({
     stage: "assembly",
     type: "ASSEMBLY",
     input: context.request,
@@ -255,7 +437,8 @@ export function renderAssemblyAgent(
       subflows: [...assembly.subflows.keys()].sort(bytewise),
     },
     options,
-  })];
+  });
+  return [assemblyRow, ...procedureRows(invocation, assembly, reachable, undefined, home, faults, workdir).map((line) => JSON.stringify(line))];
 }
 
 /** What ADR 0019's two readings print as JSON — `bot config`'s ONE object and

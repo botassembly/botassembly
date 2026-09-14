@@ -84,8 +84,8 @@ of where files sit rather than because something at run time arranged it.
 31. Every rung may set every resolvable key. A container's frontmatter is
     defaults for everything inside it, and nothing more.
 32. Every repetition the graph declares is bounded by a number the author
-    wrote — `repeat`, `max-depth`. Separately, the runtime caps every mixed-flow
-    subflow call chain at ten calls; delegation within that safety ceiling is
+    wrote — `repeat`, `max-depth`. `max-depth` is an integer from 1 through 11.
+    Separately, the runtime caps every mixed-flow subflow call chain at ten calls; delegation within that safety ceiling is
     recorded ([subflows](subflow.md)).
 33. Nothing is skipped silently. A skip without a reason is not a mark.
 

@@ -230,7 +230,7 @@ The limits on placement are strict. The `FANOUT.md` folder is a numbered folder 
 
 Each array entry has exactly `id` and `input`. `bot` sorts items by the bytes of their ids and gives the successor one `<id>.<extension>` file per item. A fan-out succeeds only when every child succeeds. It never hands a partial set to the next stage. `FANOUT.md` is provisional and may change before 1.0. The full contract is [fan-out](/specification/graph/#fanoutmd).
 
-`bot assembly check` does not walk into the subflow a fan-out selects, so the fan-out row's `options=` field is empty and the child stages never appear.
+`bot assembly check` reports the fan-out's selected flow definition and nodes once. The fan-out row keeps its authored width and maximum without claiming how many items a future run will contain. Child nodes use their own option ladder and `request.<runtime>` as the schematic request source.
 
 ## Skills
 
@@ -271,7 +271,7 @@ later stage while an earlier one is working changes nothing about
 the run in flight. Save, then start a run.
 
 `bot assembly check` is the fast loop: it refuses malformed assemblies with
-a named fault and prints the stages in execution order. It calls no
+a named fault and prints the statically reachable flow definitions and nodes. It calls no
 model, so it says nothing about whether a provider is configured or
 a model is reachable. If your link's target moves or stops being an
 assembly, `bot assembly list` lists it with `BROKEN` rather than going

@@ -86,7 +86,7 @@ intelligences:
 
 ## The format and the runtime
 
-The format is a folder contract with a versioned specification and a conformance corpus of 143 cases. It is plain text on disk and it names no program. The runtime is `bot`, one implementation that reads such a folder, calls providers, and seals a record. `bot assembly check` is the seam between them, and it resolves a whole assembly without calling a model. Read [the format and the runtime](https://botassembly.org/format-and-runtime/) before anything else.
+The format is a folder contract with a versioned specification and a conformance corpus of 143 cases. It is plain text on disk and it names no program. The runtime is `bot`, one implementation that reads such a folder, calls providers, and seals a record. `bot assembly check` is the seam between them. It reports the statically reachable flow definitions and nodes within Bot's fixed ten-child-call ceiling without calling a model. Read [the format and the runtime](https://botassembly.org/format-and-runtime/) before anything else.
 
 ## What it is not
 

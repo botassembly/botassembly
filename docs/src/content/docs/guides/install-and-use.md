@@ -175,7 +175,7 @@ Before running something new, you can ask what would happen:
 bot assembly check triage/triage
 ```
 
-`bot assembly check` reads the assembly, refuses it if it is malformed, and prints the stages in the order they would run with every option resolved. It exits `0` when the assembly is well formed and `2` when it is not. It calls no model, so it says nothing about whether your credentials work or a provider is reachable. It also walks only the entry flow's root sequence, so stages inside a subflow and stages a `DESCEND` flow reaches by calling itself are not printed and their options are not resolved.
+`bot assembly check` reads the assembly, refuses it if it is malformed, and prints each statically reachable flow definition and node once within the ten-child-call ceiling. It preserves authored node order and resolved root or child option context without predicting dynamic choices or counts. It exits `0` when the assembly is well formed and `2` when it is not. It calls no model, so it says nothing about whether your credentials work or a provider is reachable.
 
 ## Reading what happened
 

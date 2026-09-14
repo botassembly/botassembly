@@ -87,8 +87,9 @@ async function checkOutput() {
 	if (printed.length === 0) fail(`${CHECK_SOURCE} pastes no rows for "${CHECK_COMMAND}"`);
 	const rows = printed.map((line) => {
 		const at = line.indexOf('  options=');
-		if (at < 0) fail(`a check row prints no options: ${line}`);
-		return { stage: line.slice(0, line.indexOf('  ')), head: line.slice(0, at), options: line.slice(at + 2) };
+		const definition = line.includes('  flow-definition  ');
+		if (at < 0 && !definition) fail(`an executable check row prints no options: ${line}`);
+		return { stage: line.slice(0, line.indexOf('  ')), head: at < 0 ? line : line.slice(0, at), options: at < 0 ? '' : line.slice(at + 2), definition };
 	});
 	return { command: CHECK_COMMAND, rows, exit: lines.at(-1) };
 }
@@ -314,7 +315,7 @@ async function main() {
 	}
 
 	const walked = record.stages.map((stage) => stage.stage);
-	const resolved = check.rows.map((row) => row.stage);
+	const resolved = check.rows.filter((row) => !row.definition).map((row) => row.stage);
 	const declined = resolved.filter((stage) => !walked.includes(stage));
 	if (declined.length !== 1) {
 		fail(`${String(declined.length)} stage files resolve that the run did not walk, expected one`);

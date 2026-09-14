@@ -74,11 +74,35 @@ beside the runs it did not touch.
 
 `bot assembly check TARGET [request] [--json|-j] [--home DIR]` uses the shared
 `readAssemblyTree` reader and invocation option resolver that `bot run start`
-uses. It does not call a model,
-change the home, or use the network. Human output keeps the existing stage
-lines. JSON returns one newline-terminated `bot.assembly.check` document with
-the target, an ordered bounded stage page, a page continuation, and a bounded
-summary.
+uses. It does not call a model, change the home, or use the network. It reports
+the complete static procedure reachable within the ten-child-call ceiling. A
+named check starts with the selected flow. A flowless check keeps the assembly
+agent first. Other reachable flows follow in bytewise path order. Each flow has
+one definition row immediately before its nodes. A definition carries `stage`
+as its `FLOW.md` or `DESCEND.md` path, `flow`, `type`, and
+`max_subflow_calls: 10`; `DESCEND` also carries `max_depth`. It carries no
+execution options or artifacts.
+
+Every named-flow node carries its assembly-relative `flow`. Nodes preserve
+authored static sequence and container expansion order. Choices list every
+alternative once. Loops list their contents once beside the authored repeat.
+Fan-out lists its width and maximum without predicting an item count. Static
+checking does not predict model selections, loop continuation, call counts, or
+future execution order.
+
+Child-only flows resolve options without the selected root's command and task
+rungs and start from `request.<runtime>`. A selected flow reachable again as a
+child keeps root `options` and `input`, then adds `child_options` and a differing
+`child_input`. Its `output` stays the selected-root string; `child_outputs`
+lists every child-context possibility when re-entry can change the artifact. A
+child-only node keeps the first reachable `output` string and adds
+`possible_outputs` with every possibility when exact depth states disagree.
+Traversal revisits a flow at distinct call positions and self-call depths while
+output emits each definition and node once. Definitions beyond the ceiling
+remain validated but do not appear. JSON returns one newline-terminated
+`bot.assembly.check` document with the target, an ordered bounded `data.stages`
+page, continuation, and summary. The default page is 20 rows and the maximum is
+200. `summary.matched` counts definition and node rows.
 
 `bot assembly list [--json|-j] [--home DIR]` reads the home's assembly tree
 through the same owner as the assembly listing. Human output keeps

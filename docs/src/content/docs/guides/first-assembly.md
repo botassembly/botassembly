@@ -126,11 +126,12 @@ Ask what would happen without calling a model. The folder and flow form the targ
 bot assembly check ./reading-list/digest
 ```
 
-It prints one line per stage, in execution order, with every option resolved and the rung it came from after the `@`:
+It prints one definition row followed by one row per reachable node in authored order. Each executable row includes resolved option values:
 
 ```text
-01-summarize  STAGE  input=request.txt  output=summarize.txt  options=intelligence=default@assembly,provider=openai-codex@assembly,model=gpt-5.6-luna@assembly,reasoning=low@assembly,timeout=3600@default,retries=2@default,local-context=ignore@default
-02-title  STAGE  input=summarize.txt  output=title.txt  options=intelligence=default@assembly,provider=openai-codex@assembly,model=gpt-5.6-luna@assembly,reasoning=low@assembly,timeout=3600@default,retries=2@default,local-context=ignore@default
+flows/digest/FLOW.md  flow-definition  type=FLOW  flow=flows/digest  max_subflow_calls=10
+01-summarize  STAGE  flow=flows/digest  input=request.txt  output=summarize.txt  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=3600,retries=2,local-context=ignore
+02-title  STAGE  flow=flows/digest  input=summarize.txt  output=title.txt  options=intelligence=default,provider=openai-codex,model=gpt-5.6-luna,reasoning=low,timeout=3600,retries=2,local-context=ignore
 ```
 
 Exit is `0`. A malformed assembly exits `2` and prints a code, the file at fault, and the repair. Delete the `description` line from `FLOW.md` and you get this:
@@ -140,9 +141,7 @@ key-missing  flows/digest/FLOW.md
   Add the required key description.
 ```
 
-`bot assembly check --json` prints one bounded `bot.assembly.check` JSON document with the resolved stages in its data. Run `bot assembly check` after every edit. It contacts no provider and spends nothing.
-
-Two things it does not tell you. It says nothing about whether your credentials work or a provider is reachable. And it walks only the entry flow's root sequence: the stages inside a subflow, and the stages a `DESCEND` flow reaches by calling itself, are not printed and their options are not resolved. A fan-out row shows an empty `options=` field because the options resolve inside a flow this command does not walk.
+`bot assembly check --json` prints one bounded `bot.assembly.check` JSON document with the reachable flow definitions and nodes in its `data.stages` array. Run `bot assembly check` after every edit. It contacts no provider and spends nothing. It reports static possibilities rather than predicting a choice, loop count, fan-out item count, or future call order. Child nodes resolve from their own flow, assembly, home, and default rungs and use `request.<runtime>` for the request artifact whose extension the eventual call chooses. It says nothing about whether credentials work or a provider is reachable.
 
 ## Run it
 

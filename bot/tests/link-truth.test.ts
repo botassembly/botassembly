@@ -70,7 +70,7 @@ test("link — a target that rots after linking is marked and refused the same w
 
   // Sound at link time — no mark, and `check` renders the flow through it.
   expect(await lines(["assembly", "link", live], boundary, capture, 0)).toEqual([`dev-bot  linked  -> ${live}`]);
-  expect(await lines(["assembly", "check", "dev-bot/main"], boundary, capture, 0)).toHaveLength(1);
+  expect(await lines(["assembly", "check", "dev-bot/main"], boundary, capture, 0)).toHaveLength(2);
 
   await rm(live, { recursive: true });
   expect(await lines(["assembly", "list"], boundary, capture, 0)).toEqual([`dev-bot  linked  -> ${live}  BROKEN`]);

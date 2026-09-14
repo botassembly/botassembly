@@ -116,7 +116,7 @@ test('the tree is sorted by name at every level', () => {
 });
 
 test('the banner counts and the record count the same stages', () => {
-	const resolved = data.check.rows.map((row) => row.stage);
+	const resolved = data.check.rows.filter((row) => !row.definition).map((row) => row.stage);
 	const walked = data.record.stages.map((stage) => stage.stage);
 	assert.equal(data.banner.files, data.files.length);
 	assert.equal(data.banner.stageFiles, resolved.length);
@@ -130,13 +130,14 @@ test('the banner counts and the record count the same stages', () => {
 });
 
 test('a check row can fold its option ladder away', () => {
-	for (const row of data.check.rows) {
+	for (const row of data.check.rows.filter((held) => !held.definition)) {
 		assert.ok(row.options.startsWith('options='), row.options);
 		assert.ok(!row.head.includes('options='), row.head);
 		assert.ok(row.head.startsWith(row.stage), row.head);
 	}
-	const ladders = new Set(data.check.rows.map((row) => row.options));
-	assert.ok(ladders.size < data.check.rows.length, 'no two rows repeat an option ladder');
+	const executable = data.check.rows.filter((row) => !row.definition);
+	const ladders = new Set(executable.map((row) => row.options));
+	assert.ok(ladders.size < executable.length, 'no two rows repeat an option ladder');
 });
 
 test('the page defines the words it uses', () => {
@@ -148,15 +149,16 @@ test('the page defines the words it uses', () => {
 	}
 });
 
-test('the bot assembly check paste is the five stage rows the assembly resolves to', () => {
+test('the bot assembly check paste contains one definition and five node rows', () => {
 	assert.equal(data.check.command, 'bot assembly check ./triage/triage');
-	assert.equal(data.check.rows.length, 5);
+	assert.equal(data.check.rows.length, 6);
 	assert.deepEqual(
 		data.check.rows.map((row) => row.stage),
-		['01-classify', '02-route', '02-route/routine/01-routine', '02-route/urgent/01-urgent', '03-verify'],
+		['flows/triage/FLOW.md', '01-classify', '02-route', '02-route/routine/01-routine', '02-route/urgent/01-urgent', '03-verify'],
 	);
-	for (const row of data.check.rows) {
-		assert.match(row.options, /^options=intelligence=default@assembly/u);
+	assert.equal(data.check.rows[0].definition, true);
+	for (const row of data.check.rows.slice(1)) {
+		assert.match(row.options, /^options=intelligence=default/u);
 	}
 	assert.equal(data.check.exit, '0');
 });

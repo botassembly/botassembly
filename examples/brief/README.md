@@ -44,25 +44,28 @@ brief/
 
 ```console
 $ bot assembly check ./brief/brief
-01-list  STAGE  input=request.txt  output=list.json  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=300@stage,retries=1@assembly,local-context=ignore@default
-02-summarize  FANOUT  input=list.json  output=<item>.txt  options=
-03-collect  STAGE  input=<item>.txt  output=collect.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=300@stage,retries=1@assembly,local-context=ignore@default
-04-frame  PARALLEL  input=-  output=-  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=600@flow,retries=1@assembly,local-context=ignore@default
-04-frame/bullets  STAGE  input=collect.txt  output=bullets.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=1@assembly,local-context=ignore@default
-04-frame/tags  STAGE  input=collect.txt  output=tags.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=1@assembly,local-context=ignore@default
-04-frame/title  STAGE  input=collect.txt  output=title.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=1@assembly,local-context=ignore@default
-05-assemble  LOOP  input=-  output=-  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=600@flow,retries=1@assembly,local-context=ignore@default
-05-assemble/01-draft  STAGE  input=bullets.txt,tags.txt,title.txt,draft.txt  output=draft.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=600@flow,retries=2@stage,local-context=ignore@default
-06-emit  STAGE  input=assemble.txt  output=emit.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=1@assembly,local-context=ignore@default
+flows/brief/FLOW.md  flow-definition  type=FLOW  flow=flows/brief  max_subflow_calls=10
+01-list  STAGE  flow=flows/brief  input=request.txt  output=list.json  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
+02-summarize  FANOUT  flow=flows/brief  input=list.json  output=&lt;item&gt;.txt  options=-
+03-collect  STAGE  flow=flows/brief  input=&lt;item&gt;.txt  output=collect.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
+04-frame  PARALLEL  flow=flows/brief  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=600,retries=1,local-context=ignore
+04-frame/bullets  STAGE  flow=flows/brief  input=collect.txt  output=bullets.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+04-frame/tags  STAGE  flow=flows/brief  input=collect.txt  output=tags.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+04-frame/title  STAGE  flow=flows/brief  input=collect.txt  output=title.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+05-assemble  LOOP  flow=flows/brief  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=600,retries=1,local-context=ignore
+05-assemble/01-draft  STAGE  flow=flows/brief  input=bullets.txt,tags.txt,title.txt,draft.txt  output=draft.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=600,retries=2,local-context=ignore
+06-emit  STAGE  flow=flows/brief  input=assemble.txt  output=emit.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+flows/brief/subflows/summarize/FLOW.md  flow-definition  type=FLOW  flow=flows/brief/subflows/summarize  max_subflow_calls=10
+01-condense  STAGE  flow=flows/brief/subflows/summarize  input=request.&lt;runtime&gt;  output=condense.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
 $ echo $?
 0
 ```
 
 The `provider`, `model`, and `reasoning` values come from whatever your home's `config.yaml` maps the name `default` to, so yours will differ. This paste was taken against a home whose `default` is `google` / `gemini-3.5-flash-lite` / `low`. Everything else is the assembly.
 
-Three lines are worth reading twice. `02-summarize` shows `output=<item>.txt`, one file per list item, which is why `03-collect` reads a directory. `05-assemble/01-draft` shows `input=bullets.txt,tags.txt,title.txt,draft.txt` — the three branches every repeat, plus the previous repeat's own output from the second repeat on. And `timeout=600@flow` on the containers is `FLOW.md`'s key reaching everything under it.
+Three lines are worth reading twice. `02-summarize` shows one output file per list item, which is why `03-collect` reads a directory. `05-assemble/01-draft` shows `input=bullets.txt,tags.txt,title.txt,draft.txt` — the three branches every repeat, plus the previous repeat's own output from the second repeat on. The containers' `timeout=600` comes from `FLOW.md`; the JSON form makes that source rung explicit.
 
-The subflow's stage does not appear. `bot assembly check` prints the entry flow's nodes, and it still resolves `summarize`: empty it and the check exits 2 with `folder-empty`.
+The `summarize` definition and stage appear once after the entry flow. Its input is `request.<runtime>` because a future child invocation owns that request artifact and its extension.
 
 ## Run it
 

@@ -56,10 +56,10 @@ The static report describes possible structure, not one predicted run. A definit
 ## Size decision
 
 - Starting production size: 18267 nonblank lines
-- Ending production size: measured after implementation
+- Ending production size: 18469 nonblank lines
 - Simpler approach tried: Append the child rows the current validation walk already creates.
 - Why insufficient alternatives were rejected: Blind append duplicates shared flows, ignores runtime shadowing and call depth, and leaves equal stage names ambiguous.
-- Production code added: Shared depth constants, bounded `max-depth` validation, deterministic reachable-flow collection, definition rows, and flow identities.
+- Production code added: Shared depth constants, bounded `max-depth` validation, exact-state reachable-flow collection, depth-dependent artifact alternatives, exhausted-state artifact rendering separated from structural validation, definition rows, and flow identities.
 - Production code deleted: Silent child-row discard and hardcoded copies of the call ceiling.
 - Accepted cost: Assembly check can return more rows and require pagination for assemblies with many reachable flows.
 
@@ -80,5 +80,5 @@ The static report describes possible structure, not one predicted run. A definit
 
 - Origin: The accepted completion-plan reassessment combined the unreachable descent-depth issue and missing child rows into one assembly-check accuracy outcome. A read-only implementation survey confirmed that checking already validates child flows, discards their rows, accepts unbounded authored depth, and hardcodes the separate ten-call runtime ceiling.
 - Design review: accepted after one rejection. The correction represents a selected recursive flow's separate root and child option and request contexts while preserving depth-dependent traversal states separately from emitted-row deduplication.
-- Code review: pending
+- Code review: accepted after two rejections. The first review found that rendering discarded exact descent states, left required adversarial proofs absent, and retained contradictory documentation. The repair preserves alternative child artifacts without changing the string `output` field. The second review found that a hypothetical exhausted call scope could falsely reject a valid non-recursive run. The final repair separates structural validation from speculative state rendering. Independent review then accepted the change after 52 focused tests, all 143 conformance cases, documentation tests, and negative fan-out probes passed.
 - Completion: pending

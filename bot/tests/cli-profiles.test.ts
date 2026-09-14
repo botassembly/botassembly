@@ -29,7 +29,7 @@ async function checked(config: string): Promise<{ code: number; out: string; err
 test("a complete intelligence bundle keeps its name and bundle provenance", async () => {
   const answer = await checked("intelligences:\n  worker:\n    provider: faux\n    model: faux-1\n    reasoning: high\n");
   expect(answer.code).toBe(0);
-  const parsed = JSON.parse(answer.out.trim()) as { options: Record<string, unknown> };
+  const parsed = JSON.parse(answer.out.trim().split("\n")[1] ?? "") as { options: Record<string, unknown> };
   const options = parsed.options;
   expect(options).toMatchObject({
     intelligence: { value: "worker", from: "assembly" },

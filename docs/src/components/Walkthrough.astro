@@ -222,9 +222,9 @@ const exitClass = (exit) => (exit === 0 ? 'is-pass' : 'is-fail');
 									>show every option</button>
 								</figcaption>
 								<pre tabindex="0"><code>{data.check.rows.map((row) => (
-									<span class="ba-walk__line">{row.head}{'  '}<span
+									<span class="ba-walk__line">{row.head}{row.options === '' ? '' : '  '}<span
 										class="ba-walk__opts"
-									>{row.options}</span><span class="ba-walk__opts-fold">options=&hellip;</span>{'\n'}</span>
+									>{row.options}</span>{row.options === '' ? '' : <span class="ba-walk__opts-fold">options=&hellip;</span>}{'\n'}</span>
 								))}<span class="ba-walk__line is-prompt">$ echo $?{'\n'}</span><span class="ba-walk__line">{data.check.exit}{'\n'}</span></code></pre>
 							</figure>
 						)}

@@ -27,12 +27,13 @@ hello/
 
 ```console
 $ bot assembly check ./hello/greet
-01-welcome  STAGE  input=request.txt  output=welcome.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=2@default,local-context=ignore@default
+flows/greet/FLOW.md  flow-definition  type=FLOW  flow=flows/greet  max_subflow_calls=10
+01-welcome  STAGE  flow=flows/greet  input=request.txt  output=welcome.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
 $ echo $?
 0
 ```
 
-The resolved `provider`, `model`, and `reasoning` are whatever your home's `config.yaml` names under the intelligence `default`, so yours will differ. This paste was taken against a home whose `default` is `google` / `gemini-3.5-flash-lite` / `low`. `timeout=120@stage` is the stage's own key winning over the assembly's 300, and `retries=2@default` is the runtime's own default, because nothing here sets retries.
+The resolved `provider`, `model`, and `reasoning` are whatever your home's `config.yaml` names under the intelligence `default`, so yours will differ. This paste was taken against a home whose `default` is `google` / `gemini-3.5-flash-lite` / `low`. The JSON form names the source rung for each option. The stage's `timeout: 120` wins over the assembly's 300, and retries uses the runtime default because nothing here sets it.
 
 ## Run it
 

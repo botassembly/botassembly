@@ -32,18 +32,19 @@ triage/
 
 ```console
 $ bot assembly check ./triage/triage
-01-classify  STAGE  input=request.txt  output=classify.json  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=300@stage,retries=1@assembly,local-context=ignore@default
-02-route  CHOOSE  input=-  output=-  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@container,retries=1@assembly,local-context=ignore@default
-02-route/routine/01-routine  STAGE  input=classify.json  output=routine.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@container,retries=2@stage,local-context=ignore@default
-02-route/urgent/01-urgent  STAGE  input=classify.json  output=urgent.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@container,retries=2@stage,local-context=ignore@default
-03-verify  STAGE  input=routine.txt,urgent.txt  output=verify.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=3600@default,retries=1@stage,local-context=ignore@default
+flows/triage/FLOW.md  flow-definition  type=FLOW  flow=flows/triage  max_subflow_calls=10
+01-classify  STAGE  flow=flows/triage  input=request.txt  output=classify.json  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
+02-route  CHOOSE  flow=flows/triage  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+02-route/routine/01-routine  STAGE  flow=flows/triage  input=classify.json  output=routine.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
+02-route/urgent/01-urgent  STAGE  flow=flows/triage  input=classify.json  output=urgent.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=2,local-context=ignore
+03-verify  STAGE  flow=flows/triage  input=routine.txt,urgent.txt  output=verify.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=3600,retries=1,local-context=ignore
 $ echo $?
 0
 ```
 
 The resolved `provider`, `model`, and `reasoning` are whatever your home's `config.yaml` names under the intelligence `default`, so yours will differ. Everything else in the output is the assembly.
 
-Both arms of the choice resolve to the same option ladder, because both take the chooser's `timeout: 120` and set the same retries. That is the point of the `@` marks: the row says where each value came from, not just what it is.
+Both arms of the choice resolve to the same option ladder, because both take the chooser's `timeout: 120` and set the same retries. The JSON form says where each value came from.
 
 ## Run it
 

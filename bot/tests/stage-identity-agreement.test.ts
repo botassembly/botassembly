@@ -71,7 +71,9 @@ async function checkStages(root: string, home: string, target: string): Promise<
   await expect(semanticCheck([ target, "the request", "--json"], held)).resolves.toBe(0);
   expect(Buffer.concat(stderr).toString()).toBe("");
   return Buffer.concat(stdout).toString().trimEnd().split("\n")
-    .map((line) => (JSON.parse(line) as { stage: string }).stage);
+    .map((line) => JSON.parse(line) as { stage: string; type: string })
+    .filter(({ type }) => type !== "FLOW" && type !== "DESCEND")
+    .map(({ stage }) => stage);
 }
 
 /** Every distinct `stage` the sealed record names, in bytewise order. */

@@ -57,11 +57,11 @@ test('a file either ships its contents or says why not', () => {
 
 test('an accept case carries a summary the picker can show', () => {
 	for (const entry of data.cases.filter((c) => c.kind === 'accept')) {
-		const expected = `${entry.stages.length} ${entry.stages.length === 1 ? 'stage' : 'stages'}`;
+		const expected = `${entry.stages.length} ${entry.stages.length === 1 ? 'row' : 'rows'}`;
 		assert.ok(entry.summary.startsWith(expected), `${entry.id}: ${entry.summary}`);
 	}
 	const nesting = data.cases.find((c) => c.id === 'shape-nesting');
-	assert.equal(nesting.summary, '14 stages · CHOOSE · LOOP · PARALLEL');
+	assert.equal(nesting.summary, '15 rows · CHOOSE · LOOP · PARALLEL');
 	const skills = data.cases.find((c) => c.id === 'container-skills');
 	assert.ok(skills.summary.endsWith('· skills'), skills.summary);
 });

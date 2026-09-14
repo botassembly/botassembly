@@ -42,6 +42,31 @@ test("the reader retains loop questions, DESCEND depth, and stage-local subflows
   expect(final?.kind === "STAGE" ? [...final.subflows.keys()] : []).toEqual(["local"]);
 });
 
+test.each([
+  [1, true],
+  [11, true],
+  [0, false],
+  [12, false],
+  [1.5, false],
+  ["2", false],
+  [Number.MAX_SAFE_INTEGER + 1, false],
+] as const)("DESCEND max-depth %s obeys the authored 1 through 11 range", async (maxDepth, accepted) => {
+  const root = await mkdtemp(join(tmpdir(), "bot-descend-bound-"));
+  roots.push(root);
+  await mkdir(join(root, "flows/main"), { recursive: true });
+  await Promise.all([
+    writeFile(join(root, "ASSEMBLY.md"), "---\n{}\n---\nAssembly.\n"),
+    writeFile(join(root, "flows/main/DESCEND.md"), `---\ndescription: descend\nmax-depth: ${JSON.stringify(maxDepth)}\n---\n`),
+    writeFile(join(root, "flows/main/01-work.md"), "---\n{}\n---\nWork.\n"),
+  ]);
+  const parsed = readAssembly(root, {});
+  const depthFaults = parsed.faults.filter(({ path }) => path === "flows/main/DESCEND.md");
+  if (accepted) expect(depthFaults).toEqual([]);
+  else expect(depthFaults).toContainEqual(expect.objectContaining({
+    code: "value-invalid", sentence: "Give max-depth an integer from 1 through 11.",
+  }));
+});
+
 test("a two-stage flow passes the sealed first output into the second stage", async () => {
   const main = flow("main", "flows/main", [stage("flows/main/01-first.md", "first"), stage("flows/main/02-second.md", "second")]);
   const scripts = new Map<string, Script>([

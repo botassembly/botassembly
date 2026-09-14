@@ -59,7 +59,8 @@ test("check renders an explicit workdir, and the agent, local context, hooks, an
   const { held, faux } = realBoundary(root, home, stdout, stderr);
 
   await expect(semanticCheck([ "review/main", "--in", trial, "--json"], held)).resolves.toBe(0);
-  const checked = Buffer.concat(stdout).toString().trimEnd().split("\n").map((line) => JSON.parse(line) as { workdir?: string });
+  const checked = Buffer.concat(stdout).toString().trimEnd().split("\n").map((line) => JSON.parse(line) as { type: string; workdir?: string })
+    .filter(({ type }) => type !== "FLOW" && type !== "DESCEND");
   expect(checked.map((line) => line.workdir)).toEqual(ROLES.map((role) => `./${role}`));
   stdout.splice(0);
 

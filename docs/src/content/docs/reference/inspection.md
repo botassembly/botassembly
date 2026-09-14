@@ -106,13 +106,13 @@ validation needs no request, and giving one only adds the task-file rung to
 what is resolved.
 
 It resolves the graph, reads every sentinel, checks that every alternative named
-in a `CHOOSE.md` exists, resolves every option to its rung, and prints the
-stages in the order they would execute. A malformed assembly is refused here
+in a `CHOOSE.md` exists, resolves every option to its rung, and prints each
+statically reachable flow definition and node once within ten child-call edges. A malformed assembly is refused here
 exactly as it would be at run time, with the same code and the same path
 ([refusals](/specification/refusals/)).
 
 `--json` writes one newline-terminated `bot.assembly.check` document. Its
-`data.stages` array carries the resolved stages in execution order:
+`data.stages` array carries the ordered procedure rows:
 
 ```json
 {
@@ -120,13 +120,29 @@ exactly as it would be at run time, with the same code and the same path
   "kind": "bot.assembly.check",
   "data": {
     "target": "02-assess/risk",
-    "stages": [{ "stage": "02-assess/risk", "type": "STAGE" }]
+    "stages": [
+      { "stage": "flows/review/FLOW.md", "flow": "flows/review", "type": "FLOW", "max_subflow_calls": 10 },
+      { "stage": "02-assess/risk", "flow": "flows/review", "type": "STAGE" }
+    ]
   },
   "page": { "limit": 20, "next": null, "through": null, "complete": true },
-  "summary": { "returned": 1, "matched": 1, "warningCount": 0, "warningsOmitted": 0 },
+  "summary": { "returned": 2, "matched": 2, "warningCount": 0, "warningsOmitted": 0 },
   "warnings": []
 }
 ```
+
+A flow definition has type `FLOW` or `DESCEND`; the latter also carries
+`max_depth`. Definitions have no synthetic execution fields. Child-only flows
+use `request.<runtime>` and resolve options without root command or task rungs.
+A selected flow reachable again as a child keeps root fields and adds
+`child_input` and `child_options`. Its `output` stays the selected-root string;
+`child_outputs` lists every child-context possibility when re-entry can change
+the artifact. A child-only node keeps the first reachable `output` string and
+adds `possible_outputs` with every possibility when exact depth states disagree.
+Other reachable flow definitions sort by their bytewise paths. Choices list
+every alternative once and loops list their contents once. The report predicts
+no dynamic selection, repeat, call, or fan-out item count. Definitions beyond
+ten child calls remain validated but do not appear.
 
 Every option carries the rung it came from, and `from` is one fixed word per
 rung ([the eight rungs](/specification/running/#options-and-where-they-resolve)):
@@ -170,105 +186,11 @@ is not knowable without running, and a `CHOOSE` lists every alternative, because
 any of them could be the one that runs.
 
 Given no flow — `bot assembly check review` — it validates the whole assembly exactly as
-any invocation would, and reports the assembly agent as the one stage that
-would run: `stage` is `assembly`, `type` is `ASSEMBLY`, `files` lists
+any invocation would, and reports the assembly agent first: `stage` is `assembly`, `type` is `ASSEMBLY`, `files` lists
 `ASSEMBLY.md`, `output` is `assembly.txt` (no schema — text), and a `scope`
 field names the flows and root subflows the agent could call, in name order
-([running the assembly](/specification/running/#running-the-assembly)).
-
-Everything this does is deterministic, which is what makes it the backbone of
-[the conformance corpus](/specification/conformance/).
-
-### `bot run list`
-
-`bot run list` reads bounded summaries for the home's top-level runs. It does
-not read sessions, outputs, or provider paths. Markdown and version-1 JSON
-support typed filters and continuation without changing the home. Each row
-reports `tokens` across the root and its uniquely authorized descendants.
-`tokensStatus` says `complete` or `partial`. A partial numeric value is the
-verified prefix and may be lower than provider consumption. Human timestamps
-preserve the record's exact strings. `inspectRuns({ usage: true })` keeps its
-selected-root breakdown by stage and model.
-
-### `bot assembly check`
-
-Validates an assembly and reports what would run, without calling a model. It
-takes the same assembly, flow, request, slots, and shared options as `bot run`,
-so that everything it reports is resolved the way the run would resolve it,
-but not run-only options such as `--id-file`. The request is optional here:
-validation needs no request, and giving one only adds the task-file rung to
-what is resolved.
-
-It resolves the graph, reads every sentinel, checks that every alternative named
-in a `CHOOSE.md` exists, resolves every option to its rung, and prints the
-stages in the order they would execute. A malformed assembly is refused here
-exactly as it would be at run time, with the same code and the same path
-([refusals](/specification/refusals/)).
-
-`--json` writes one newline-terminated `bot.assembly.check` document. Its
-`data.stages` array carries the resolved stages in execution order:
-
-```json
-{
-  "schemaVersion": 1,
-  "kind": "bot.assembly.check",
-  "data": {
-    "target": "02-assess/risk",
-    "stages": [{ "stage": "02-assess/risk", "type": "STAGE" }]
-  },
-  "page": { "limit": 20, "next": null, "through": null, "complete": true },
-  "summary": { "returned": 1, "matched": 1, "warningCount": 0, "warningsOmitted": 0 },
-  "warnings": []
-}
-```
-
-Every option carries the rung it came from, and `from` is one fixed word per
-rung ([the eight rungs](/specification/running/#options-and-where-they-resolve)):
-`command`, `task`, `stage`, `container`, `flow`, `assembly`, `home`, `default`.
-That is the field that makes "why did this use that model" answerable before
-the run rather than after it.
-
-A value an [intelligence](/specification/structure/#intelligences) supplied
-carries the rung where that name was authored. The intelligence name and its
-resolved provider, model, and reasoning are reported together, so what ran does
-not depend on what the table says later.
-
-A single-file stage is `type` `STAGE` like the folder form — the form shows in
-`files`, which lists only the file itself.
-
-An authored stage `workdir` appears as written. It is absent when the stage uses
-the flow's inherited working directory.
-
-`input` is every name that may appear in `$INPUT`. For the stage after a
-`CHOOSE`, that is one name per alternative and exactly one of them will be
-there — which one depends on which alternative ran, and that is not statically
-knowable, so the list names them all rather than guessing.
-
-`files` lists the recognized files in the stage's folder — the sentinel first,
-the rest in name order ([invariant 41](/specification/invariants/)), the entries of a
-`gate/` folder as `gate/01-lint.sh` — so a reader can see that a gate exists
-without opening the directory. A single-file stage lists only itself.
-
-Two option details: `provider` appears only when some rung set it — it has no
-built-in default, so a line for it would otherwise claim a resolution that
-never happened — and a container's own frontmatter is rung `container` on its
-own line, the same word its contents see. A stage's line also carries
-`skills`: the flattened names it would see, narrowest override applied, in
-name order — which is what makes the scope rules assertable without a model.
-
-A container emits its own line and then the lines for what is inside it. Its
-line carries `stage`, `type`, `options`, and its own key — `repeat` or `width` —
-and no `input`, `output`, or `files`, because a container produces nothing of
-its own. A `LOOP` lists its contents once, since how many repeats there will be
-is not knowable without running, and a `CHOOSE` lists every alternative, because
-any of them could be the one that runs.
-
-Given no flow — `bot assembly check review` — it validates the whole assembly exactly as
-any invocation would, and reports the assembly agent as the one stage that
-would run: `stage` is `assembly`, `type` is `ASSEMBLY`, `files` lists
-`ASSEMBLY.md`, `output` is `assembly.txt` (no schema — text), and a `scope`
-field names the flows and root subflows the agent could call, in name order
-([running the assembly](/specification/running/#running-the-assembly)).
+([running the assembly](/specification/running/#running-the-assembly)). Reachable
+flow definitions and nodes follow.
 
 Everything this does is deterministic, which is what makes it the backbone of
 [the conformance corpus](/specification/conformance/).

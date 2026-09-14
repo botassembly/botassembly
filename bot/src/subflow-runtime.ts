@@ -3,13 +3,14 @@ import { extname, join, relative } from "node:path";
 import type { PausableClock } from "./clock.ts";
 import type { FlowResult, LocalStop } from "./execution.ts";
 import { attemptKey, scratchAttempt } from "./invocation.ts";
-import { faultReason, type Flow, type StageNode } from "./model.ts";
+import { faultReason, type Flow } from "./model.ts";
 import { subflowEvent } from "./pi-tap.ts";
 import { runStartEvent, type RuntimeProvenance, type StageIdentity } from "./record-events.ts";
 import { claimRunDirectory, hashBytes, type RecordWriter } from "./record.ts";
 import { lockActiveRun } from "./run-lock.ts";
 import type { RunSignal } from "./signal.ts";
 import { expandSlotPath, type SubflowRequest, type SubflowToolDetail } from "./tools.ts";
+export { scopedSubflows } from "./subflow-scope.ts";
 
 export interface ChildRunInput {
   flow: Flow;
@@ -336,18 +337,4 @@ export async function runSubflowBatch(input: SubflowBatchInput): Promise<Subflow
   const context = { writer: input.writer, identity: input.identity, now: () => input.clock.timestamp() };
   for (const [index, held] of evidence.entries()) await input.writer.append(subflowEvent(context, input.identity, held.request, held.detail, index));
   throw rejected(failure.reason);
-}
-
-export function scopedSubflows(
-  assembly: ReadonlyMap<string, Flow>, flow: Flow, stage: StageNode | undefined, currentDepth: number, callChainDepth = 0,
-): Map<string, Flow> {
-  if (callChainDepth >= 10) return new Map();
-  const scope = new Map(assembly);
-  // A stage never has the flow it stands in — an assembly-scoped subflow would
-  // otherwise see itself and recurse unbounded. DESCEND is the one grant back.
-  if (scope.get(flow.name) === flow) scope.delete(flow.name);
-  for (const [name, child] of flow.subflows) scope.set(name, child);
-  if (flow.maxDepth !== undefined && currentDepth < flow.maxDepth) scope.set(flow.name, flow);
-  for (const [name, child] of stage?.subflows ?? []) scope.set(name, child);
-  return scope;
 }

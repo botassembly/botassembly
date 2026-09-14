@@ -19,11 +19,10 @@ cannot express.
 
 ```yaml
 description: Break a document into questions it can answer, and answer them
-max-depth: 10
+max-depth: 11
 ```
 
-One key of its own, required: the longest unbroken chain of this flow's
-self-calls. A run invoked from outside is at depth 1. A stage may
+One key of its own, required: an integer from 1 through 11 and the longest unbroken chain of this flow's self-calls. A run invoked from outside is at depth 1. A stage may
 call its own flow only while the current depth is below `max-depth`; at
 `max-depth`, the flow is simply not in its own stages' scope, and the agent is
 told about the subflows that remain, which may be none.
@@ -32,7 +31,8 @@ told about the subflows that remain, which may be none.
 between two invocations restarts the self-chain: this flow reached through a
 subflow it called stands at depth 1 again. The runtime separately allows at
 most ten subflow calls in a mixed-flow chain ([subflow](subflow.md)); that
-fixed safety ceiling does not change the authored meaning of `max-depth`.
+fixed safety ceiling makes 11 the largest useful authored depth: the root is at
+position 0 and depth 1, then ten child calls reach depth 11.
 
 ## What it is for
 

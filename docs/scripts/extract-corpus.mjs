@@ -73,7 +73,7 @@ const CONTAINERS = new Set(['CHOOSE', 'PARALLEL', 'LOOP', 'FANOUT']);
 
 /** One line a reader can choose by: how big the case is and what it holds. */
 function summarize(stages) {
-	const parts = [`${stages.length} ${stages.length === 1 ? 'stage' : 'stages'}`];
+	const parts = [`${stages.length} ${stages.length === 1 ? 'row' : 'rows'}`];
 	const containers = stages
 		.map((stage) => stage.type)
 		.filter((type) => CONTAINERS.has(type));

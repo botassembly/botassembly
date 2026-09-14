@@ -1,5 +1,6 @@
 import { bytewise } from "./model.ts";
 import { RUN_LIST_CONTRACT } from "./run-list-query.ts";
+import { MAX_DESCENT_DEPTH, MAX_SUBFLOW_CALLS } from "./subflow-scope.ts";
 
 type CapabilityHome = "never" | "reads" | "writes";
 type CapabilityNetwork = "never" | "conditional" | "requested";
@@ -108,6 +109,8 @@ const assemblyCheck: CliDescriptor = {
     markdownCellBytes: ASSEMBLY_READ_CONTRACT.output.cellBytes,
     markdownPageBytesExclusive: ASSEMBLY_READ_CONTRACT.output.pageBytesExclusive,
     markdownRowBytes: ASSEMBLY_READ_CONTRACT.output.rowBytes,
+    maxDescentDepth: MAX_DESCENT_DEPTH,
+    maxSubflowCalls: MAX_SUBFLOW_CALLS,
     pageDefault: ASSEMBLY_READ_CONTRACT.page.default,
     pageMaximum: ASSEMBLY_READ_CONTRACT.page.maximum,
   },

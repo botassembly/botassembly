@@ -1,4 +1,5 @@
 import { CLI_CONTRACTS, commandDescriptor, type CliDescriptor, type CliOptionDescriptor, type NewOperation } from "./cli-contract.ts";
+import { MAX_DESCENT_DEPTH, MAX_SUBFLOW_CALLS } from "./subflow-scope.ts";
 
 function optionLine(option: CliOptionDescriptor): string {
   const names = [option.name, ...option.aliases].join(", ");
@@ -228,7 +229,7 @@ const HOME_BUSY_DESCRIPTOR = descriptor("home.busy");
 const HOME_BUSY = `usage: bot home busy <directory> [--quiet|--json|-j] [--home DIR]\n\nReports whether any live run holds the caller-resolved directory. Quiet mode writes nothing and exits 0 when busy or 1 when idle.\n\noptions:\n${optionLines(HOME_BUSY_DESCRIPTOR)}\n\nModes: ${HOME_BUSY_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(HOME_BUSY_DESCRIPTOR)}.\nNetwork: ${HOME_BUSY_DESCRIPTOR.network}. Home: ${HOME_BUSY_DESCRIPTOR.home}.\n\nexample:\n  bot home busy ./worktree --quiet\n`;
 
 const ASSEMBLY_CHECK_DESCRIPTOR = descriptor("assembly.check");
-const ASSEMBLY_CHECK = `usage: bot assembly check <assembly>[/<flow>] [request] [options]\n\nValidates an assembly without calling a model and reports the stages in execution order.\nModes: ${ASSEMBLY_CHECK_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(ASSEMBLY_CHECK_DESCRIPTOR)}.\nNetwork: ${ASSEMBLY_CHECK_DESCRIPTOR.network}. Home: ${ASSEMBLY_CHECK_DESCRIPTOR.home}.\n\noptions:\n${optionLines(ASSEMBLY_CHECK_DESCRIPTOR)}\n${dynamicOptionLines(ASSEMBLY_CHECK_DESCRIPTOR)}\n\nexample:\n  bot assembly check review/main --json\n`;
+const ASSEMBLY_CHECK = `usage: bot assembly check <assembly>[/<flow>] [request] [options]\n\nValidates an assembly without calling a model and reports its statically reachable flow definitions and nodes. Child calls stop after ${String(MAX_SUBFLOW_CALLS)} edges; DESCEND max-depth accepts 1 through ${String(MAX_DESCENT_DEPTH)}. Dynamic choices and repeat counts are not predicted.\nModes: ${ASSEMBLY_CHECK_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(ASSEMBLY_CHECK_DESCRIPTOR)}.\nNetwork: ${ASSEMBLY_CHECK_DESCRIPTOR.network}. Home: ${ASSEMBLY_CHECK_DESCRIPTOR.home}.\n\noptions:\n${optionLines(ASSEMBLY_CHECK_DESCRIPTOR)}\n${dynamicOptionLines(ASSEMBLY_CHECK_DESCRIPTOR)}\n\nexample:\n  bot assembly check review/main --json\n`;
 
 const ASSEMBLY_LIST_DESCRIPTOR = descriptor("assembly.list");
 const ASSEMBLY_LIST = `usage: bot assembly list [options]\n\nLists the assemblies held by one Bot home in name order.\nModes: ${ASSEMBLY_LIST_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(ASSEMBLY_LIST_DESCRIPTOR)}.\nNetwork: ${ASSEMBLY_LIST_DESCRIPTOR.network}. Home: ${ASSEMBLY_LIST_DESCRIPTOR.home}.\n\noptions:\n${optionLines(ASSEMBLY_LIST_DESCRIPTOR)}\n\nexample:\n  bot assembly list --home ./bot-home --json\n`;

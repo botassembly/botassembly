@@ -45,7 +45,7 @@ test("FANOUT accepts its closed four-key form and has one useful static reading"
     kind: "FANOUT", items: "jobs", subflow: "worker", width: 1, maxItems: 2,
   });
   expect(renderFlow(invocation, parsed, main, { options: {}, intelligences: {} }, [], root)
-    .map((line) => JSON.parse(line) as Record<string, unknown>)[1]).toMatchObject({
+    .map((line) => JSON.parse(line) as Record<string, unknown>)[2]).toMatchObject({
       type: "FANOUT", items: "jobs", subflow: "worker", width: 1, max_items: 2, output: "<item>.txt",
     });
 });

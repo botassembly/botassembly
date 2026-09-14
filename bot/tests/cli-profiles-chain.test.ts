@@ -23,7 +23,7 @@ test("a nearer intelligence supplies one complete bundle with rung provenance", 
   ]);
   const capture: Capture = { out: [], err: [] };
   await expect(semanticCheck([ "review/main", "--json"], boundaryFor(root, home, capture))).resolves.toBe(0);
-  const parsed = JSON.parse(text(capture.out).trim()) as { options: Record<string, unknown> };
+  const parsed = JSON.parse(text(capture.out).trim().split("\n")[1] ?? "") as { options: Record<string, unknown> };
   const options = parsed.options;
   expect(options).toMatchObject({
     intelligence: { value: "near", from: "stage" },

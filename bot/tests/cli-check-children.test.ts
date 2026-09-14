@@ -60,16 +60,17 @@ test("a subflow stage with no name uses the home default through check", async (
   expect(Buffer.concat(stdout).toString()).not.toBe("");
 });
 
-test("a subflow that names its own model passes, and check says only the invoked flow's stages", async () => {
+test("a subflow that names its own model passes, and check reports the reachable procedure", async () => {
   const { root, home } = await roots.scratch("bot-check-child-green-");
   await tree(home, "---\nintelligence: default\n---\nAnswer the question.\n");
   const stdout: Buffer[] = [];
   const stderr: Buffer[] = [];
   const { held } = realBoundary(root, home, stdout, stderr);
   await expect(semanticCheck([ "review/main", "--intelligence", "default", "--json"], held)).resolves.toBe(0);
-  // The walk is silent: a child contributes faults and never a line.
   const lines = Buffer.concat(stdout).toString().trimEnd().split("\n");
-  expect(lines.map((line) => (JSON.parse(line) as { stage: string }).stage)).toEqual(["01-parent"]);
+  expect(lines.map((line) => (JSON.parse(line) as { stage: string }).stage)).toEqual([
+    "flows/main/FLOW.md", "01-parent", "subflows/helper/FLOW.md", "01-answer",
+  ]);
 });
 
 test("the flowless invocation accepts every child through the home default", async () => {

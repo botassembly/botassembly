@@ -73,12 +73,39 @@ function scalar(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "-";
 }
 
+function optionBundle(value: unknown): string {
+  return mapping(value) ? Object.entries(value).map(([name, held]) => `${name}=${mapping(held) ? scalar(held["value"]) : "-"}`).join(",") : "-";
+}
+
+function definitionLine(held: Record<string, unknown>, type: string, flow: string): string {
+  const depth = type === "DESCEND" ? `  max_depth=${scalar(held["max_depth"])}` : "";
+  return `${scalar(held["stage"])}  flow-definition  type=${type}${flow}  max_subflow_calls=${scalar(held["max_subflow_calls"])}${depth}`;
+}
+
+function childDetails(held: Record<string, unknown>): string {
+  const childInput = held["child_input"], childOutputs = held["child_outputs"], childOptions = held["child_options"];
+  const input = childInput === undefined ? "" : `  child_input=${Array.isArray(childInput) ? childInput.map(scalar).join(",") : "-"}`;
+  const outputs = childOutputs === undefined ? "" : `  child_outputs=${Array.isArray(childOutputs) ? childOutputs.map(scalar).join(",") : "-"}`;
+  const options = childOptions === undefined ? "" : `  child_options=${optionBundle(childOptions)}`;
+  return input + outputs + options;
+}
+
+function executableLine(held: Record<string, unknown>, type: string, flow: string): string {
+  const input = Array.isArray(held["input"]) ? held["input"].map(scalar).join(",") : "-";
+  const possible = Array.isArray(held["possible_outputs"])
+    ? `  possible_outputs=${held["possible_outputs"].map(scalar).join(",")}` : "";
+  return `${scalar(held["stage"])}  ${type}${flow}  input=${input}  output=${scalar(held["output"])}  options=${optionBundle(held["options"])}`
+    + possible + childDetails(held);
+}
+
 function humanLine(line: string): string {
   const document = parseDocument(line), held: unknown = document.errors.length === 0 ? document.toJS() : undefined;
   if (document.errors.length > 0 || !mapping(held)) return inertText(line, ASSEMBLY_READ_CONTRACT.output.rowBytes).text;
-  const input = Array.isArray(held["input"]) ? held["input"].map(scalar).join(",") : "-";
-  const options = mapping(held["options"]) ? Object.entries(held["options"]).map(([name, value]) => `${name}=${mapping(value) ? scalar(value["value"]) : "-"}`).join(",") : "-";
-  return inertText(`${scalar(held["stage"])}  ${scalar(held["type"])}  input=${input}  output=${scalar(held["output"])}  options=${options}`, ASSEMBLY_READ_CONTRACT.output.rowBytes).text;
+  const type = scalar(held["type"]), flow = held["flow"] === undefined ? "" : `  flow=${scalar(held["flow"])}`;
+  const rendered = type === "FLOW" || type === "DESCEND"
+    ? definitionLine(held, type, flow)
+    : executableLine(held, type, flow);
+  return inertText(rendered, ASSEMBLY_READ_CONTRACT.output.rowBytes).text;
 }
 
 function decodedCursor(raw: string): unknown {

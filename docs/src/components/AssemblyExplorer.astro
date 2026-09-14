@@ -72,8 +72,14 @@ const firstFile = first.files.find((file) => typeof file.text === 'string') ?? f
 							<span class="ba-tag">{stage.type}</span>
 						</header>
 						<dl class="ba-facts">
+							{stage.flow && <><dt>flow</dt><dd><code>{stage.flow}</code></dd></>}
+							{stage.max_subflow_calls && <><dt>maximum child calls</dt><dd><code>{stage.max_subflow_calls}</code></dd></>}
+							{stage.max_depth && <><dt>maximum descent depth</dt><dd><code>{stage.max_depth}</code></dd></>}
 							{stage.input && <><dt>input</dt><dd><code>{stage.input.join(', ')}</code></dd></>}
+							{stage.child_input && <><dt>child input</dt><dd><code>{stage.child_input.join(', ')}</code></dd></>}
 							{stage.output && <><dt>output</dt><dd><code>{stage.output}</code></dd></>}
+							{stage.possible_outputs && <><dt>possible outputs</dt><dd><code>{stage.possible_outputs.join(', ')}</code></dd></>}
+							{stage.child_outputs && <><dt>child outputs</dt><dd><code>{stage.child_outputs.join(', ')}</code></dd></>}
 							{stage.workdir && <><dt>workdir</dt><dd><code>{stage.workdir}</code></dd></>}
 							{stage.files && <><dt>files</dt><dd><code>{stage.files.join(', ')}</code></dd></>}
 						</dl>
@@ -85,6 +91,13 @@ const firstFile = first.files.find((file) => typeof file.text === 'string') ?? f
 										<code class="ba-option__value">{String(option.value)}</code>
 										<span class="ba-rung">from {option.from}</span>
 									</li>
+								))}
+							</ul>
+						)}
+						{stage.child_options && (
+							<ul class="ba-options">
+								{Object.entries(stage.child_options).map(([name, option]) => (
+									<li><code class="ba-option__name">child {name}</code><code class="ba-option__value">{String(option.value)}</code><span class="ba-rung">from {option.from}</span></li>
 								))}
 							</ul>
 						)}
@@ -148,8 +161,14 @@ const firstFile = first.files.find((file) => typeof file.text === 'string') ?? f
 					dd.append(element('code', '', Array.isArray(value) ? value.join(', ') : String(value)));
 					facts.append(dd);
 				};
+				fact('flow', stage.flow);
+				fact('maximum child calls', stage.max_subflow_calls);
+				fact('maximum descent depth', stage.max_depth);
 				fact('input', stage.input);
+				fact('child input', stage.child_input);
 				fact('output', stage.output);
+				fact('possible outputs', stage.possible_outputs);
+				fact('child outputs', stage.child_outputs);
 				fact('workdir', stage.workdir);
 				fact('files', stage.files);
 				if (facts.childElementCount > 0) article.append(facts);
@@ -159,6 +178,17 @@ const firstFile = first.files.find((file) => typeof file.text === 'string') ?? f
 					for (const [name, option] of Object.entries(stage.options)) {
 						const item = element('li');
 						item.append(element('code', 'ba-option__name', name));
+						item.append(element('code', 'ba-option__value', String(option.value)));
+						item.append(element('span', 'ba-rung', `from ${option.from}`));
+						list.append(item);
+					}
+					article.append(list);
+				}
+				if (stage.child_options) {
+					const list = element('ul', 'ba-options');
+					for (const [name, option] of Object.entries(stage.child_options)) {
+						const item = element('li');
+						item.append(element('code', 'ba-option__name', `child ${name}`));
 						item.append(element('code', 'ba-option__value', String(option.value)));
 						item.append(element('span', 'ba-rung', `from ${option.from}`));
 						list.append(item);

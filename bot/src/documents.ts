@@ -28,6 +28,7 @@ import {
 } from "./model.ts";
 import { SLIM_TYPES, frontmatterIsUtf8 } from "./schema-check.ts";
 import type { Refusal } from "./spine.ts";
+import { MAX_DESCENT_DEPTH } from "./subflow-scope.ts";
 
 /** A mapping, or where the parse went wrong: `where` is the yaml library's own
  *  line and column moved into the file's lines by `offset` (the fence the caller
@@ -245,8 +246,9 @@ function validExtra(name: string, value: unknown): boolean {
       return nonemptyString(value);
     case "repeat":
     case "width":
-    case "max-depth":
       return boundedInteger(value, 1);
+    case "max-depth":
+      return boundedInteger(value, 1, MAX_DESCENT_DEPTH);
     case "tmp":
       return value === "flow" || value === "stage";
     case "workdir":
@@ -297,7 +299,9 @@ function validateExtras(
   for (const name of extras) {
     const value = data[name];
     if (value !== undefined && !validateExtra(name, value)) {
-      fault(faults, "value-invalid", path, `Give ${name} a valid value.`);
+      fault(faults, "value-invalid", path, name === "max-depth"
+        ? `Give max-depth an integer from 1 through ${String(MAX_DESCENT_DEPTH)}.`
+        : `Give ${name} a valid value.`);
     }
   }
 }

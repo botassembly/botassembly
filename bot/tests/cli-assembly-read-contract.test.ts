@@ -40,6 +40,8 @@ test("assembly check uses the current dispatcher and bounded versioned result", 
   const human = await invokeCli(["assembly", "check", "review/main"], { home });
   expect(human.code, human.err).toBe(0);
   expect(human.out).toContain("01-work");
+  expect(human.out).toContain("flows/main/FLOW.md  flow-definition  type=FLOW  flow=flows/main  max_subflow_calls=10");
+  expect(human.out).toContain("01-work  STAGE  flow=flows/main");
   const json = await invokeCli(["assembly", "check", "review/main", "--json"], { home });
   expect(json.code, json.err).toBe(0);
   const checkDocument = document(json.out);
@@ -47,13 +49,49 @@ test("assembly check uses the current dispatcher and bounded versioned result", 
     schemaVersion: 1,
     kind: "bot.assembly.check",
     page: { limit: 20, next: null, through: null, complete: true },
-    summary: { returned: 1, matched: 1, warningCount: 0, warningsOmitted: 0 },
+    summary: { returned: 2, matched: 2, warningCount: 0, warningsOmitted: 0 },
     warnings: [],
   });
   const checkData = checkDocument["data"];
   if (!mapping(checkData) || !Array.isArray(checkData["stages"]) || !mapping(checkData["stages"][0])) throw new Error("Expected check stages.");
   expect(checkData["target"]).toBe("review/main");
-  expect(checkData["stages"][0]).toMatchObject({ stage: "01-work", type: "STAGE", input: ["request.txt"], output: "work.txt", files: ["01-work.md"] });
+  expect(checkData["stages"][0]).toEqual({ stage: "flows/main/FLOW.md", flow: "flows/main", type: "FLOW", max_subflow_calls: 10 });
+  expect(checkData["stages"][1]).toMatchObject({ stage: "01-work", flow: "flows/main", type: "STAGE", input: ["request.txt"], output: "work.txt", files: ["01-work.md"] });
+});
+
+test("assembly check renders depth-dependent child artifacts in human and JSON modes", async () => {
+  const home = await homeFixture();
+  const recur = join(home, "assemblies", "recursive", "flows", "recur");
+  await Promise.all([
+    mkdir(join(recur, "00-plan"), { recursive: true }),
+    mkdir(join(recur, "01-spread"), { recursive: true }),
+    mkdir(join(recur, "subflows", "recur", "01-result"), { recursive: true }),
+  ]);
+  await Promise.all([
+    writeFile(join(home, "assemblies", "recursive", "ASSEMBLY.md"), "---\nintelligence: default\n---\nRecursive.\n"),
+    writeFile(join(recur, "DESCEND.md"), "---\ndescription: recursive\nmax-depth: 2\n---\n"),
+    writeFile(join(recur, "00-plan", "STAGE.md"), "---\n---\nPlan.\n"),
+    writeFile(join(recur, "00-plan", "schema.json"), "{\"type\":\"object\"}\n"),
+    writeFile(join(recur, "01-spread", "FANOUT.md"), "---\nitems: jobs\nsubflow: recur\nwidth: 1\nmax-items: 2\n---\n"),
+    writeFile(join(recur, "02-finish.md"), "---\n---\nFinish.\n"),
+    writeFile(join(recur, "subflows", "recur", "FLOW.md"), "---\ndescription: revealed helper\n---\n"),
+    writeFile(join(recur, "subflows", "recur", "01-result", "STAGE.md"), "---\n---\nReturn JSON.\n"),
+    writeFile(join(recur, "subflows", "recur", "01-result", "schema.json"), "{\"type\":\"object\"}\n"),
+  ]);
+  const json = await invokeCli(["assembly", "check", "recursive/recur", "--json"], { home });
+  expect(json.code, json.err).toBe(0);
+  const data = document(json.out)["data"];
+  if (!mapping(data) || !Array.isArray(data["stages"])) throw new Error("Expected check stages.");
+  expect(data["stages"].find((row) => mapping(row) && row["type"] === "FANOUT")).toMatchObject({
+    output: "<item>.txt", child_outputs: ["<item>.json"],
+  });
+  expect(data["stages"].find((row) => mapping(row) && row["stage"] === "02-finish")).toMatchObject({
+    input: ["<item>.txt"], child_input: ["<item>.json"],
+  });
+  const human = await invokeCli(["assembly", "check", "recursive/recur"], { home });
+  expect(human.code, human.err).toBe(0);
+  expect(human.out).toContain("child_outputs=&lt;item&gt;.json");
+  expect(human.out).toContain("child_input=&lt;item&gt;.json");
 });
 
 test("assembly check passes a declared dynamic slot to the existing reader", async () => {
@@ -67,7 +105,7 @@ test("assembly check passes a declared dynamic slot to the existing reader", asy
   await writeFile(doc, "Document.");
   const held = await invokeCli(["assembly", "check", "slotted/main", "--doc", doc, "--json"], { home });
   expect(held.code, held.err).toBe(0);
-  expect(document(held.out)).toMatchObject({ kind: "bot.assembly.check", summary: { returned: 1, matched: 1 } });
+  expect(document(held.out)).toMatchObject({ kind: "bot.assembly.check", summary: { returned: 2, matched: 2 } });
 });
 
 test("assembly check uses its explicit home instead of the ambient home", async () => {
@@ -153,6 +191,32 @@ test("assembly list bounds pages, keeps cursor state opaque, and supports exact 
   expect(Array.isArray(secondData) ? secondData : []).toHaveLength(3);
   const count = await invokeCli(["assembly", "list", "--count", "--json"], { home });
   expect(document(count.out)).toMatchObject({ data: [], summary: { returned: 0, matched: 23 }, page: { limit: 0, complete: true } });
+});
+
+test("assembly check paginates every definition and node without duplication or omission", async () => {
+  const home = await homeFixture();
+  const flow = join(home, "assemblies", "large", "flows", "main");
+  await mkdir(flow, { recursive: true });
+  await Promise.all([
+    writeFile(join(home, "assemblies", "large", "ASSEMBLY.md"), "---\nintelligence: default\n---\nLarge.\n"),
+    writeFile(join(flow, "FLOW.md"), "---\ndescription: main\n---\n"),
+    ...Array.from({ length: 202 }, (_unused, index) => writeFile(
+      join(flow, `${String(index + 1).padStart(3, "0")}-work.md`), "---\n---\nWork.\n",
+    )),
+  ]);
+  const stages: unknown[] = [];
+  let after: string | null = null;
+  do {
+    const result = await invokeCli(["assembly", "check", "large/main", "--limit", "200", "--json", ...(after === null ? [] : ["--after", after])], { home });
+    expect(result.code, result.err).toBe(0);
+    const held = document(result.out), data = held["data"], page = held["page"];
+    if (!mapping(data) || !Array.isArray(data["stages"]) || !mapping(page)) throw new Error("Expected a check page.");
+    expect(held["summary"]).toMatchObject({ matched: 203 });
+    stages.push(...(data["stages"] as unknown[]));
+    after = typeof page["next"] === "string" ? page["next"] : null;
+  } while (after !== null);
+  expect(stages).toHaveLength(203);
+  expect(new Set(stages.map((row) => mapping(row) ? `${String(row["flow"])}:${String(row["stage"])}` : "bad")).size).toBe(203);
 });
 
 test("assembly read commands reject unexpected and unknown arguments", async () => {

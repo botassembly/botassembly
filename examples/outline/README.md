@@ -47,11 +47,14 @@ outline/
 
 ```console
 $ bot assembly check ./outline/plan
-01-scope  STAGE  input=request.txt  output=scope.md  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=300@stage,retries=1@assembly,local-context=ignore@default
-02-expand  STAGE  input=scope.md  output=expand.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=900@stage,retries=1@assembly,local-context=ignore@default
-03-review  LOOP  input=-  output=-  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=900@flow,retries=1@assembly,local-context=ignore@default
-03-review/01-tighten  STAGE  input=expand.txt,tighten.txt  output=tighten.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=900@flow,retries=1@stage,local-context=ignore@default
-04-emit  STAGE  input=review.txt  output=emit.txt  options=intelligence=default@assembly,provider=google@assembly,model=gemini-3.5-flash-lite@assembly,reasoning=low@assembly,timeout=120@stage,retries=1@assembly,local-context=ignore@default
+flows/plan/FLOW.md  flow-definition  type=FLOW  flow=flows/plan  max_subflow_calls=10
+01-scope  STAGE  flow=flows/plan  input=request.txt  output=scope.md  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
+02-expand  STAGE  flow=flows/plan  input=scope.md  output=expand.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=900,retries=1,local-context=ignore
+03-review  LOOP  flow=flows/plan  input=-  output=-  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=900,retries=1,local-context=ignore
+03-review/01-tighten  STAGE  flow=flows/plan  input=expand.txt,tighten.txt  output=tighten.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=900,retries=1,local-context=ignore
+04-emit  STAGE  flow=flows/plan  input=review.txt  output=emit.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=120,retries=1,local-context=ignore
+flows/plan/02-expand/subflows/expand/DESCEND.md  flow-definition  type=DESCEND  flow=flows/plan/02-expand/subflows/expand  max_subflow_calls=10  max_depth=3
+01-section  STAGE  flow=flows/plan/02-expand/subflows/expand  input=request.&lt;runtime&gt;  output=section.txt  options=intelligence=default,provider=google,model=gemini-3.5-flash-lite,reasoning=low,timeout=300,retries=1,local-context=ignore
 $ echo $?
 0
 ```
@@ -60,7 +63,7 @@ The resolved `provider`, `model`, and `reasoning` are whatever your home's `conf
 
 Two lines are worth reading twice. `01-scope` shows `output=scope.md`: the schema chose the extension, and `schema.md` is why the next stage reads markdown rather than `.txt`. `03-review/01-tighten` shows `input=expand.txt,tighten.txt` — the loop's own input every repeat, plus the previous repeat's output from the second repeat on.
 
-Five lines is the whole proof, and the descent is not in it. `bot assembly check` prints the entry flow's root stages, so neither `expand` nor any of its self-calls appears; that gap is filed as `sdlc/issues/2026-09-11-bot-check-does-not-list-subflow-stages.md`. The pre-flight does resolve the subflow even though it prints nothing of it. Empty the folder and the check exits 2 with `folder-empty`; drop `max-depth` from `DESCEND.md` and it exits 2 with `key-missing` and "Add the required key max-depth."
+The descent definition and its stage appear once. `max_subflow_calls=10` states the runtime child-call ceiling and `max_depth=3` states the authored consecutive self-call bound. Static checking does not duplicate the row for each possible self-call. Empty the folder and the check exits 2 with `folder-empty`; drop `max-depth` from `DESCEND.md` and it exits 2 with `key-missing` and "Add the required key max-depth."
 
 ## Run it
 

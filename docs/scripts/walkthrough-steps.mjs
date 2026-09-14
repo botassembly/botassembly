@@ -130,7 +130,7 @@ export const steps = [
 		kind: 'check',
 		layout: 'wide',
 		blurb:
-			'`bot assembly check` calls no model and costs nothing. It resolves the whole assembly and prints one row for each stage file, with what the stage reads, what it writes, and where every option was set. Five rows here, and two of them are the two arms of the choice, so a run walks four.',
+			'`bot assembly check` calls no model and costs nothing. It prints one flow-definition row and one row for each reachable node. Six rows appear here. Two node rows are the choice arms, so a run walks four nodes.',
 		spec: { href: '/reference/inspection/', label: 'Inspection' },
 		github: 'triage/README.md',
 	},
