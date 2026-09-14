@@ -136,7 +136,10 @@ test("a paused ordinary reader receives every byte in order before exit", async 
   child.stdout.resume();
   const code = await new Promise<number | null>((resolve) => { child.once("close", resolve); });
   expect(code, Buffer.concat(errors).toString()).toBe(0);
-  expect(Buffer.concat(output)).toEqual(Buffer.concat([Buffer.alloc(4 << 20, 0x61), Buffer.alloc(4 << 20, 0x62)]));
+  const observed = Buffer.concat(output);
+  expect(observed.length).toBe(8 << 20);
+  expect(observed.subarray(0, 4 << 20).every((byte) => byte === 0x61)).toBe(true);
+  expect(observed.subarray(4 << 20).every((byte) => byte === 0x62)).toBe(true);
 }, BOUNDARY_MS);
 
 test("exitFlushed is the exported exit seam", () => {
