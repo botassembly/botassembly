@@ -86,3 +86,4 @@ The leg installs every npm package cold on every run, so it is slower than the o
 
 - Origin: proposed ticket 11 in the 2026-09-14 admin surface and library requirements note.
 - Design review: rejected once for a PATH step and a working directory that resolve on the Windows host, a stale runner hedge, and a complexity self-contradiction. Accepted after revision.
+- First acceptance attempt, 2026-09-14: the `runtime` workflow dispatched on main at `d5830a1` as run `34881521999`. The `check` and both `platform` jobs succeeded. The `wsl` job failed at its first script step with `SERVER: unbound variable`, because a step's `env:` values stay on the Windows side and the wrapper does not carry them into the distribution. The ordinary push run `34881523189` on the same commit showed `wsl` skipped, so the trigger gate holds. The fix forwards the three clone variables through `WSLENV`. The record is written after a green dispatch.
