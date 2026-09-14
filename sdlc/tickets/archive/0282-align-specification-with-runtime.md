@@ -81,4 +81,5 @@ The error-code list is a new public compatibility surface. A published code is a
 
 - Origin: the audit `sdlc/planning/notes/2026-09-14-review-specification.md`, with M3 and M4 from `2026-09-14-review-recent-work.md`.
 - Design review: accepted after one rejection.
-- Code review: pending
+- Code review: accepted after one round of must-change items: an unpinned credential name list, retired-command anchors pointed at live targets, and an over-broad exemption regex.
+- Completion: implementation commit `a0ad347b16124fb622a7c962192f64e78cd5800b` is published, passed the complete local gate, and passed independent code review. Hosted runtime run `34844488159` and hosted docs run `34844488471` passed on that commit.
