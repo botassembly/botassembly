@@ -42,7 +42,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 28. **Planned:** add one read-only operation that lists the home's intelligence table.
 29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
 30. **Planned:** make `bot run resume` inherit the donor's recorded command-rung intelligence.
-31. **Planned:** export `run.output` and `run.request` through the `run-readings` door ticket 0291 opened, by driving their handlers with a collecting boundary, so `copySelected` stays module-private and the exported reading returns the command's own bytes.
+31. **Completed in ticket 0295:** export `run.output` and `run.request` through the `run-readings` door ticket 0291 opened, by driving their handlers with a collecting boundary, so `copySelected` stays module-private and the exported reading returns the command's own bytes.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 
