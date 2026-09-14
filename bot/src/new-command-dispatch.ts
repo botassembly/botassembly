@@ -11,6 +11,7 @@ import { runEventsCommand } from "./run-events-command.ts";
 import { runSessionCommand } from "./run-session-command.ts";
 import { homeBusyCommand } from "./home-busy-command.ts";
 import { homeCommand } from "./home-command.ts";
+import { intelligenceListCommand } from "./intelligence-list-command.ts";
 import { assemblyCheckCommand } from "./assembly-check-command.ts";
 import { assemblyListCommand } from "./assembly-list-command.ts";
 import { assemblyCreateCommand } from "./assembly-create-command.ts";
@@ -81,6 +82,7 @@ const piFreeHandlers: Record<PiFreeOperation, Handler> = {
   capabilities: capabilitiesCommand,
   "home.busy": homeBusyCommand,
   "home.show": (args, held) => homeCommand(args, held),
+  "intelligence.list": intelligenceListCommand,
   "run.check": runCheckCommand,
   "run.checklist": runChecklistCommand,
   "run.events": runEventsCommand,

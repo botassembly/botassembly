@@ -3,7 +3,7 @@ title: "Command reference"
 description: "Every bot command in one table, with the arguments it takes, what it answers, and how it exits."
 ---
 
-`bot` has twenty-five commands. Each one appears once below.
+`bot` has twenty-six commands. Each one appears once below.
 
 `bot <command> --help` describes one command. `bot capabilities` reports the structured command surface this build implements.
 
@@ -24,6 +24,7 @@ description: "Every bot command in one table, with the arguments it takes, what 
 | `bot capabilities` | the structured command surface this build implements |
 | `bot home busy <directory>` | whether a live run holds that exact directory |
 | `bot home show` | which home was selected |
+| `bot intelligence list` | which intelligences the home's configuration names |
 | `bot model list [provider]` | which models this machine can call |
 | `bot run check <run> <name>` | one named recorded check |
 | `bot run checklist <run>` | the checklist marks one run retained |

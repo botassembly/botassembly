@@ -9,6 +9,7 @@ import type { AssemblyListField } from "./cli-contract.ts";
 import { commandReading, flag, valued } from "./command-reading.ts";
 import { homeBusyCommand } from "./home-busy-command.ts";
 import { homeCommand } from "./home-command.ts";
+import { intelligenceListCommand } from "./intelligence-list-command.ts";
 import type { CommandResult } from "./new-command-result.ts";
 
 /** `bot capabilities [--json]`. The handler receives two arguments, so its own
@@ -69,4 +70,12 @@ export function assemblyListReading(
     ...valued("--limit", options.limit), ...valued("--after", options.after),
   ];
   return commandReading(assemblyListCommand, args, cwd, env);
+}
+
+/** `bot intelligence list --home HOME [--json]`. The handler reads the home's
+ *  `config.yaml` alone, so the reading loads no model runtime. */
+export function intelligenceListReading(
+  home: string, json: boolean, cwd: string, env: NodeJS.ProcessEnv,
+): Promise<CommandResult<number>> {
+  return commandReading(intelligenceListCommand, [...flag("--json", json), "--home", home], cwd, env);
 }

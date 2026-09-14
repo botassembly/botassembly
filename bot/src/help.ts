@@ -51,6 +51,7 @@ function overviewLine(held: CliDescriptor): string {
     "auth.logout": "remove one provider's stored Pi credential",
     "home.busy": "report whether a directory has a live run",
     "home.show": "show one explicit Bot home installation identity",
+    "intelligence.list": "list the intelligences the Bot home configuration names",
     "model.list": "list Pi runtime model availability",
     "run.check": "list or read one named recorded check",
     "run.checklist": "list the checklist marks recorded by one run",
@@ -262,11 +263,14 @@ const AUTH_LIST = `usage: bot auth list [options]\n\nLists a bounded safe projec
 const AUTH_IMPORT_DESCRIPTOR = descriptor("auth.import");
 const AUTH_IMPORT = `usage: bot auth import SOURCE [--json|-j]\n\nCopies one complete compatible retired Bot credential map into missing or empty Pi authentication. It never merges, overwrites, selects, or deletes source credentials.\n\noptions:\n${optionLines(AUTH_IMPORT_DESCRIPTOR)}\n\nModes: ${AUTH_IMPORT_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(AUTH_IMPORT_DESCRIPTOR)}.\nNetwork: ${AUTH_IMPORT_DESCRIPTOR.network}. Home: ${AUTH_IMPORT_DESCRIPTOR.home}. Mutates: ${String(AUTH_IMPORT_DESCRIPTOR.mutates)}.\n\nexample:\n  bot auth import ~/.config/bot/credentials.json --json\n`;
 
+const INTELLIGENCE_LIST_DESCRIPTOR = descriptor("intelligence.list");
+const INTELLIGENCE_LIST = `usage: bot intelligence list [--json|-j] [--home DIR]\n\nLists the intelligences the home configuration names, sorted bytewise by name. An unauthored provider prints a dash. The row named default is the one an unnamed intelligence resolves to.\n\noptions:\n${optionLines(INTELLIGENCE_LIST_DESCRIPTOR)}\n\nModes: ${INTELLIGENCE_LIST_DESCRIPTOR.modes.join(", ")}. Output: ${outputName(INTELLIGENCE_LIST_DESCRIPTOR)}.\nNetwork: ${INTELLIGENCE_LIST_DESCRIPTOR.network}. Home: ${INTELLIGENCE_LIST_DESCRIPTOR.home}.\n\nA home with no config.yaml lists zero rows. A malformed table refuses with exit 2 and cause home-invalid.\n\nexample:\n  bot intelligence list --json\n`;
+
 const SCREENS = new Map([
   ["run check", RUN_CHECK], ["run checklist", RUN_CHECKLIST], ["run events", RUN_EVENTS], ["run list", RUN_LIST], ["run output", RUN_OUTPUT], ["run record", RUN_RECORD], ["run request", RUN_REQUEST], ["run resume", RUN_RESUME], ["run session", RUN_SESSION], ["run show", RUN_SHOW], ["run start", RUN_START],
   ["home busy", HOME_BUSY], ["home show", HOME_SHOW], ["capabilities", CAPABILITIES],
   ["assembly check", ASSEMBLY_CHECK], ["assembly install", ASSEMBLY_INSTALL], ["assembly link", ASSEMBLY_LINK], ["assembly list", ASSEMBLY_LIST], ["assembly remove", ASSEMBLY_REMOVE], ["assembly update", ASSEMBLY_UPDATE],
-  ["auth import", AUTH_IMPORT], ["auth list", AUTH_LIST], ["auth login", AUTH_LOGIN], ["auth logout", AUTH_LOGOUT], ["model list", MODEL_LIST],
+  ["auth import", AUTH_IMPORT], ["auth list", AUTH_LIST], ["auth login", AUTH_LOGIN], ["auth logout", AUTH_LOGOUT], ["model list", MODEL_LIST], ["intelligence list", INTELLIGENCE_LIST],
 ]);
 
 export function helpScreen(command: string, args: readonly string[]): string | undefined {

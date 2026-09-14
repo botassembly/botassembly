@@ -6,7 +6,7 @@ type CapabilityHome = "never" | "reads" | "writes";
 type CapabilityNetwork = "never" | "conditional" | "requested";
 type CapabilityMode = "markdown" | "json" | "raw";
 type CapabilityOptionType = "boolean" | "string" | "integer" | "timestamp" | "path" | "csv";
-const NEW_OPERATIONS = ["assembly.check", "assembly.install", "assembly.link", "assembly.list", "assembly.remove", "assembly.update", "auth.import", "auth.list", "auth.login", "auth.logout", "capabilities", "home.busy", "home.show", "model.list", "run.check", "run.checklist", "run.events", "run.list", "run.output", "run.record", "run.request", "run.resume", "run.session", "run.show", "run.start"] as const;
+const NEW_OPERATIONS = ["assembly.check", "assembly.install", "assembly.link", "assembly.list", "assembly.remove", "assembly.update", "auth.import", "auth.list", "auth.login", "auth.logout", "capabilities", "home.busy", "home.show", "intelligence.list", "model.list", "run.check", "run.checklist", "run.events", "run.list", "run.output", "run.record", "run.request", "run.resume", "run.session", "run.show", "run.start"] as const;
 export type NewOperation = (typeof NEW_OPERATIONS)[number];
 
 type CapabilityOutput = { kind: string; schemaVersion: number } | { kind: "raw" };
@@ -41,6 +41,7 @@ export const CAPABILITIES_DOCUMENT_BYTES = 65_536;
 export const CAPABILITIES_RESULT = { kind: "bot.capabilities", schemaVersion: 1 } as const;
 export const NEW_COMMAND_ERROR_BYTES = 2_048;
 export const HOME_RESULT_BYTES = 4_096;
+export const INTELLIGENCE_LIST_CONTRACT = { documentBytes: 65_536, humanErrorBytes: NEW_COMMAND_ERROR_BYTES } as const;
 export const ASSEMBLY_CREATE_CONTRACT = { humanErrorBytes: NEW_COMMAND_ERROR_BYTES, resultBytes: 8_192 } as const;
 export const ASSEMBLY_UPDATE_CONTRACT = { humanErrorBytes: NEW_COMMAND_ERROR_BYTES, reasonBytes: 512, resultBytes: 65_536 } as const;
 export const ASSEMBLY_REMOVE_CONTRACT = { humanErrorBytes: NEW_COMMAND_ERROR_BYTES, resultBytes: 8_192 } as const;
@@ -258,6 +259,16 @@ const homeBusy: CliDescriptor = {
   limits: { humanErrorBytes: NEW_COMMAND_ERROR_BYTES },
 };
 
+const intelligenceList: CliDescriptor = {
+  operation: "intelligence.list", command: ["intelligence", "list"], output: { kind: "bot.intelligence.list", schemaVersion: 1 },
+  modes: ["markdown", "json"], home: "reads", mutates: false, network: "never",
+  options: [
+    { name: "--home", aliases: [], type: "path", repeatable: false, default: "BOT_HOME, then platform default" },
+    { name: "--json", aliases: ["-j"], type: "boolean", repeatable: false },
+  ],
+  limits: INTELLIGENCE_LIST_CONTRACT,
+};
+
 const runList: CliDescriptor = {
   operation: RUN_LIST_CONTRACT.operation, command: ["run", "list"], output: RUN_LIST_CONTRACT.result,
   modes: ["markdown", "json"], home: "reads", mutates: false, network: "never",
@@ -445,7 +456,7 @@ const runResume: CliDescriptor = {
   },
 };
 
-export const CLI_CONTRACTS: readonly CliDescriptor[] = [assemblyCheck, assemblyInstall, assemblyLink, assemblyList, assemblyRemove, assemblyUpdate, authImport, authList, authLogin, authLogout, capability, homeBusy, homeShow, modelList, runCheck, runChecklist, runEvents, runList, runOutput, runRecord, runRequest, runResume, runSession, runShow, runStart];
+export const CLI_CONTRACTS: readonly CliDescriptor[] = [assemblyCheck, assemblyInstall, assemblyLink, assemblyList, assemblyRemove, assemblyUpdate, authImport, authList, authLogin, authLogout, capability, homeBusy, homeShow, intelligenceList, modelList, runCheck, runChecklist, runEvents, runList, runOutput, runRecord, runRequest, runResume, runSession, runShow, runStart];
 
 function repeated(values: readonly string[]): boolean {
   return new Set(values).size !== values.length;

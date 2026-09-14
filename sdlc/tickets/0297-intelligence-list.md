@@ -51,7 +51,7 @@ Markdown prints a heading and a pipe table of the four columns, with `-` for a n
 
 9. Add one `specification/CHANGELOG.md` paragraph under `## 2026-09-14` beginning "Ticket 0297", naming the operation, the document, and the export.
 
-10. Raise `sdlc/ratchet.json` from 19061 to the measured total.
+10. Raise `sdlc/ratchet.json` from 19079 to the measured total.
 
 11. Delete `sdlc/issues/2026-09-14-home-intelligence-table-has-no-reader.md`.
 
@@ -67,13 +67,13 @@ Exclude writing the table. Exclude paging: the document is bounded and refuses p
 
 ## Size decision
 
-- Starting production size: 19061 nonblank lines
-- Ending production size: 19171 nonblank lines
+- Starting production size: 19079 nonblank lines
+- Ending production size: 19202 nonblank lines
 - Simpler approach tried: add the table to `bot home show`.
 - Why insufficient alternatives were rejected: `bot home show` returns installation identity inside 4,096 bytes, and `specification/elements/inspection.md:143` scopes it there. A table inside that bound turns one reading into two contracts.
-- Production code added: 110 nonblank lines, estimated.
+- Production code added: 123 nonblank lines. The ceiling rises from 19079 to 19202.
 - Production code deleted: none.
-- Accepted cost: the document is bounded rather than paged, so a very large table refuses.
+- Accepted cost: the document is bounded rather than paged, so a very large table refuses with code `integrity-failed`, cause `result-oversized`, and exit 5.
 
 ## Complexity
 

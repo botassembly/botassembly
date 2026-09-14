@@ -34,8 +34,8 @@ const ASSEMBLY = "review";
 const TARGET = `${ASSEMBLY}/main`;
 const CLI = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
-// Sixteen operations carry `mutates: false` (ticket "Current facts"). Fourteen
-// of them are compared live below. `auth.list` and `model.list` need a Pi
+// Seventeen operations carry `mutates: false` (ticket "Current facts").
+// Fifteen of them are compared live below. `auth.list` and `model.list` need a Pi
 // runtime on the boundary and have no importable counterpart yet.
 const PENDING_EXPORT: readonly NewOperation[] = ["auth.list", "model.list"];
 
@@ -66,6 +66,7 @@ const COUNTERPARTS: Readonly<Partial<Record<NewOperation, string>>> = {
   capabilities: "capabilitiesReading (bot/admin-readings)",
   "home.busy": "homeBusyReading (bot/admin-readings)",
   "home.show": "homeShowReading (bot/admin-readings)",
+  "intelligence.list": "intelligenceListReading (bot/admin-readings)",
   "run.check": "runCheckReading (bot/run-readings)",
   "run.checklist": "runChecklistReading (bot/run-readings)",
   "run.events": "runEventsReading (bot/run-readings)",
@@ -93,7 +94,7 @@ test("every operation has exactly one importable counterpart or allowlist entry"
   expect(operationFault(operations, PENDING_EXPORT, PENDING_MUTATION, COUNTERPARTS)).toBeUndefined();
 });
 
-// Red demonstration 1: a 26th operation named in neither list nor the map.
+// Red demonstration 1: a 27th operation named in neither list nor the map.
 test("an operation added to CLI_CONTRACTS with no export or allowlist entry fails naming it", () => {
   const operations = [...CLI_CONTRACTS.map((descriptor) => descriptor.operation), "assembly.retire"];
   expect(operationFault(operations, PENDING_EXPORT, PENDING_MUTATION, COUNTERPARTS))
@@ -105,7 +106,8 @@ test("an operation added to CLI_CONTRACTS with no export or allowlist entry fail
 // returning its name to an allowlist fails naming exactly that operation.
 for (const operation of [
   "run.list", "run.show", "run.record", "assembly.check", "assembly.list", "capabilities",
-  "home.busy", "home.show", "run.check", "run.checklist", "run.events", "run.output", "run.request",
+  "home.busy", "home.show", "intelligence.list", "run.check", "run.checklist", "run.events",
+  "run.output", "run.request",
 ]) {
   test(`${operation} dropped from the counterpart map with no allowlist entry fails naming it`, () => {
     const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
@@ -417,5 +419,15 @@ import { runRequestReading } from "bot/run-readings";
 const imported = await runRequestReading(home, "${RUN}", cwd, env);
 agree("run.request", imported,
   await commandResult(["run", "request", "${RUN}", "--raw", "--home", home]), "${RUN}", "stdout");
+`);
+});
+
+test("intelligence.list compared live: `bot intelligence list --json` and intelligenceListReading agree byte for byte", async () => {
+  await live(`${PREAMBLE}
+import { intelligenceListReading } from "bot/admin-readings";
+
+const imported = await intelligenceListReading(home, true, cwd, env);
+agree("intelligence.list", imported,
+  await commandResult(["intelligence", "list", "--json", "--home", home]), "bot.intelligence.list", "stdout");
 `);
 });
