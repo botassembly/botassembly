@@ -1,7 +1,7 @@
 import { parseDocument } from "yaml";
-import { hashBytes } from "./record.ts";
+import { hashBytes, prehashAssembly } from "./record.ts";
 import { jsonObject } from "./check.ts";
-import { readInvocationTokens, type CheckResult } from "./reader.ts";
+import { readInvocationTokens, resolveInvocationTokens, type CheckResult } from "./reader.ts";
 import { takeHome } from "./flags.ts";
 import { ASSEMBLY_READ_CONTRACT } from "./cli-contract.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
@@ -133,10 +133,10 @@ function cursor(target: string, after: number): string {
   return Buffer.from(jsonObject({ version: 1, target: hashBytes(Buffer.from(target)), after })).toString("base64url");
 }
 
-function resultDocument(target: string, rows: readonly Record<string, unknown>[], offset: number, total: number, limit: number): Record<string, unknown> {
+function resultDocument(target: string, hash: string | null, rows: readonly Record<string, unknown>[], offset: number, total: number, limit: number): Record<string, unknown> {
   const end = Math.min(offset + limit, total), complete = end >= total;
   const next = complete ? null : cursor(target, end - 1);
-  return { schemaVersion: 1, kind: "bot.assembly.check", data: { target, stages: rows.slice(offset, end) },
+  return { schemaVersion: 1, kind: "bot.assembly.check", data: { target, hash, stages: rows.slice(offset, end) },
     page: { limit, next, through: null, complete }, summary: { returned: end - offset, matched: total, warningCount: 0, warningsOmitted: 0 }, warnings: [] };
 }
 
@@ -161,7 +161,16 @@ function closedCheckArgs(args: readonly string[]): CliFailure | undefined {
   return undefined;
 }
 
-function successfulCheck(parsed: Request, input: Extract<ReturnType<typeof readInvocationTokens>, { status: "accepted" }>, boundary: Boundary): number {
+/** The hash the resolved tree carries, by the dialect `bot/src/record.ts` owns
+ *  and `bot/src/resume.ts` compares against. The reading already succeeded, so
+ *  a refused resolve and an unhashable tree both report `null` rather than fail. */
+async function assemblyHash(parsed: Request, boundary: Boundary): Promise<string | null> {
+  const resolved = resolveInvocationTokens([parsed.args[0] ?? "", "--home", parsed.home ?? "", ...parsed.args.slice(1)], boundary.cwd, boundary.env);
+  if (resolved.status === "refused") return null;
+  return prehashAssembly(resolved.assemblyRoot).then((held) => held.sha256, () => null);
+}
+
+async function successfulCheck(parsed: Request, input: Extract<ReturnType<typeof readInvocationTokens>, { status: "accepted" }>, boundary: Boundary): Promise<number> {
   const target = parsed.args[0] ?? "";
   const offset = parsed.after === undefined ? 0 : decodeCursor(parsed.after, target, input.result.lines.length);
   if (offset === undefined) {
@@ -172,7 +181,7 @@ function successfulCheck(parsed: Request, input: Extract<ReturnType<typeof readI
     const parsedLine = jsonValue(Buffer.from(line));
     return "error" in parsedLine || !mapping(parsedLine.value) ? [] : [parsedLine.value];
   });
-  const document = resultDocument(target, stages, offset, input.result.lines.length, parsed.limit);
+  const document = resultDocument(target, await assemblyHash(parsed, boundary), stages, offset, input.result.lines.length, parsed.limit);
   const stdout = parsed.json
     ? Buffer.from(`${jsonObject(document)}\n`)
     : Buffer.from(input.result.lines.slice(offset, offset + parsed.limit).map(humanLine).join("\n") + "\n");
@@ -187,7 +196,7 @@ function successfulCheck(parsed: Request, input: Extract<ReturnType<typeof readI
   return 0;
 }
 
-export function assemblyCheckCommand(args: string[], boundary: Boundary): number {
+export async function assemblyCheckCommand(args: string[], boundary: Boundary): Promise<number> {
   const parsed = parse(args, boundary);
   if (parsed.failure !== undefined || parsed.home === undefined) {
     const output = newCommandFailure("assembly.check", parsed.failure ?? failure("value-missing", "Assembly check requires a home."), parsed.json);

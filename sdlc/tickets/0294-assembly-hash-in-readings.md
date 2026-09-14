@@ -134,10 +134,10 @@ Making `assemblyCheckCommand` asynchronous changes the handler's return type. `b
 ## Size decision
 
 - Starting production size: 18882 nonblank lines
-- Estimated ending production size: about 18904 nonblank lines. The implementer measures and writes the exact number.
+- Estimated ending production size: about 18904 nonblank lines. The implementer measured 18899.
 - Simpler approach tried: a Markdown header line on `bot assembly check` and `hash` inside the default `--fields` set, so both modes and the plain listing report the number without an option.
 - Why insufficient alternatives were rejected: that shape reds five byte-exact transcripts pinned by `scripts/example-transcripts.test.mjs:59-71` and forces a literal 64-character hash into four example READMEs and one published page, where it would go stale on any byte edit to an example. It also reds four friendly-listing assertions. The number's named consumers are programs that read JSON. A second rejected approach put the hash on each row of `data.stages`, which would repeat one assembly-wide fact per row and, because the check reader builds those rows, would rewrite all 35 accept expectations. A third rejected approach computed the hash inside `row` in the list command, which would hash every assembly in the home even for one page or for `--count`. A fourth rejected approach added a `bot assembly hash` command, which the issue rules out by name.
-- Production code added: about 22 nonblank lines across `bot/src/assembly-check-command.ts`, `bot/src/assembly-list-command.ts`, and one constant in `bot/src/cli-contract.ts`.
+- Production code added: 17 nonblank lines across `bot/src/assembly-check-command.ts`, `bot/src/assembly-list-command.ts`, and one constant in `bot/src/cli-contract.ts`.
 - Production code deleted: none.
 - Accepted cost: `bot assembly check` becomes slower in proportion to the bytes of the tree it names, in both modes, and Markdown readers of either command still cannot see the hash.
 

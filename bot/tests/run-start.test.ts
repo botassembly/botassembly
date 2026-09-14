@@ -242,3 +242,18 @@ test("an unexpected pre-run dependency failure names a declared cause and keeps 
   });
   await expect(runsIn(home).catch(() => [])).resolves.toEqual([]);
 });
+
+test("assembly check reports the hash the run record wrote for the same target", async () => {
+  const started = await runStart();
+  expect(started.code).toBe(0);
+  const run = String((JSON.parse(started.out.toString()) as { data: Record<string, unknown> }).data["run"]);
+  const record = await events(join(started.home, "runs", run, "record.jsonl"));
+  const recorded = (record[0] ?? {})["assembly_hash"];
+  expect(typeof recorded).toBe("string");
+  const out: Buffer[] = [], err: Buffer[] = [];
+  const { held } = realBoundary(started.root, started.home, out, err);
+  const code = await main(["assembly", "check", "review/main", "--json", "--home", started.home], held);
+  expect(code, Buffer.concat(err).toString()).toBe(0);
+  const { data } = JSON.parse(Buffer.concat(out).toString()) as { data: Record<string, unknown> };
+  expect(data["hash"]).toBe(recorded);
+});

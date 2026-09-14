@@ -5,6 +5,8 @@
 
 ## 2026-09-14
 
+Ticket 0294 reports the assembly hash in two readings. `bot assembly check --json` carries `data.hash` on every page, including a continuation page, and it holds the same string a `run_start` of that target records in `assembly_hash`. `bot assembly list` accepts `hash` through `--fields`, and the field holds the installed assembly's content hash. A refused resolve, a broken link, and a tree the runtime cannot hash each report `null`. The default `--fields` projection keeps its six names. Neither command writes a hash in human output. Both documents stay at schema version 1.
+
 Ticket 0293 names `auth.import` in the capabilities inventory sentence. The chapter had omitted it since the operation joined the code. A new test now pins the chapter's inventory sentence to `CLI_CONTRACTS` in both directions.
 
 Ticket 0291 opens the `bot/run-readings` export path. An outside consumer imports `inspectRunList`, `parseRunList`, `runListFailure`, `runShowReading`, and `runRecordReading` and receives the same bytes `bot run list`, `bot run show`, and `bot run record` write to standard output. A run show or run record fault reaches the consumer the same way. A run list home fault stays in the command handler, and `runListFailure` builds it for a consumer that needs it. `runShowReading` takes the environment and derives the scratch root from it, so the consumer's environment decides the scratch paths in the document. `runRecordReading` holds the record snapshot in memory where the command streams it. The two legacy readers leave the public surface: `inspectRuns` stops being exported through `bot/inspection` and `inspectShow` is deleted.

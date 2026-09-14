@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import { readlink, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { ASSEMBLY_LIST_FIELDS, ASSEMBLY_READ_CONTRACT, type AssemblyListField } from "./cli-contract.ts";
+import { ASSEMBLY_LIST_FIELDS, ASSEMBLY_LIST_SELECTABLE_FIELDS, ASSEMBLY_READ_CONTRACT, type AssemblyListField } from "./cli-contract.ts";
 import { takeHome } from "./flags.ts";
 import { heldAssemblies, type Held } from "./inspection.ts";
 import { jsonObject } from "./check.ts";
-import { hashBytes } from "./record.ts";
+import { hashBytes, prehashAssembly } from "./record.ts";
 import { boundedText, inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { assemblyMarker } from "./documents.ts";
 import { bytewise, errorCode, mapping } from "./model.ts";
@@ -14,7 +14,7 @@ import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { provenance } from "./management.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
-interface AssemblyRow { name: string; kind: "installed" | "linked"; source: string | null; updated: string | null; target: string | null; broken: boolean }
+interface AssemblyRow { name: string; kind: "installed" | "linked"; source: string | null; updated: string | null; target: string | null; broken: boolean; hash: string | null; at: string }
 interface Request { args: string[]; json: boolean; count: boolean; fields: AssemblyListField[]; limit: number; after?: string; home?: string; failure?: CliFailure }
 
 function failure(cause: ErrorCause, message: string, details: Record<string, unknown> = {}, exit: CliFailure["exit"] = 2): CliFailure {
@@ -33,7 +33,7 @@ function parseFields(raw: string | undefined): AssemblyListField[] | undefined {
   return fields.length > 0 && fields.every(isField) && new Set(fields).size === fields.length ? fields : undefined;
 }
 
-function isField(value: string): value is AssemblyListField { return ASSEMBLY_LIST_FIELDS.some((field) => field === value); }
+function isField(value: string): value is AssemblyListField { return ASSEMBLY_LIST_SELECTABLE_FIELDS.some((field) => field === value); }
 
 function baseArgs(args: string[]): { rest: string[]; json: boolean; count: boolean; failure?: CliFailure } {
   const modes = args.filter((word) => word === "--json" || word === "-j"), countWords = args.filter((word) => word === "--count");
@@ -108,10 +108,10 @@ async function row(one: Held): Promise<AssemblyRow> {
   if (one.linked) {
     const target = await readlink(one.path);
     const broken = !existsSync(resolve(dirname(one.path), target)) || !assemblyMarker(resolve(dirname(one.path), target));
-    return { name: one.name, kind: "linked", source: null, updated: null, target, broken };
+    return { name: one.name, kind: "linked", source: null, updated: null, target, broken, hash: null, at: resolve(dirname(one.path), target) };
   }
   const from = await provenance(one.path);
-  return { name: one.name, kind: "installed", source: from?.source ?? null, updated: from?.updated ?? null, target: null, broken: false };
+  return { name: one.name, kind: "installed", source: from?.source ?? null, updated: from?.updated ?? null, target: null, broken: false, hash: null, at: one.path };
 }
 
 function cursor(home: string, after: string): string {
@@ -170,8 +170,15 @@ async function readRows(path: string, parsed: Request, boundary: Boundary): Prom
   return emitRows(path, parsed, boundary, rows, names, offset);
 }
 
-function emitRows(path: string, parsed: Request, boundary: Boundary, rows: readonly AssemblyRow[], names: readonly string[], offset: number): number {
-  const selected = rows.slice(offset, offset + parsed.limit), complete = offset + selected.length >= rows.length;
+/** Only the page a caller asked for pays the walk, and only when the caller
+ *  named `hash`. A broken link and a tree the hash dialect refuses report null. */
+function hashed(rows: readonly AssemblyRow[], fields: readonly AssemblyListField[]): Promise<AssemblyRow[]> {
+  if (!fields.some((field) => field === "hash")) return Promise.resolve([...rows]);
+  return Promise.all(rows.map(async (one) => one.broken ? one : { ...one, hash: await prehashAssembly(one.at).then((held) => held.sha256, () => null) }));
+}
+
+async function emitRows(path: string, parsed: Request, boundary: Boundary, rows: readonly AssemblyRow[], names: readonly string[], offset: number): Promise<number> {
+  const selected = await hashed(rows.slice(offset, offset + parsed.limit), parsed.fields), complete = offset + selected.length >= rows.length;
   const next = complete || selected.length === 0 ? null : cursor(path, selected.at(-1)?.name ?? "");
   const document = { schemaVersion: 1, kind: "bot.assembly.list", data: selected.map((one) => projected(one, parsed.fields)),
     page: { limit: parsed.limit, next, through: names.at(-1) ?? null, complete }, summary: { returned: selected.length, matched: rows.length, warningCount: 0, warningsOmitted: 0 }, warnings: [] };

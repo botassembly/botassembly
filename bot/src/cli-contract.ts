@@ -84,7 +84,10 @@ export const ASSEMBLY_READ_CONTRACT = {
 } as const;
 
 export const ASSEMBLY_LIST_FIELDS = ["name", "kind", "source", "updated", "target", "broken"] as const;
-export type AssemblyListField = (typeof ASSEMBLY_LIST_FIELDS)[number];
+/** The vocabulary `--fields` accepts. `hash` costs a walk of the named tree, so
+ *  a caller asks for it and the default projection above stays as it is. */
+export const ASSEMBLY_LIST_SELECTABLE_FIELDS = [...ASSEMBLY_LIST_FIELDS, "hash"] as const;
+export type AssemblyListField = (typeof ASSEMBLY_LIST_SELECTABLE_FIELDS)[number];
 
 const assemblyCheck: CliDescriptor = {
   operation: "assembly.check", command: ["assembly", "check"], output: { kind: "bot.assembly.check", schemaVersion: 1 },
@@ -122,7 +125,7 @@ const assemblyList: CliDescriptor = {
   options: [
     { name: "--after", aliases: [], type: "string", repeatable: false, bytes: ASSEMBLY_READ_CONTRACT.cursor.encodedBytes },
     { name: "--count", aliases: [], type: "boolean", repeatable: false },
-    { name: "--fields", aliases: [], type: "csv", repeatable: false, values: ASSEMBLY_LIST_FIELDS,
+    { name: "--fields", aliases: [], type: "csv", repeatable: false, values: ASSEMBLY_LIST_SELECTABLE_FIELDS,
       default: ASSEMBLY_LIST_FIELDS.join(",") },
     { name: "--home", aliases: [], type: "path", repeatable: false, default: "BOT_HOME, then platform default" },
     { name: "--json", aliases: ["-j"], type: "boolean", repeatable: false },

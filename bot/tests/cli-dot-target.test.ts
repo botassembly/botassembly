@@ -133,3 +133,16 @@ test("`bot run` shares the seam: `run .` from inside an assembly resolves the tr
   const absolute = await said(base, home, ["run", "start", base]);
   expect(absolute.err).toBe(dot.err.replace("request-invalid  .", `request-invalid  ${base}`));
 });
+
+// Ticket 0294 — the same claim over the JSON document: one tree has one hash,
+// whichever spelling named it.
+test("two spellings of one tree report one assembly hash", async () => {
+  const { root, home } = await roots.scratch("bot-dot-hash-");
+  const base = await assembly(join(root, "good"));
+  const dot = await said(base, home, ["assembly", "check", ".", "--json"]);
+  const absolute = await said(base, home, ["assembly", "check", base, "--json"]);
+  expect(dot.code).toBe(0);
+  const hash = (JSON.parse(dot.out) as { data: { hash: unknown } }).data.hash;
+  expect(typeof hash).toBe("string");
+  expect(hash).toBe((JSON.parse(absolute.out) as { data: { hash: unknown } }).data.hash);
+});

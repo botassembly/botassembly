@@ -113,14 +113,24 @@ output emits each definition and node once. Definitions beyond the ceiling
 remain validated but do not appear. JSON returns one newline-terminated
 `bot.assembly.check` document with the target, an ordered bounded `data.stages`
 page, continuation, and summary. The default page is 20 rows and the maximum is
-200. `summary.matched` counts definition and node rows.
+200. `summary.matched` counts definition and node rows. The document carries
+`data.hash`, the content hash of the resolved assembly tree. It is the same
+string a `run_start` of that target records in `assembly_hash`. Every page
+carries it, including a continuation page. A tree the runtime cannot resolve or
+cannot hash reports `null`. Human output carries no hash. The document stays at
+schema version 1.
 
-`bot assembly list [--json|-j] [--home DIR]` reads the home's assembly tree
-through the same owner as the assembly listing. Human output keeps
-the installed and linked lines. JSON returns one newline-terminated
-`bot.assembly.list` document with bounded rows, an opaque keyset cursor, and a
-summary. Both commands are read-only and network-free. The version-1 documents
-use a default page of 20 rows and a maximum page of 200 rows.
+`bot assembly list [--json|-j] [--fields NAMES] [--home DIR]` reads the home's
+assembly tree through the same owner as the assembly listing. `--fields`
+accepts `name`, `kind`, `source`, `updated`, `target`, `broken`, and `hash`. The
+default is the six names without `hash`. Human output keeps the installed and
+linked lines for that default set and renders a pipe table for any other
+selection. `hash` holds the installed assembly's content hash. A broken link
+reports `null`, and so does a tree the runtime cannot hash. JSON returns one
+newline-terminated `bot.assembly.list` document with bounded rows, an opaque
+keyset cursor, and a summary. The document stays at schema version 1. Both
+commands are read-only and network-free. The version-1 documents use a default
+page of 20 rows and a maximum page of 200 rows.
 
 ### `bot capabilities`
 

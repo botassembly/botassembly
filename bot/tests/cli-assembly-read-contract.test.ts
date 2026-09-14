@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { mapping } from "../src/model.ts";
+import { resolveInvocationTokens } from "../src/reader.ts";
 import { invokeCli } from "./invoke.ts";
 
 const roots: string[] = [];
@@ -286,4 +287,82 @@ test("assembly read commands reject unexpected and unknown arguments", async () 
     expect(held.code, args.join(" ")).toBe(2);
     expect(held.out).toBe("");
   }
+});
+
+/** The check document's `data` object, which ticket 0294 gave a `hash`. */
+function checkData(text: string): Record<string, unknown> {
+  const data = document(text)["data"];
+  if (!mapping(data)) throw new Error("Expected check data.");
+  return data;
+}
+
+async function checkHash(home: string, target: string): Promise<string> {
+  const held = await invokeCli(["assembly", "check", target, "--json"], { home });
+  expect(held.code, held.err).toBe(0);
+  const hash = checkData(held.out)["hash"];
+  if (typeof hash !== "string") throw new Error("Expected a check hash.");
+  return hash;
+}
+
+test("every assembly check page carries the same hash", async () => {
+  const home = await homeFixture();
+  const first = await invokeCli(["assembly", "check", "review/main", "--limit", "1", "--json"], { home });
+  expect(first.code, first.err).toBe(0);
+  const page = document(first.out)["page"];
+  if (!mapping(page) || typeof page["next"] !== "string") throw new Error("Expected a continuation cursor.");
+  const second = await invokeCli(["assembly", "check", "review/main", "--limit", "1", "--after", page["next"], "--json"], { home });
+  expect(second.code, second.err).toBe(0);
+  expect(checkData(second.out)["hash"]).toBe(checkData(first.out)["hash"]);
+});
+
+// The hash resolve is defensive. No `bot assembly check` input reaches its
+// refusal, because the one spelling the run parser reads differently — a `--`
+// marker — the reading itself refuses first, so the command never gets that
+// far. The two statements below are that proof: the function refuses those
+// tokens, and the command exits 2 on them rather than reporting a null hash.
+test("the hash resolve refuses tokens no accepted check reading can carry", async () => {
+  const home = await homeFixture();
+  const resolved = resolveInvocationTokens(["review/main", "--home", home, "--", "nothing"], "/", { BOT_HOME: home });
+  expect(resolved.status).toBe("refused");
+  const held = await invokeCli(["assembly", "check", "review/main", "--", "nothing", "--json"], { home });
+  expect(held.code).toBe(2);
+});
+
+test("assembly list reports the hash only when a caller names the field", async () => {
+  const home = await homeFixture();
+  const expected = await checkHash(home, "review");
+  const json = await invokeCli(["assembly", "list", "--fields", "name,hash", "--json"], { home });
+  expect(json.code, json.err).toBe(0);
+  const rows = document(json.out)["data"];
+  if (!Array.isArray(rows) || !mapping(rows[0])) throw new Error("Expected list rows.");
+  expect(Object.keys(rows[0])).toEqual(["name", "hash"]);
+  expect(rows[0]).toEqual({ name: "review", hash: expected });
+  const table = await invokeCli(["assembly", "list", "--fields", "name,hash"], { home });
+  expect(table.code, table.err).toBe(0);
+  expect(table.out).toContain(`| review | ${expected} |`);
+  const plain = await invokeCli(["assembly", "list", "--json"], { home });
+  const defaults = document(plain.out)["data"];
+  expect(Array.isArray(defaults) ? defaults.filter(mapping).every((one) => !("hash" in one)) : false).toBe(true);
+  const count = await invokeCli(["assembly", "list", "--count"], { home });
+  expect(count.code, count.err).toBe(0);
+  expect(count.out).toBe("2 assemblies match.\n");
+});
+
+test("a broken link reports no hash", async () => {
+  const home = await homeFixture();
+  await symlink(join(home, "assemblies", "absent"), join(home, "assemblies", "dangling"));
+  const json = await invokeCli(["assembly", "list", "--fields", "name,broken,hash", "--json"], { home });
+  expect(json.code, json.err).toBe(0);
+  const rows = document(json.out)["data"];
+  if (!Array.isArray(rows)) throw new Error("Expected list rows.");
+  expect(rows.filter(mapping).find((one) => one["name"] === "dangling")).toEqual({ name: "dangling", broken: true, hash: null });
+});
+
+test("capabilities publishes the widened field vocabulary and the unchanged default", async () => {
+  const home = await homeFixture();
+  const listed = commands((await invokeCli(["capabilities", "--json"], { home })).out).find((row) => row["operation"] === "assembly.list");
+  const options = Array.isArray(listed?.["options"]) ? listed["options"].filter(mapping) : [];
+  const fields = options.find((one) => one["name"] === "--fields");
+  expect(fields?.["values"]).toEqual(["name", "kind", "source", "updated", "target", "broken", "hash"]);
+  expect(fields?.["default"]).toBe("name,kind,source,updated,target,broken");
 });
