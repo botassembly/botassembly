@@ -117,7 +117,10 @@ all four resolved values carry the `home` source.
 
 A missing intelligence row is refused (`intelligence-unresolved`) naming the
 requested name. A providerless row retains provider ambiguity as
-`model-unresolved`, naming candidate providers. Retired model-choice keys and
+`model-unresolved`, naming candidate providers. A model the catalog does not
+hold is `model-unresolved` as well, and a model whose provider has no visible
+credential is `credential-missing`, both before the run is born
+([refusals](refusals.md#what-a-refusal-carries)). Retired model-choice keys and
 long options are `key-unknown` and point operators to the table and
 `--intelligence`.
 

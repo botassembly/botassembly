@@ -77,7 +77,7 @@ bot assembly check ./hello/hello --json | jq '.error.details.faults'
 
 [Explore a refusal](/operate/refusals-explorer/) takes any code and shows the folder that causes it, the file at fault, and the repair.
 
-Exit `2` can also arrive after work has started. A provider that is not configured, a gate or hook that cannot be executed, or a disk that fills ends the run this way. A record exists then, and it says where.
+Exit `2` can also arrive after work has started. A provider that refuses the call, a gate or hook that cannot be executed, or a disk that fills ends the run this way. A record exists then, and it says where.
 
 ### The flow-name trap
 
@@ -113,6 +113,49 @@ $ echo $?
 A run needs a row called `default` in the home's `config.yaml`. So does `bot assembly check`, because it resolves every option the run would resolve.
 
 [Providers, models, and credentials](/operate/providers-and-credentials/) shows the file.
+
+### The model or the credential
+
+Three refusals come from the intelligence row itself. Each names the model string as you wrote it, the rung it came from, what `bot` observed, and one command.
+
+A name held by several providers asks you to pick one.
+
+```console
+$ bot run start ./hello/greet "Say hello to Ian."
+model-unresolved  flows/greet/01-welcome.md
+  Model gpt-5.6-luna resolves from the assembly rung. Providers azure-openai-responses, cloudflare-ai-gateway, github-copilot, openai, openai-codex, opencode, opencode-go each offer that name. Set provider on the intelligence row to one of them.
+$ echo $?
+2
+```
+
+A name the local catalog does not hold is a name, and nothing more. `bot` says which catalog it read and never that the model is retired or gone everywhere.
+
+```console
+$ bot run start ./hello/greet "Say hello to Ian."
+model-unresolved  flows/greet/01-welcome.md
+  Model gpt-5.6-turbo resolves from the assembly rung. The catalog Bot read holds no model of that name under provider openai-codex. Run bot model list openai-codex to see the names it holds.
+$ echo $?
+2
+```
+
+A model the catalog does hold, whose provider has no credential `bot` can see, refuses before the run is born. Nothing is recorded, because nothing ran.
+
+```console
+$ bot run start ./hello/greet "Say hello to Ian."
+credential-missing  flows/greet/01-welcome.md
+  Model gpt-5.6-luna resolves from the assembly rung. Provider openai-codex offers it, and Bot found no credential for openai-codex. Run bot auth login openai-codex.
+$ echo $?
+2
+```
+
+`--json` carries the same facts as fields. Every refusal entry has `model`, `provider`, `rung`, `cause`, and `action`, and writes `null` where a refusal has no such fact.
+
+```console
+$ bot run start ./hello/greet "Say hello to Ian." --json
+{"schemaVersion":1,"kind":"error","error":{"code":"request-invalid","operation":"run.start","cause":"run-refused","message":"run.start was refused.","retryable":false,"details":{"refusals":[{"code":"model-unresolved","path":"flows/greet/01-welcome.md","message":"Model gpt-5.6-luna resolves from the assembly rung. Providers azure-openai-responses, cloudflare-ai-gateway, github-copilot, openai, openai-codex, opencode, opencode-go each offer that name. Set provider on the intelligence row to one of them.","model":"gpt-5.6-luna","provider":null,"rung":"assembly","cause":"selection-ambiguous","action":"Set provider on the intelligence row to one of them."}],"omitted":0}}}
+```
+
+A provider that answers with a refusal after the run is born is a failed run, not a refusal. The record repeats the provider's own status and message inside a sentence naming the model and its rung.
 
 ## Exit 5: the home is not private
 

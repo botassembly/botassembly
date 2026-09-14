@@ -175,9 +175,23 @@ function runtimeOnlyCodes(): string[] {
 }
 
 /** Whether some test in this suite asserts a whole stderr byte for byte —
- *  `.toBe("<code>  <path>\n  <sentence>\n")` — for this code. */
+ *  `.toBe("<code>  <path>\n  <sentence>\n")` — for this code, written as one
+ *  literal or as the two literals a long sentence is joined from. */
 function pinnedByTest(code: string, suite: string): boolean {
-  return new RegExp(`\\.toBe\\(\\s*"${code} {2}[^"]+\\\\n {2}[^"]+\\\\n"`, "u").test(suite);
+  return new RegExp(`\\.toBe\\(\\s*"${code} {2}[^"]+\\\\n(?:"\\s*\\+\\s*")? {2}[^"]+\\\\n"`, "u").test(suite);
+}
+
+/** The test file that pins a runtime-only code, if one does. A runtime-only
+ *  code has no corpus case, so the exemption refusals.md grants it is worth
+ *  only what the suite pins in its place. Two things are required of one file,
+ *  and neither is satisfied by a comment: it asserts the whole stderr byte for
+ *  byte the way the management codes are pinned above, and it declares the code
+ *  as a `RefusalCode` read from spine.ts, so the type gate fails when the
+ *  vocabulary stops holding the name the pin spells (ticket 0283). */
+function runtimeOnlyPin(code: string, files: readonly (readonly [string, string])[]): string | undefined {
+  const imported = /import\s[^;]*\bRefusalCode\b[^;]*from\s"\.\.\/src\/spine\.ts"/su;
+  const typed = new RegExp(`^\\s*(?:export\\s+)?const\\s+\\w+\\s*:\\s*RefusalCode\\s*=\\s*"${code}"`, "mu");
+  return files.find(([, text]) => pinnedByTest(code, text) && imported.test(text) && typed.test(text))?.[0];
 }
 
 // REDESIGN, ticket 0125, under Ian's ruling of 2026-08-05 that invariant 50 is
@@ -214,16 +228,18 @@ test("refusal codes: the reader's are corpus cases, the home's are pinned by tes
     "spine.ts codes no corpus case exercises — only home-management and runtime-only codes may stand here",
   ).toEqual([...management, ...runtimeOnly].sort());
 
-  const suite = readdirSync(TESTS)
+  const files = readdirSync(TESTS)
     .filter((name) => name.endsWith(".test.ts"))
-    .map((name) => readFileSync(join(TESTS, name), "utf8"))
-    .join("\n");
+    .map((name): [string, string] => [name, readFileSync(join(TESTS, name), "utf8")]);
+  const suite = files.map(([, text]) => text).join("\n");
   expect(
     management.filter((code) => !pinnedByTest(code, suite)),
     "management codes with no test asserting their stderr byte for byte",
   ).toEqual([]);
-  expect(runtimeOnly.filter((code) => !suite.includes(`toContain(\"${code}\")`)),
-    "runtime-only codes with no runtime assertion").toEqual([]);
+  expect(
+    runtimeOnly.filter((code) => runtimeOnlyPin(code, files) === undefined),
+    "runtime-only codes with no test file that both pins their whole stderr and types the code from spine.ts",
+  ).toEqual([]);
 });
 
 // An `input` array names the files that arrive together, and a stage refuses

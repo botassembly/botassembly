@@ -184,7 +184,7 @@ stays POSIX-small.
 | `timeout`   | `1`     | the agent's clock ran out                           |
 | `timeout`   | `2`     | a gate's or `before`/`success` hook's own clock ran out |
 | `signal`    | `128+n` | killed from outside                                 |
-| `fault`     | `2`     | the machinery failed — the layer beneath the run (provider, disk, the agent library), or an assembly executable found broken while running: a gate or `before`/`success` hook that could not execute, broke a passed output, or named a missing alternative — or the agent reported a fault. The record retains the agent's reason; machinery faults name the file. |
+| `fault`     | `2`     | the machinery failed — the layer beneath the run (provider, disk, the agent library), or an assembly executable found broken while running: a gate or `before`/`success` hook that could not execute, broke a passed output, or named a missing alternative — or the agent reported a fault. The record retains the agent's reason; machinery faults name the file. A provider fault names the model, the rung it resolved from, and the provider, and repeats the provider's own status and message inside that sentence ([refusals](refusals.md#what-a-refusal-carries)). |
 
 The same word can sit beside two codes because the cause names what happened
 and the code names whose problem it is: an agent out of time is the work

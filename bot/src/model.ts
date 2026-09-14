@@ -252,8 +252,9 @@ export function fault(
   code: Refusal["code"],
   path: string,
   sentence: string,
+  facts?: Refusal["facts"],
 ): void {
-  faults.push({ code, path, sentence });
+  faults.push({ code, path, sentence, ...(facts === undefined ? {} : { facts }) });
 }
 
 // A reason is text the RUN produced — an agent's own words, or the output a

@@ -105,10 +105,18 @@ That implicit name and its bundle are stamped `home`; an explicitly authored
 `intelligence: default` keeps its authored rung. A missing row is refused as
 `intelligence-unresolved` only when an agent needs it.
 
-A providerless bundle uses normal model lookup. If more than one configured
-provider offers the model, the run is refused as `model-unresolved` naming the
-candidates. A run snapshots the table at start and records the resolved name
-and complete bundle without exposing the name in an agent prompt.
+A providerless bundle uses normal model lookup. If more than one provider in
+the catalog offers the model, the run is refused as `model-unresolved` naming
+the candidates. If the catalog holds no model of that name, the run is refused
+as `model-unresolved` naming the catalog it read and nothing beyond it. If a
+provider holds the model and the runtime can see no credential for that
+provider, the run is refused as `credential-missing` before it is born, naming
+the provider to sign in to ([refusals](refusals.md#resolution)). Every one of
+these refusals names the model string as authored, the rung it resolved from,
+what the runtime observed, and one command.
+
+A run snapshots the table at start and records the resolved name and complete
+bundle without exposing the name in an agent prompt.
 
 The home and each run directory are created owner-only (`0700`), like `~/.ssh`.
 Nothing inside is made private separately — the directories close the tree — and

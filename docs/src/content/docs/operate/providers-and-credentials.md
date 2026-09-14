@@ -30,6 +30,8 @@ intelligences:
 
 Each row requires `model` and `reasoning`. `provider` is optional, and a row without one whose model is ambiguous names the candidate providers instead of guessing.
 
+A run checks this row before it is born. A model the local catalog does not hold, and a model whose provider has no credential `bot` can see, both refuse there, naming the model, the rung it came from, and one command. [When it refuses or fails](/operate/when-it-refuses/) shows each one.
+
 The runtime accepts exactly six reasoning values: `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. Any other value is refused as `value-invalid` against `config.yaml`.
 
 An assembly names a row with `intelligence` in any of its own files, or a command line names one with `--intelligence`. The nearest name wins and supplies the whole bundle. When nothing names one, the executing agent uses the reserved `default` row. A missing row is refused only when an agent needs it.

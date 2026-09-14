@@ -171,7 +171,10 @@ test("run start refuses a missing @task file the way assembly check does, and th
   const where = await home("bot-0128-task-file-", {});
   const expected = { code: "path-missing", path: "absent.md", message: "Create the requested task file." };
   expect(await adapterRefusals(["assembly", "check", "review/main", "@absent.md"], where)).toContainEqual(expected);
-  expect(await adapterRefusals(["run", "start", "review/main", "@absent.md"], where)).toContainEqual(expected);
+  // Run start carries the five model-fact fields on every entry (ticket 0283),
+  // so the agreement is over the three fields both adapters write.
+  expect(await adapterRefusals(["run", "start", "review/main", "@absent.md"], where))
+    .toContainEqual(expect.objectContaining(expected));
 });
 
 // ─── 5. a duplicate number names its partner ─────────────────────────────────

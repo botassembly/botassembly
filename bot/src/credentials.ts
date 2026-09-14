@@ -134,7 +134,7 @@ export function scrubCredentialEnvironment(env: NodeJS.ProcessEnv): NodeJS.Proce
 const PROVIDER_RETRIES = 2;
 const PROVIDER_RETRY_DELAY_MS = 1_000;
 const PROVIDER_RETRY: unique symbol = Symbol("provider retry context");
-export interface ProviderRetryContext { writer: RecordWriter; identity: StageIdentity; clock: DriverClock; now: () => string }
+export interface ProviderRetryContext { writer: RecordWriter; identity: StageIdentity; clock: DriverClock; now: () => string; rung: string }
 type RetryingModel = Model<Api> & { [PROVIDER_RETRY]: ProviderRetryContext };
 
 export function retryModel<T extends Model<Api>>(model: T, context: ProviderRetryContext): T & RetryingModel {
@@ -171,8 +171,14 @@ function finishStream(output: AssistantMessageEventStream, events: AssistantMess
   for (const event of events) output.push(event);
   output.end(message);
 }
-function providerFailureReason(reason: unknown): string {
-  if (!(reason instanceof Error)) return "The provider retry failed with a non-Error value.";
+// Bot authors this reason rather than passing the provider's string on alone
+// (ticket 0283): the model, the rung it resolved from, and the provider are
+// Bot's own facts, and a reader who sees only "OpenAI API error (401)" learns
+// none of them. The provider's own status and text are quoted whole inside it,
+// because repeating what the provider said is the only honest account of why
+// it refused. A throw that is not an Error carries no account at all, so that
+// one says the call failed before an answer and asks for a retry.
+function providerReport(reason: Error): string {
   let message = reason.message;
   const cause = reason.cause;
   if (mapping(cause)) {
@@ -181,31 +187,50 @@ function providerFailureReason(reason: unknown): string {
       if (typeof cause.code === "string" && cause.code.length > 0) message += ` [${cause.code}]`;
     }
   }
-  return boundedText(message);
+  return message;
 }
-function retryFailure(model: Model<Api>, reason: unknown): AssistantMessage {
+function providerFailureReason(model: Model<Api>, rung: string, reason: unknown): string {
+  const origin = `Model ${model.id} resolves from the ${rung} rung.`;
+  return boundedText(reason instanceof Error
+    ? `${origin} Provider ${model.provider} refused the call and reported: ${providerReport(reason)}. Act on that report, then run the flow again.`
+    : `${origin} The call to provider ${model.provider} failed before an answer arrived. Run the flow again.`);
+}
+function failedMessage(model: Model<Api>, errorMessage: string): AssistantMessage {
   return {
     role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id,
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
-    stopReason: "error", errorMessage: providerFailureReason(reason), timestamp: 0,
+    stopReason: "error", errorMessage, timestamp: 0,
   };
 }
-function retryStream(call: () => AssistantMessageEventStream, model: Model<Api>, clock: DriverClock, signal: AbortSignal | undefined): AssistantMessageEventStream {
+async function collect(call: () => AssistantMessageEventStream): Promise<{ events: AssistantMessageEvent[]; message: AssistantMessage }> {
+  const input = call();
+  const events: AssistantMessageEvent[] = [];
+  for await (const event of input) events.push(event);
+  return { events, message: await input.result() };
+}
+// The two throws this stream can see are told apart, because only one of them
+// is the provider's (ticket 0283). A throw out of the CALL is the provider
+// failing and earns the authored sentence above; a throw out of the retry
+// bookkeeping is bot's own record append failing, and dressing that as a
+// provider refusal would name the wrong thing to fix.
+function retryStream(call: () => AssistantMessageEventStream, model: Model<Api>, reporting: ProviderRetryContext, signal: AbortSignal | undefined): AssistantMessageEventStream {
   const output = createAssistantMessageEventStream();
+  const provider = (reason: unknown): void => {
+    output.push({ type: "error", reason: "error", error: failedMessage(model, providerFailureReason(model, reporting.rung, reason)) });
+  };
   const run = async (): Promise<void> => {
     for (let attempt = 0; ; attempt += 1) {
-      const input = call(); const events = [];
-      for await (const event of input) events.push(event);
-      const message = await input.result();
+      const attempted = await collect(call).then((held) => ({ held }), (reason: unknown) => ({ reason }));
+      if ("reason" in attempted) { provider(attempted.reason); return; }
+      const { events, message } = attempted.held;
       if (!retryable(message, attempt, signal)) { finishStream(output, events, message); return; }
       const delayMs = PROVIDER_RETRY_DELAY_MS * 2 ** attempt;
-      const reporting = retryContext(model);
-      if (reporting !== undefined) await reporting.writer.append(providerRetryEvent({ ts: reporting.now(), identity: reporting.identity, attempt: attempt + 1, delayMs }));
-      if (!await pause(reporting?.clock ?? clock, delayMs, signal)) { finishStream(output, events, message); return; }
+      await reporting.writer.append(providerRetryEvent({ ts: reporting.now(), identity: reporting.identity, attempt: attempt + 1, delayMs }));
+      if (!await pause(reporting.clock, delayMs, signal)) { finishStream(output, events, message); return; }
     }
   };
   void run().then(undefined, (reason: unknown) => {
-    output.push({ type: "error", reason: "error", error: retryFailure(model, reason) });
+    output.push({ type: "error", reason: "error", error: failedMessage(model, boundedText(reason instanceof Error ? reason.message : "The provider retry bookkeeping failed with a non-Error value.")) });
   });
   return output;
 }
@@ -215,7 +240,7 @@ export function streamSelectedModel(models: Models, model: Model<Api>, context: 
     : options;
   const reporting = retryContext(model);
   if (reporting === undefined) return models.streamSimple(model, context, requestOptions);
-  return retryStream(() => models.streamSimple(model, context, requestOptions), model, reporting.clock, requestOptions?.signal);
+  return retryStream(() => models.streamSimple(model, context, requestOptions), model, reporting, requestOptions?.signal);
 }
 export function providerModels(env: NodeJS.ProcessEnv, _clock: DriverClock): MutableModels {
   return builtinModels({ authContext: snapshotAuthContext(env) });

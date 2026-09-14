@@ -24,9 +24,22 @@ export function runMutationFailure(operation: string, reason: unknown): CliFailu
   };
 }
 
+// A model refusal's four facts reach a program as fields as well as prose
+// (ticket 0283), and every entry carries the same five keys so a reader parses
+// one shape: a refusal with no model facts writes `null` in each of them. Every
+// field carries the same 512-byte bound the message and the path carry, because
+// an authored model name is a reader's text and help.ts promises one result.
+const NO_MODEL_FACTS = { model: null, provider: null, rung: null, cause: null, action: null };
+
+function modelFields(facts: Refusal["facts"]): Record<string, string | null> {
+  return Object.fromEntries(Object.entries({ ...NO_MODEL_FACTS, ...facts })
+    .map(([name, value]) => [name, value === null ? null : boundedText(value, 512)]));
+}
+
 export function runMutationRefusal(operation: string, faults: readonly Refusal[]): CliFailure {
   const refusals = faults.slice(0, 20).map((fault) => ({
     code: fault.code, path: boundedText(fault.path, 512), message: boundedText(fault.sentence, 512),
+    ...modelFields(fault.facts),
   }));
   return {
     code: "request-invalid", cause: "run-refused", message: `${operation} was refused.`,

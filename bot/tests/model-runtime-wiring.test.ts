@@ -65,7 +65,73 @@ test("an unknown model keeps the exact refusal through an injected runtime run",
 
   await expect(main(["run", "start", "review/main", "request"], held)).resolves.toBe(2);
   expect(Buffer.concat(errors).toString()).toBe(
-    "model-unresolved  flows/main/01-work.md\n  No provider offers a model named missing-model. Name a model one of these providers offers: faux.\n",
+    "model-unresolved  flows/main/01-work.md\n"
+    + "  Model missing-model resolves from the assembly rung. The catalog Bot read holds no model of that name under any provider. Run bot model list to see the names it holds.\n",
   );
   expect(await readdir(join(home, "runs"))).toEqual([]);
+});
+
+/** The injected runtime with one seam: `streamSimple` throws what the test
+ *  hands it. Everything else — availability, the catalog, the model row — is
+ *  the real faux runtime, so the run is born and dies where a real provider
+ *  failure would put it. */
+function throwingModels<T extends object>(models: T, reason: unknown): T {
+  return new Proxy(models, {
+    get: (target, property, receiver) => property === "streamSimple"
+      ? () => { throw reason; }
+      : Reflect.get(target, property, receiver) as unknown,
+  });
+}
+
+interface StageFailure { exit: number; stdout: string; stderr: string }
+
+async function stageFailure(prefix: string, reason: unknown): Promise<StageFailure> {
+  const { root, home } = await roots.scratch(prefix);
+  const flow = join(home, "assemblies/review/flows/main");
+  await mkdir(flow, { recursive: true });
+  await Promise.all([
+    writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n"),
+    writeFile(join(home, "assemblies/review/ASSEMBLY.md"), "---\nintelligence: default\n---\nReview.\n"),
+    writeFile(join(flow, "FLOW.md"), "---\ndescription: main\n---\n"),
+    writeFile(join(flow, "01-work.md"), "---\n---\nDo the work.\n"),
+  ]);
+  const output: Buffer[] = [];
+  const errors: Buffer[] = [];
+  const { held } = realBoundary(root, home, output, errors);
+  const runtime = held.models;
+  if (runtime === undefined) throw new Error("fixture supplied no model runtime");
+  held.models = throwingModels(runtime, reason);
+  const exit = await main(["run", "start", "review/main", "--retries", "0", "request"], held);
+  return { exit, stdout: Buffer.concat(output).toString(), stderr: Buffer.concat(errors).toString() };
+}
+
+// Ticket 0283. A provider that answers with a refusal has its own status and
+// text repeated rather than replaced, and Bot says which model and which rung
+// asked for it. Pi's sentence is quoted inside Bot's, never passed on alone.
+test("a provider refusal after birth repeats its status and names the model and rung", async () => {
+  const held = await stageFailure(
+    "bot-provider-refusal-",
+    new Error('OpenAI API error (401): {"type":"CreditsError","message":"no credits"}'),
+  );
+  // A provider fault ends the run with cause `fault` and exit 2 (record.md),
+  // and the sentence reaches the reader on standard error. Standard output
+  // carries the run's own result, so the two streams are read apart.
+  expect(held.exit).toBe(2);
+  expect(held.stderr).toContain(
+    'Model faux-1 resolves from the assembly rung. Provider faux refused the call and reported: OpenAI API error (401): {"type":"CreditsError","message":"no credits"}. Act on that report, then run the flow again.',
+  );
+  expect(held.stdout).not.toContain("refused the call");
+});
+
+// The non-Error throw credentials.ts used to render as "The provider retry
+// failed with a non-Error value." — a sentence naming neither the model nor
+// anything to do about it.
+test("a non-Error throw after birth names the model, the provider, and the retry", async () => {
+  const held = await stageFailure("bot-provider-nonerror-", "a bare string");
+  expect(held.exit).toBe(2);
+  expect(held.stderr).toContain(
+    "Model faux-1 resolves from the assembly rung. The call to provider faux failed before an answer arrived. Run the flow again.",
+  );
+  expect(held.stderr).not.toContain("non-Error value");
+  expect(held.stdout).not.toContain("failed before an answer arrived");
 });

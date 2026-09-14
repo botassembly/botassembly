@@ -50,15 +50,22 @@ Readers of `details.refusals[]` see new fields, a new code enters the refusal vo
 
 A run that today births and fails at stage one now refuses without a record. `getAvailable()` is Bot's only offline credential evidence, so a credential it cannot see refuses a run that might succeed. Rewriting Pi's sentence hides a later Pi wording change.
 
+A provider's own report embeds verbatim in the fault sentence at `credentials.ts:190-196`, bounded at 2048 bytes, with no credential scrubbing. That behavior predates this ticket and belongs to ADR 0030's secret-safe diagnostics.
+
+The `Current facts` claim about `Configure a model.` is wrong, and the review of `9872083` asked for a test that proved it. No rung can leave a model unnamed: `model` and `provider` are retired as authored options, every resolved model comes from a home intelligence row, and `home-config.ts:29` drops a row that omits `model` after refusing it as `key-missing` naming that row. A node under such a row refuses as `intelligence-unresolved`. The branch was unreachable before this ticket and is now deleted, with a `TypeError` guard in its place and a byte-exact test on the two sentences a modelless intelligence row really produces.
+
 ## Size decision
 
-- Starting production size: 18483 nonblank lines
-- Ending production size:
+- Starting production size: 18733 nonblank lines
+- Ending production size: 18817 nonblank lines
 - Simpler approach tried: Edit `unresolvedSentence`.
 - Why insufficient alternatives were rejected: It leaves the credential and provider paths, which give no action.
-- Production code added: Cause classification carrying model and rung, the `credential-missing` refusal, envelope fields.
-- Production code deleted: The global-claim sentences.
-- Accepted cost: Longer refusal text; one more code.
+- Production code added: Cause classification carrying model, rung, cause, and action; the `credential-missing` refusal; the five envelope fields; the authored post-birth provider reason.
+- Production code deleted: The global-claim sentences, the fixed non-Error fallback, and the per-attempt `retryContext` lookup the retry stream repeated.
+- Accepted cost: Longer refusal text; one more code; 84 lines of ceiling.
+
+The 18483 figure was measured before tickets 0281 and 0282 landed. The base of
+this branch measures 18733, which is the ceiling those tickets left.
 
 ## Complexity
 

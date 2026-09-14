@@ -13,6 +13,29 @@ alternative-mismatch  flows/triage/04-decide/CHOOSE.md
 
 `--json` writes one object per line: `{ "code", "path", "message" }`.
 
+## What a refusal carries
+
+A refusal about a model names four more facts, because a sentence alone makes a
+reader parse prose to act: the **model** string as it was authored, the
+**provider** it named if it named one, the **rung** the model resolved from, the
+**cause** the runtime observed, and the **action** that fixes it. A cause is
+drawn from the error envelope's closed cause vocabulary
+([the error envelope](inspection.md)). A refusal that is not about a model
+carries none of them.
+
+A run mutation's `--json` refusal array carries these as fields beside the
+three above: `{ "code", "path", "message", "model", "provider", "rung",
+"cause", "action" }`, with `null` in each of the five where the refusal has no
+such fact. Every one of the eight fields occupies at most 512 UTF-8 bytes, and a
+field cut to that bound ends in a single ellipsis character. `message` holds the
+same facts as a sentence.
+
+A runtime states what it observed and nothing past it. A model name its catalog
+does not hold is a name that catalog does not hold. It is not a retired model,
+and it is not a model no provider anywhere offers. A provider whose credential
+the runtime cannot see is a provider this runtime cannot call, and the run is
+refused before it is born rather than born and killed at the first stage.
+
 The code and the path are what [the corpus](../conformance.md) asserts on; the
 code is what a person greps for. The corpus never asserts a sentence, which is
 what lets it check two runtimes against each other without coupling them to one
@@ -55,7 +78,7 @@ of the tables below is the order of specificity. A non-executable file in a
 | `key-missing`          | a required key is absent — `repeat` on a `LOOP.md`, `max-depth` on a `DESCEND.md`, or `model`/`reasoning` in an [intelligence bundle](home.md#intelligences) |
 | `value-invalid`        | a value of the wrong type, outside its set, or outside its bounds ([the bounds](invocation.md#options-and-where-they-resolve)); `DESCEND.md` accepts `max-depth` only as a safe integer from 1 through 11; this also includes an assembly `strict` value that is not boolean, and a `folders` value that is not a list of valid top-level names, uses reserved `ASSEMBLY.md`, `flows`, `skills`, `subflows`, `README.md`, `LICENSE`, or `gate`, or names an existing root that is not a real directory; the sentence says which |
 | `intelligence-unresolved` | a named intelligence, including the implicit `default`, has no row in [the home table](home.md#intelligences) |
-| `model-unresolved`     | a providerless intelligence row names a model offered by more than one configured provider |
+| `model-unresolved`     | no provider in the catalog the runtime read offers the resolved model under the name given, or a providerless row names a model more than one provider offers. One fix in two shapes: settle the name |
 | `slot-reserved`        | a declared slot with an unusable name, whose uppercase export collides with another declaration, shadowing a runtime slot's name, or shadowing a variable already set in the environment — `path` would become `$PATH` |
 
 The retired authored keys `model`, `provider`, `reasoning`, `profile`, and
@@ -107,6 +130,7 @@ The retired authored keys `model`, `provider`, `reasoning`, `profile`, and
 | `path-missing`      | a required path does not exist as the kind of path it names, and the fix is to provide one that does: `--in`'s working directory, a stage's authored working directory, a declared slot's value, a `@task` file; and, putting an assembly in the home ([assembly commands](management.md)), a source that is neither a folder that exists nor one git can clone, a `#subdir` the fetched source does not hold, or a link's target |
 | `request-invalid`   | the command line asks for something bot cannot act on, and the fix is to change what was asked for: a command or verb bot does not have; a command given the wrong arguments, or an option given no value; a request not given exactly one way — more than one of argument, `@file`, and stdin, or none of them; a target that reads as two different assemblies ([naming](invocation.md#naming-the-assembly)); a name that would leave the home, or one the home already holds; or a `#subdir` that would leave its install source ([assembly commands](management.md)) |
 | `slot-missing`      | a declared slot the run did not supply         |
+| `credential-missing` | a provider holds the resolved model and the runtime found no credential for that provider. The fix is to sign in, which no other code names ([providers](home.md#intelligences)) |
 
 ## Managing the home
 
@@ -132,6 +156,10 @@ own tests instead ([invariant 50](invariants.md)), for the reason
 
 `model-unresolved` is runtime-only, because it is decided against the providers
 a runtime has configured, and a corpus case carries no provider configuration.
+
+`credential-missing` is runtime-only, because a static corpus cannot supply a
+provider whose credential is absent, and the answer depends on the credentials
+the runtime can see.
 
 ## Adding to this
 

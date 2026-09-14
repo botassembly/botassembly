@@ -66,6 +66,7 @@ export const REFUSAL_CODES = [
   "path-missing",
   "request-invalid",
   "slot-missing",
+  "credential-missing",
   // Managing the home. These are `bot assembly`'s own — faults of the home or
   // of the machine, not of an assembly a runtime read, so no conformance case
   // can hold one (invariant 50); tests/conformance.test.ts requires each to be
@@ -300,4 +301,21 @@ export interface Refusal {
   code: RefusalCode;
   path: string;
   sentence: string;
+  facts?: ModelFacts;
+}
+
+/**
+ * The facts a model refusal carries beside its sentence, so a program reads
+ * them without parsing prose (specification/elements/refusals.md, "What a
+ * refusal carries"). `cause` is drawn from ERROR_CAUSES above: a refusal names
+ * its fault in the same closed vocabulary the error envelope uses. A refusal
+ * that is not about a model carries no facts, and the JSON envelope writes
+ * `null` for each of the five fields.
+ */
+export interface ModelFacts {
+  model: string | null;
+  provider: string | null;
+  rung: string | null;
+  cause: ErrorCause;
+  action: string;
 }

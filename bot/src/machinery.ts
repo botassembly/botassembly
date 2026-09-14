@@ -25,7 +25,7 @@ import { hashBytes, type AssemblyPrehash } from "./record.ts";
 import { retryModel } from "./credentials.ts";
 import type { Accepted } from "./reader.ts";
 import { promptConstruction, stageFile } from "./prompt-assembly.ts";
-import type { Refusal } from "./spine.ts";
+import type { ModelFacts, Refusal } from "./spine.ts";
 import { SlotExecutionEnv, createControlContext, createFileTools } from "./tools.ts";
 
 const RESOLVED_OPTION_NAMES = ["provider", "model", "reasoning", ...OPTION_NAMES] as const;
@@ -76,19 +76,52 @@ function childFlows(assembly: Assembly, flow: Flow): Flow[] {
   return held;
 }
 
-// One code, three fixes, and the sentence tells them apart (invariant 39): no
-// model named at any rung, which a subflow reaches by inheriting none of the
-// command line's (subflow.md); a name no catalogue holds, which is a bad name
-// and never a bad configuration, since the lookup reads every provider's
-// catalogue whether it is configured or not; and a name more than one provider
-// offers, which refuses by naming them (invocation.md). `configured` is pi-ai's
-// own answer to which providers have complete auth, so it cannot rot.
-function unresolvedSentence(named: unknown, candidates: string[] | undefined, configured: string[]): string {
-  if (candidates !== undefined) return `Name one provider for this model: ${candidates.join(", ")}.`;
-  if (typeof named !== "string") return "Configure a model.";
-  return `No provider offers a model named ${named}. ${configured.length === 0
-    ? "Configure a provider, then name a model it offers."
-    : `Name a model one of these providers offers: ${configured.join(", ")}.`}`;
+// Every model failure names the model string as authored, the rung it resolved
+// from, what the runtime observed, and one command (ticket 0283). The observed
+// fact is always the catalog Bot read and the credentials Bot can see: nothing
+// here claims a model is retired, or unavailable anywhere but here.
+//
+// Four faults, two codes (invariant 39). `model-unresolved` covers a name no
+// catalog row matches, a name several providers match, and no name at any rung,
+// which a subflow reaches by inheriting none of the command line's
+// (subflow.md). `credential-missing` covers a row that matched and a provider
+// Bot holds no credential for, whose fix is `bot auth login` and no other. The
+// credentialed set is pi-ai's own answer to which providers have complete auth,
+// read at admission with no model call, so it cannot rot.
+interface ModelRefusal { code: "model-unresolved" | "credential-missing"; sentence: string; facts: ModelFacts }
+
+function refusal(code: ModelRefusal["code"], facts: ModelFacts, observed: string): ModelRefusal {
+  const named = facts.model === null ? "" : `Model ${facts.model} resolves from the ${String(facts.rung)} rung. `;
+  return { code, facts, sentence: `${named}${observed} ${facts.action}` };
+}
+
+function modelRefusal(
+  options: ResolvedOptions, lookup: ReturnType<typeof modelLookup>, credentialed: ReadonlySet<string>,
+): ModelRefusal | undefined {
+  const named = options.model?.value, rung = options.model?.from ?? null;
+  const provider = typeof options.provider?.value === "string" ? options.provider.value : null;
+  const held = lookup.model;
+  if (held === undefined) return unmatched(named, rung, provider, lookup.candidates);
+  if (credentialed.has(held.provider)) return undefined;
+  return refusal("credential-missing",
+    { model: String(named), provider: held.provider, rung, cause: "provider-unconfigured", action: `Run bot auth login ${held.provider}.` },
+    `Provider ${held.provider} offers it, and Bot found no credential for ${held.provider}.`);
+}
+
+/** The two shapes of `model-unresolved`: several catalog rows match the name, or
+ *  none does. No rung can leave a model unnamed: `model` is retired as an
+ *  authored option, and a home intelligence row that omits one is refused as
+ *  `key-missing` and never enters the table (home-config.ts). */
+function unmatched(named: unknown, rung: string | null, provider: string | null, candidates: string[] | undefined): ModelRefusal {
+  if (typeof named !== "string") throw new TypeError("Resolved model is not a string.");
+  if (candidates !== undefined) {
+    return refusal("model-unresolved",
+      { model: named, provider: null, rung, cause: "selection-ambiguous", action: "Set provider on the intelligence row to one of them." },
+      `Providers ${candidates.join(", ")} each offer that name.`);
+  }
+  return refusal("model-unresolved",
+    { model: named, provider, rung, cause: "model-invalid", action: `Run bot model list${provider === null ? "" : ` ${provider}`} to see the names it holds.` },
+    `The catalog Bot read holds no model of that name ${provider === null ? "under any provider" : `under provider ${provider}`}.`);
 }
 
 // A child FLOW.md naming an unresolvable model refuses upfront, same rule as
@@ -98,7 +131,7 @@ export async function modelFaults(
   read: Accepted, flow: Flow, models: Models,
 ): Promise<Refusal[]> {
   const faults: Refusal[] = [];
-  const configured = [...new Set((await models.getAvailable()).map((model) => model.provider))];
+  const credentialed = new Set((await models.getAvailable()).map((model) => model.provider));
   const asChild = { ...read, invocation: childInvocation(read.invocation) };
   const seen = new Map<Flow, Set<typeof read>>();
   const queue: { flow: Flow; read: typeof read }[] = [{ flow, read }];
@@ -114,9 +147,9 @@ export async function modelFaults(
         fault(faults, "intelligence-unresolved", node.path, intelligenceTrouble);
         return;
       }
-      const lookup = modelLookup(models, options);
-      if (lookup.model !== undefined) return;
-      fault(faults, "model-unresolved", node.path, unresolvedSentence(options.model?.value, lookup.candidates, configured));
+      const trouble = modelRefusal(options, modelLookup(models, options), credentialed);
+      if (trouble === undefined) return;
+      fault(faults, trouble.code, node.path, trouble.sentence, trouble.facts);
     });
     for (const child of childFlows(read.assembly, scope.flow)) queue.push({ flow: child, read: asChild });
   }
@@ -207,7 +240,7 @@ export function defaultGating(
       const construction = await promptConstruction(context);
       harness = prepared.create({
         models,
-        model: retryModel(model, { writer: context.writer, identity: context.identity, clock: context.clock, now: () => context.clock.timestamp() }), thinkingLevel: thinking(options),
+        model: retryModel(model, { writer: context.writer, identity: context.identity, clock: context.clock, now: () => context.clock.timestamp(), rung: options.model?.from ?? "resolved" }), thinkingLevel: thinking(options),
         // Rendered once, per stage-repeat (ADR 0012), and retained as it is handed
         // over: the harness gets the string the file holds, not one built twice.
         systemPrompt: await retainPrompt(context.sessionFile, "system.txt", construction.system),

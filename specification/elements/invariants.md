@@ -159,7 +159,8 @@ of where files sit rather than because something at run time arranged it.
     there and pinned by a runtime's own tests instead. One reader's refusal is
     exempt on the same ground and is named in
     [runtime-only refusals](refusals.md#runtime-only-refusals): a code decided
-    against configured providers cannot be reached by checked-in data.
+    against configured providers, or against the credentials a runtime can see,
+    cannot be reached by checked-in data.
 
 Number 6 is the one the others hang from. An agent with no model of the system
 it is inside has nothing to reason about except its task, which is the whole of

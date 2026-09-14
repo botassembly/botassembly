@@ -51,6 +51,13 @@ function rejectedStream(reason: unknown): AssistantMessageEventStream {
   } as unknown as AssistantMessageEventStream;
 }
 
+// Ticket 0283: Bot authors the reason and quotes the provider's own report
+// inside it, so every pin below is the composition this file always tested,
+// wrapped in the sentence that names the model, the rung, and the provider.
+function refused(report: string): string {
+  return `Model faux-1 resolves from the home rung. Provider openai-codex refused the call and reported: ${report}. Act on that report, then run the flow again.`;
+}
+
 function expectedCauseReason(cause: unknown): string {
   if (cause !== null && typeof cause === "object" && !Array.isArray(cause)
     && "message" in cause && cause.message === "cause") return "outer: cause";
@@ -118,7 +125,7 @@ async function fixture(responses: FauxResponseStep[], errorTokens = 0, retryAppe
   const identity = { stage: "01-work", retry: 1 };
   const harness = createSessionHarness({
     models: providerModels({}, clock),
-    model: retryModel(faux.getModel(), { writer: retryWriter, identity, clock, now: () => clock.timestamp() }),
+    model: retryModel(faux.getModel(), { writer: retryWriter, identity, clock, now: () => clock.timestamp(), rung: "home" }),
     systemPrompt: "Provider retry test.",
     tools: createControlTools(),
     context: controls,
@@ -281,7 +288,7 @@ test("a rejected provider stream carries its direct cause through the session an
   const f = await fixture([], 0, false, new Error("fetch failed", { cause }));
 
   const result = await bounded(run(f, stage(f)), "provider rejection with direct cause");
-  const expected = "fetch failed: unable to get local issuer certificate [UNABLE_TO_GET_ISSUER_CERT_LOCALLY]";
+  const expected = refused("fetch failed: unable to get local issuer certificate [UNABLE_TO_GET_ISSUER_CERT_LOCALLY]");
   expect(result).toMatchObject({ exit: 2, cause: "fault", reason: expected });
   expect(await events(f.writer.recordPath)).toContainEqual(expect.objectContaining({
     event: "stage_end", exit: 2, cause: "fault", reason: expected,
@@ -293,7 +300,7 @@ test("a qualifying cause without a code is appended to the outer message", async
   const f = await fixture([], 0, false, new Error("outer", { cause: { message: "cause detail" } }));
 
   expect(await bounded(run(f, stage(f)), "provider rejection without code")).toMatchObject({
-    exit: 2, cause: "fault", reason: "outer: cause detail",
+    exit: 2, cause: "fault", reason: refused("outer: cause detail"),
   });
 });
 
@@ -309,7 +316,7 @@ test.each([
   const f = await fixture([], 0, false, new Error("outer", { cause }));
 
   expect(await bounded(run(f, stage(f)), label)).toMatchObject({
-    exit: 2, cause: "fault", reason: expectedCauseReason(cause),
+    exit: 2, cause: "fault", reason: refused(expectedCauseReason(cause)),
   });
 });
 
@@ -318,18 +325,23 @@ test("a multibyte provider reason uses the shared UTF-8-safe bound once", async 
 
   const result = await bounded(run(f, stage(f)), "multibyte provider reason");
   const reason = result.reason ?? "";
-  expect(Buffer.byteLength(reason, "utf8")).toBeLessThanOrEqual(2_048);
-  expect(reason).toBe(`${"é".repeat(1_022)}…`);
-  expect(reason).not.toContain("�");
+  // The bound is applied once, to the authored sentence, and the cut lands on
+  // a character boundary rather than inside a two-byte é. The cut point itself
+  // is pinned: the 95-byte origin and provider clause leave room for 975 of the
+  // 1023 characters, and the ellipsis closes the 2048th byte.
+  expect(reason).toBe(`Model faux-1 resolves from the home rung. Provider openai-codex refused the call and reported: ${"é".repeat(975)}…`);
+  expect(Buffer.byteLength(reason, "utf8")).toBe(2_048);
+  expect(reason).not.toContain("\uFFFD");
 });
 
 test("a nested cause is ignored and a non-Error rejection keeps its fixed fallback", async () => {
   const nested = await fixture([], 0, false, new Error("outer", { cause: { message: "direct", cause: { message: "nested" } } }));
-  expect(await bounded(run(nested, stage(nested)), "nested provider cause")).toMatchObject({ reason: "outer: direct" });
+  expect(await bounded(run(nested, stage(nested)), "nested provider cause")).toMatchObject({ reason: refused("outer: direct") });
 
   const nonError = await fixture([], 0, false, "provider failed");
   expect(await bounded(run(nonError, stage(nonError)), "non-Error provider rejection")).toMatchObject({
-    exit: 2, cause: "fault", reason: "The provider retry failed with a non-Error value.",
+    exit: 2, cause: "fault",
+    reason: "Model faux-1 resolves from the home rung. The call to provider openai-codex failed before an answer arrived. Run the flow again.",
   });
 });
 
@@ -384,7 +396,7 @@ test("a full flow persists the provider cause in the raw session and both termin
     const controls = createControlContext();
     const harness = await createHarness({
       execution, sessionFile: context.sessionFile, session: { cwd: context.env["PWD"] ?? root, id: context.identity.stage, createdAt: Date.parse(context.clock.timestamp()) }, models: providerModels({}, clock),
-      model: retryModel(faux.getModel(), { writer: created.writer, identity: context.identity, clock, now: () => clock.timestamp() }),
+      model: retryModel(faux.getModel(), { writer: created.writer, identity: context.identity, clock, now: () => clock.timestamp(), rung: "home" }),
       systemPrompt: "Provider retry flow test.", tools: context.tools, context: controls,
     });
     if (context.outputPath === undefined) throw new Error("flow test expected an output path");
@@ -404,7 +416,7 @@ test("a full flow persists the provider cause in the raw session and both termin
     home: { options: {}, intelligences: {} }, metadata: { assembly: "provider-retry-flow", assemblyHash: "a".repeat(64), installationId: "018f2f4a-52f8-4c81-9b35-6ad2acdb70d8" },
     clock, signal: createRunSignal(clock), progress: () => undefined, createGating,
   }), "provider rejection full flow");
-  const expected = "fetch failed: unable to get local issuer certificate [UNABLE_TO_GET_ISSUER_CERT_LOCALLY]";
+  const expected = refused("fetch failed: unable to get local issuer certificate [UNABLE_TO_GET_ISSUER_CERT_LOCALLY]");
   expect(result).toMatchObject({ exit: 2, cause: "fault", reason: expected });
 
   const record = await events(created.writer.recordPath);
