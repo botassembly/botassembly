@@ -8,6 +8,7 @@ import { attachPiTap, createPiTap } from "../src/pi-tap.ts";
 import { runStartEvent } from "../src/record-events.ts";
 import { createRecordWriter } from "../src/record.ts";
 import { showLine } from "../src/readings.ts";
+import { SYNTHETIC_CREDENTIAL, planting } from "./synthetic-credential.ts";
 
 const roots: string[] = [];
 
@@ -106,6 +107,36 @@ test("Pi records requested transport separately from an adapter-published fallba
   }));
   const diagnostic = events.find((event) => event["source"] === "diagnostic") ?? {};
   expect(showLine(diagnostic)).toContain("events emitted false");
+});
+
+// Ticket 0286. The transport diagnostic is a provider's own text, and a
+// provider that echoes this run's credential back inside it would write that
+// value into the record's provider_transport event. The message is redacted
+// over the recognized environment names; every other field is untouched.
+test("a transport failure message redacts a recognized credential value", async () => {
+  const value = `sk-${SYNTHETIC_CREDENTIAL}-transport`;
+  await planting("OPENAI_API_KEY", value, async () => {
+    const { writer, tap } = await tapFixture();
+    const fellBack = fauxAssistantMessage("fallback");
+    fellBack.provider = "openai-codex";
+    fellBack.diagnostics = [{
+      type: "provider_transport_failure", timestamp: 1,
+      details: {
+        configuredTransport: "websocket", fallbackTransport: "sse", eventsEmitted: false,
+        phase: "before_message_stream_start",
+      },
+      error: { name: "CodexApiError", message: `unauthorized key ${value}`, code: 401 },
+    }];
+    await send(tap, { type: "turn_end", message: fellBack });
+    await writer.drain();
+    const held = await readFile(writer.recordPath, "utf8");
+    expect(held).not.toContain(value);
+    const events = held.trimEnd().split("\n").map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(events).toContainEqual(expect.objectContaining({
+      event: "provider_transport", transport: "sse", source: "diagnostic",
+      error: { name: "CodexApiError", message: "unauthorized key [redacted OPENAI_API_KEY]", code: 401 },
+    }));
+  });
 });
 
 test("Pi subflow batches emit one honest event per synthetic call", async () => {

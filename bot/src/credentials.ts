@@ -14,7 +14,7 @@ import type { DriverClock } from "./process.ts";
 import { providerRetryEvent, type StageIdentity } from "./record-events.ts";
 import { prettyJson, type RecordWriter } from "./record.ts";
 import { boundedText } from "./new-command-result.ts";
-import { CREDENTIAL_ENVIRONMENT_NAMES } from "./credential-environment.ts";
+import { CREDENTIAL_ENVIRONMENT_NAMES, redactCredentialValues } from "./credential-environment.ts";
 
 const LOCK_ATTEMPTS = 51; // 50 sleeps x 20ms = a 1s budget, 6.8x the worst hold measured under full-suite load (worst 147ms, median 105ms, 41 samples, 2026-08-06, ticket 0160).
 const LOCK_RETRY_MS = 20; // The budget is bought with attempts, not delay: every measured acquire landed within one poll of release, and a coarser sleep would slow the common contended case to buy the same ceiling.
@@ -189,11 +189,14 @@ function providerReport(reason: Error): string {
   }
   return message;
 }
+// The provider's quoted report is redacted BEFORE the bound is applied (ticket
+// 0286), so a cut can never land inside a credential and leave half of it in
+// the sentence. The 0283 shape is otherwise byte for byte what it was.
 function providerFailureReason(model: Model<Api>, rung: string, reason: unknown): string {
   const origin = `Model ${model.id} resolves from the ${rung} rung.`;
-  return boundedText(reason instanceof Error
+  return boundedText(redactCredentialValues(reason instanceof Error
     ? `${origin} Provider ${model.provider} refused the call and reported: ${providerReport(reason)}. Act on that report, then run the flow again.`
-    : `${origin} The call to provider ${model.provider} failed before an answer arrived. Run the flow again.`);
+    : `${origin} The call to provider ${model.provider} failed before an answer arrived. Run the flow again.`));
 }
 function failedMessage(model: Model<Api>, errorMessage: string): AssistantMessage {
   return {
@@ -234,13 +237,28 @@ function retryStream(call: () => AssistantMessageEventStream, model: Model<Api>,
   });
   return output;
 }
+// The settled message is the one seam both provider paths share (ticket 0286):
+// the retry stream's own authored sentence on an exhausted or non-retryable
+// failure, and Pi's untouched `errorMessage` when a model carries no retry
+// context. Redacting `result()` covers both without capturing the stream, so a
+// rejection still reaches the caller exactly as it did.
+function redactingStream(input: AssistantMessageEventStream): AssistantMessageEventStream {
+  return new Proxy(input, { get(target, property) {
+    if (property === "result") return async (): Promise<AssistantMessage> => {
+      const message = await target.result();
+      return message.errorMessage === undefined ? message : { ...message, errorMessage: redactCredentialValues(message.errorMessage) };
+    };
+    const value: unknown = Reflect.get(target, property, target);
+    return typeof value === "function" ? (...args: unknown[]): unknown => Reflect.apply(value, target, args) : value;
+  } });
+}
 export function streamSelectedModel(models: Models, model: Model<Api>, context: Context, options?: ModelsSimpleStreamOptions): AssistantMessageEventStream {
   const requestOptions = model.provider === "openai-codex"
     ? { ...options, transport: "websocket" as const }
     : options;
   const reporting = retryContext(model);
-  if (reporting === undefined) return models.streamSimple(model, context, requestOptions);
-  return retryStream(() => models.streamSimple(model, context, requestOptions), model, reporting, requestOptions?.signal);
+  if (reporting === undefined) return redactingStream(models.streamSimple(model, context, requestOptions));
+  return redactingStream(retryStream(() => models.streamSimple(model, context, requestOptions), model, reporting, requestOptions?.signal));
 }
 export function providerModels(env: NodeJS.ProcessEnv, _clock: DriverClock): MutableModels {
   return builtinModels({ authContext: snapshotAuthContext(env) });

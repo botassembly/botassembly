@@ -23,6 +23,7 @@ import { createRunSignal } from "../src/signal.ts";
 import { createControlContext, createControlTools } from "../src/tools.ts";
 import { bounded } from "./hostile.ts";
 import { manualClock } from "./manual-clock.ts";
+import { SYNTHETIC_CREDENTIAL, planting } from "./synthetic-credential.ts";
 
 const roots: string[] = [];
 let runNumber = 0;
@@ -425,4 +426,47 @@ test("a full flow persists the provider cause in the raw session and both termin
   const session = (await readFile(join(created.writer.runDirectory, "stages/01-work/1/session.jsonl"), "utf8"))
     .trimEnd().split("\n").flatMap((line) => { const parsed: unknown = JSON.parse(line); return Array.isArray(parsed) ? parsed as { message?: { role?: string; errorMessage?: string } }[] : []; });
   expect(session.find((entry) => entry.message?.role === "assistant")?.message?.errorMessage).toBe(expected);
+});
+
+// Ticket 0286. Pi's own errorMessage reaches the fault reason untouched on the
+// exhausted-retry path, so a provider that echoes this run's credential back
+// would put that value on stderr and in the record. The value is redacted; a
+// report that holds no recognized value stays byte for byte what the provider
+// said, even while a credential is planted.
+test("an exhausted retry redacts a recognized credential from the provider's own report", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout"] });
+  const value = `sk-${SYNTHETIC_CREDENTIAL}-exhausted`;
+  await planting("OPENAI_API_KEY", value, async () => {
+    const echoed = `provider overloaded for key ${value}`;
+    const f = await fixture([
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: echoed }),
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: echoed }),
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: echoed }),
+    ]);
+    const running = run(f, stage(f));
+    await retry(f, 1);
+    await retry(f, 2);
+
+    const expected = "provider overloaded for key [redacted OPENAI_API_KEY]";
+    expect(await bounded(running, "redacted exhausted provider retries")).toMatchObject({ exit: 2, cause: "fault", reason: expected });
+    const record = await events(f.writer.recordPath);
+    expect(record).toContainEqual(expect.objectContaining({ event: "stage_end", exit: 2, cause: "fault", reason: expected }));
+    expect(JSON.stringify(record)).not.toContain(value);
+  });
+});
+
+test("a clean provider report is unchanged while a credential is planted", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout"] });
+  await planting("OPENAI_API_KEY", `sk-${SYNTHETIC_CREDENTIAL}-untouched`, async () => {
+    const f = await fixture([
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: "provider overloaded" }),
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: "provider overloaded" }),
+      fauxAssistantMessage("", { stopReason: "error", errorMessage: "provider overloaded" }),
+    ]);
+    const running = run(f, stage(f));
+    await retry(f, 1);
+    await retry(f, 2);
+
+    expect(await bounded(running, "clean exhausted provider retries")).toMatchObject({ exit: 2, cause: "fault", reason: "provider overloaded" });
+  });
 });

@@ -214,6 +214,23 @@ when they do. A name outside it is a name the runtime cannot recognize, and it
 reaches every stage. `BOT_HOME` is scrubbed for a different reason: it is the
 runtime's own variable and never the agent's to see ([the home](home.md)).
 
+Some of those names carry an input to authentication rather than a secret — an
+account name, a project, a region, an identifier, or the path to where a
+credential is kept:
+
+```
+AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE AWS_CONTAINER_CREDENTIALS_FULL_URI
+AWS_PROFILE AWS_WEB_IDENTITY_TOKEN_FILE
+CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_GATEWAY_ID GCLOUD_PROJECT
+GOOGLE_APPLICATION_CREDENTIALS GOOGLE_CLOUD_LOCATION GOOGLE_CLOUD_PROJECT
+```
+
+Every name in this second list is scrubbed exactly like the rest. The
+distinction is for reporting: a provider's own error report has the value of a
+secret-bearing name replaced and the value of one of these left as the provider
+wrote it, because an account name or a region is not a secret and redacting it
+would claim one ([the record](record.md#what-a-record-answers)).
+
 ## Declared slots
 
 An assembly may declare slots of its own, for the asset every flow in it works

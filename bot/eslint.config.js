@@ -263,6 +263,16 @@ export default tseslint.config(
     rules: restrictedSyntax(NO_PI_PATHS, NO_AMBIENT_CLOCK, NO_CATCH, NO_CAST),
   },
   {
+    // Credential redaction (ticket 0286): the redactor reads the same live
+    // parent-process environment ADR 0030 admits as an authentication input,
+    // at redaction time, so a provider report echoing this run's own key is
+    // scrubbed without threading an environment through every reporting site.
+    // The file holds the registry and nothing else, and this drops only the
+    // ambient-environment rule for it.
+    files: ["src/credential-environment.ts"],
+    rules: { "no-restricted-properties": "off" },
+  },
+  {
     // CLI composition root/process boundary: cli.ts legitimately reads argv,
     // stdio, cwd, and BOT_HOME/XDG_DATA_HOME from process.env, and constructs
     // the one injected wall/monotonic clock handed to the runtime.

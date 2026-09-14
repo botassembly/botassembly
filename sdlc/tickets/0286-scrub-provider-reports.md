@@ -11,7 +11,9 @@ A provider error report holding a credential value that this run supplied throug
 
 ## Current facts
 
-Observed at `008f41a`. Origin: `sdlc/issues/2026-09-14-provider-report-unscrubbed.md`.
+Observed at `008f41a`. Origin: the issue `2026-09-14-provider-report-unscrubbed.md`, whose evidence is preserved here and whose file this ticket removes.
+
+The origin's own record: the unscrubbed report was observed on 2026-09-14 during independent code review of ticket 0283 at commit `9872083` on `ticket/0283`. `credentials.ts:190-196` embedded the provider's report verbatim in the run-time model failure message, bounded at 2,048 bytes and unscrubbed; a provider echoing a credential in its error body would place that value on stderr and in the run record. The behavior predates ticket 0283, which only moved the report into a longer sentence. ADR 0030 assigns secret-safe diagnostics to Bot. No occurrence of a provider echoing a credential has been observed. The named lever was to pass the report through the existing recognized-credential scrubbing before it enters the message, with a test that plants a synthetic credential in a fake provider's error body.
 
 - `credentials.ts:181-191` builds `providerReport` from `reason.message`, then its cause's `message` and `code`. `credentials.ts:192-197` embeds it verbatim in the 0283 sentence, bounded at 2,048 bytes, unscrubbed.
 - Two paths carry Pi's `errorMessage` unbounded and unscrubbed: `credentials.ts:226` on an exhausted retry or a non-retryable error, and `credentials.ts:242` when a model carries no retry context. Pi sets it from the formatted provider error (`pi-ai/.../openai-responses.js:155`); `turns.ts:60` makes it the fault reason.
@@ -21,7 +23,7 @@ Observed at `008f41a`. Origin: `sdlc/issues/2026-09-14-provider-report-unscrubbe
 
 ## Scope
 
-- Add one redactor over the registry. It reads `process.env` at redaction time, the same live environment ADR 0030 admits as an authentication input; no new parameter threads through `harness.ts:353`. It replaces each occurrence of a recognized name's nonempty value with a marker. Apply it at `credentials.ts:192-197`, `:226`, `:242`, and `pi-tap.ts:204`.
+- Split the registry into secret-bearing and non-secret names in `credential-environment.ts`. Scrubbing keeps the whole set and its `slots.md` pin; redaction reads the secret-bearing subset only. Add one redactor over that subset. It reads `process.env` at redaction time, the same live environment ADR 0030 admits as an authentication input; no new parameter threads through `harness.ts:353`. It replaces each occurrence of a recognized name's nonempty value with a marker. Apply it at `credentials.ts:192-197`, `:226`, `:242`, and `pi-tap.ts:204`.
 - Bound after redaction so a cut never splits a credential. The 0283 sentence shape otherwise holds.
 - State the limit beside the fault sentence at `specification/elements/record.md:187`: matching is pattern-based over recognized environment names, misses a credential Pi resolves from `auth.json` or `models.json`, and cannot prove a secret absent.
 - Delete the issue file in the same commit. Exclude detection patterns beyond the registry, `check.ts` (Pi-free under record 0270), and Pi's session files.
@@ -38,17 +40,17 @@ Ticket 0283 owns the scrubbed sentence and has landed. ADR 0030 assigns secret-s
 
 ## Risk facts
 
-Redaction changes provider text a reader may match on. A short or common value redacts unrelated text. A provider that encodes or truncates the credential defeats the match. Credentials Pi resolves from `auth.json` or `models.json` are not in the environment and stay unredacted. Bot does not read them. Pattern scanning cannot prove a secret absent.
+Redaction changes provider text a reader may match on. The registry is split so that only secret-bearing names are redacted: a profile, a project, a region, an identifier, or a path to a credential file keeps its value in a report, because redacting `default` or `us-central1` would claim a secret that was never there and rewrite ordinary words. A short secret value can still redact unrelated text; the longest planted value is redacted first so a shorter one cannot leave a longer secret half redacted. A provider that encodes or truncates the credential defeats the match. Credentials Pi resolves from `auth.json` or `models.json` are not in the environment and stay unredacted. Bot does not read them. Pattern scanning cannot prove a secret absent.
 
 ## Size decision
 
 - Starting production size: 18817 nonblank lines
-- Ending production size:
+- Ending production size: 18874 nonblank lines
 - Simpler approach tried: Drop the provider report.
-- Why insufficient alternatives were rejected: The provider's status and text are the only honest account of a refusal.
-- Production code added: One redactor and four call sites.
-- Production code deleted: None expected.
-- Accepted cost: A redaction can hide wanted text.
+- Why insufficient alternatives were rejected: The provider's status and text are the only honest account of a refusal. Redacting at the two consumers instead of the four producers was also rejected: `turns.ts` and `pi-tap.ts` are not the only readers of a settled message, and a seam there would leave the retained session unscrubbed.
+- Production code added: One registry split, one redactor over its secret-bearing half, one proxy over the selected model's stream, and three call sites. The proxy carries sites `:226` and `:242` together, because the settled message is the one seam both provider paths pass through, and wrapping `result()` leaves a rejection reaching the caller unchanged.
+- Production code deleted: None.
+- Accepted cost: A redaction can hide wanted text a reader wanted to match on. The non-secret names are no longer redacted at all, so that cost is not accepted for a profile, a project, a region, an identifier, or a path.
 
 ## Complexity
 
@@ -67,5 +69,5 @@ Redaction changes provider text a reader may match on. A short or common value r
 
 - Origin: Issue `2026-09-14-provider-report-unscrubbed.md`, held by record 0283.
 - Design review: rejected once. The draft overclaimed the outcome, missed `pi-tap.ts:204`, left the value seam unnamed, and excluded no session files.
-- Code review: pending.
+- Code review: accepted with one medium and two low findings, all fixed here. The medium: the registry held non-secret names, so `AWS_PROFILE=default` rewrote every `default` in a report and labelled it a credential. The lows: no proof that the retained Pi session held the redacted text, and four fixtures each inventing their own synthetic value.
 - Completion: pending.

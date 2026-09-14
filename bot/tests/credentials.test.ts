@@ -9,6 +9,8 @@ import { dirname, join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { createModels, type Models } from "@earendil-works/pi-ai";
 import { fileCredentialStore } from "../src/credentials.ts";
+import { CREDENTIAL_ENVIRONMENT_NAMES, NON_SECRET_CREDENTIAL_ENVIRONMENT_NAMES, SECRET_CREDENTIAL_ENVIRONMENT_NAMES, redactCredentialValues } from "../src/credential-environment.ts";
+import { SYNTHETIC_CREDENTIAL, planted } from "./synthetic-credential.ts";
 import { credentialPath, resolveHome, scratchRoot } from "../src/invocation.ts";
 import type { DriverClock } from "../src/process.ts";
 import { runtimeModels, type RunDependencies } from "../src/run.ts";
@@ -250,4 +252,64 @@ test("the credential file is XDG_CONFIG_HOME/bot/credentials.json, and a relativ
   // The same rule, in the two derivations that were here before it (CHECKLIST 9).
   expect(scratchRoot({ XDG_CACHE_HOME: "relative/cache", HOME: "/home/x" })).toBe("/home/x/.cache/bot/tmp");
   expect(resolveHome("/", undefined, { XDG_DATA_HOME: "relative/data", HOME: "/home/x" })).toBe("/home/x/.local/share/bot");
+});
+
+// Ticket 0286. A provider that echoes this run's own credential back inside an
+// error body must not put that value on stderr, in the `--json` envelope, or in
+// the run record. The redactor reads the live environment at redaction time,
+// over the same registry that answers Pi's `env()` and scrubs a child's
+// environment, and replaces each occurrence of a recognized name's nonempty
+// value with a marker naming the variable rather than the secret.
+test("every secret-bearing credential environment value is redacted from a provider report", () => {
+  for (const name of SECRET_CREDENTIAL_ENVIRONMENT_NAMES) {
+    const value = `${SYNTHETIC_CREDENTIAL}-${name}`;
+    const report = `OpenAI API error (401): {"message":"invalid key ${value}"}`;
+    const held = planted(name, value, () => redactCredentialValues(report));
+    expect(held).toBe(`OpenAI API error (401): {"message":"invalid key [redacted ${name}]"}`);
+    expect(held).not.toContain(value);
+  }
+});
+
+test("a repeated credential value is redacted at every occurrence", () => {
+  const value = `${SYNTHETIC_CREDENTIAL}-repeated`;
+  const held = planted("OPENAI_API_KEY", value, () => redactCredentialValues(`${value} then ${value}`));
+  expect(held).toBe("[redacted OPENAI_API_KEY] then [redacted OPENAI_API_KEY]");
+});
+
+test("a clean report, a blank value, and an unrecognized name leave the text unchanged", () => {
+  const report = "OpenAI API error (401): no credits left on this account.";
+  const absent = `${SYNTHETIC_CREDENTIAL}-absent`;
+  const plain = `${SYNTHETIC_CREDENTIAL}-plain`;
+  expect(planted("OPENAI_API_KEY", absent, () => redactCredentialValues(report))).toBe(report);
+  expect(planted("OPENAI_API_KEY", "   ", () => redactCredentialValues("a    b"))).toBe("a    b");
+  expect(planted("BOT_0286_NOT_A_CREDENTIAL", plain, () => redactCredentialValues(`says ${plain}`))).toBe(`says ${plain}`);
+});
+
+// A short secret value that is a substring of a longer one must not leave the
+// longer secret half redacted, so the longest planted value goes first.
+test("a longer credential value is redacted before a shorter one it contains", () => {
+  const shorter = `${SYNTHETIC_CREDENTIAL}-zz`;
+  const longer = `sk-${shorter}-long`;
+  const held = planted("ANTHROPIC_API_KEY", shorter, () => planted("OPENAI_API_KEY", longer, () =>
+    redactCredentialValues(`key ${longer} beside key ${shorter}`)));
+  expect(held).toBe("key [redacted OPENAI_API_KEY] beside key [redacted ANTHROPIC_API_KEY]");
+});
+
+// A name whose value is a profile, a project, a region, an identifier, or the
+// path to a credential is not a secret. Redacting it would claim a secret the
+// report never held and would rewrite any ordinary word that matched, so the
+// redactor reads only the secret-bearing subset while the child environment is
+// still scrubbed of the whole registry.
+test("a non-secret recognized name never redacts the text it matches", () => {
+  const report = "Provider refused: profile default in region us-central1 has no access.";
+  for (const name of NON_SECRET_CREDENTIAL_ENVIRONMENT_NAMES) {
+    expect(planted(name, "default", () => redactCredentialValues(report))).toBe(report);
+    expect(planted(name, "us-central1", () => redactCredentialValues(report))).toBe(report);
+  }
+});
+
+test("the two subsets partition the scrubbed registry", () => {
+  const union = new Set([...SECRET_CREDENTIAL_ENVIRONMENT_NAMES, ...NON_SECRET_CREDENTIAL_ENVIRONMENT_NAMES]);
+  expect(union).toEqual(new Set(CREDENTIAL_ENVIRONMENT_NAMES));
+  expect(union.size).toBe(SECRET_CREDENTIAL_ENVIRONMENT_NAMES.size + NON_SECRET_CREDENTIAL_ENVIRONMENT_NAMES.size);
 });

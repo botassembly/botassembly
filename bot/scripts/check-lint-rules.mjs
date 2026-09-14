@@ -47,6 +47,7 @@ const cases = [
   { rule: "env", path: "src/invocation.ts", code: "export const f = process.env['BOT_HOME'];", expect: /No ambient environment/ },
   { rule: "env", path: "src/assembly.ts", code: "export const g = process.env['X'];", expect: /No ambient environment/ },
   { rule: "env", path: "src/cli.ts", code: "export const h = process.env['BOT_HOME'];", expect: null },
+  { rule: "env", path: "src/credential-environment.ts", code: "export const i = process.env['OPENAI_API_KEY'];", expect: null },
 
   // Rule 3 — no catching in src/; try/finally cleanup stays legal; the four
   // platform-boundary files are allowlisted. These prove each allowlist entry is

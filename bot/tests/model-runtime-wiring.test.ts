@@ -1,10 +1,11 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai";
 import { afterEach, expect, test } from "vitest";
 import { main } from "./initialized-cli.ts";
 import { realBoundary, tempRoots, writes } from "./cli-boundary.ts";
 import { resumeDependencies } from "../src/run-command.ts";
+import { SYNTHETIC_CREDENTIAL, planting } from "./synthetic-credential.ts";
 
 const roots = tempRoots();
 afterEach(() => roots.cleanup());
@@ -83,9 +84,9 @@ function throwingModels<T extends object>(models: T, reason: unknown): T {
   });
 }
 
-interface StageFailure { exit: number; stdout: string; stderr: string }
+interface StageFailure { exit: number; stdout: string; stderr: string; home: string }
 
-async function stageFailure(prefix: string, reason: unknown): Promise<StageFailure> {
+async function stageFailure(prefix: string, reason: unknown, extra: string[] = []): Promise<StageFailure> {
   const { root, home } = await roots.scratch(prefix);
   const flow = join(home, "assemblies/review/flows/main");
   await mkdir(flow, { recursive: true });
@@ -101,8 +102,8 @@ async function stageFailure(prefix: string, reason: unknown): Promise<StageFailu
   const runtime = held.models;
   if (runtime === undefined) throw new Error("fixture supplied no model runtime");
   held.models = throwingModels(runtime, reason);
-  const exit = await main(["run", "start", "review/main", "--retries", "0", "request"], held);
-  return { exit, stdout: Buffer.concat(output).toString(), stderr: Buffer.concat(errors).toString() };
+  const exit = await main(["run", "start", "review/main", "--retries", "0", ...extra, "request"], held);
+  return { exit, stdout: Buffer.concat(output).toString(), stderr: Buffer.concat(errors).toString(), home };
 }
 
 // Ticket 0283. A provider that answers with a refusal has its own status and
@@ -134,4 +135,55 @@ test("a non-Error throw after birth names the model, the provider, and the retry
   );
   expect(held.stderr).not.toContain("non-Error value");
   expect(held.stdout).not.toContain("failed before an answer arrived");
+});
+
+// Ticket 0286. A provider whose error body echoes a credential this run
+// supplied under a recognized environment name has that value redacted before
+// it reaches any reader: the sentence on standard error, the `--json`
+// envelope's bounded `reason`, and the run record's own terminal events. The
+// rest of 0283's sentence is unchanged.
+const ECHOED = `sk-${SYNTHETIC_CREDENTIAL}-provider-echo`;
+
+function echoing(prefix: string, extra: string[] = []): Promise<StageFailure> {
+  return planting("OPENAI_API_KEY", ECHOED, () =>
+    stageFailure(prefix, new Error(`OpenAI API error (401): {"type":"AuthError","message":"invalid key ${ECHOED}"}`), extra));
+}
+
+const REDACTED_SENTENCE = 'Model faux-1 resolves from the assembly rung. Provider faux refused the call and reported: OpenAI API error (401): {"type":"AuthError","message":"invalid key [redacted OPENAI_API_KEY]"}. Act on that report, then run the flow again.';
+
+test("a provider report echoing a recognized credential is redacted on stderr and in the record", async () => {
+  const held = await echoing("bot-provider-credential-");
+  expect(held.exit).toBe(2);
+  expect(held.stderr).toContain(REDACTED_SENTENCE);
+  expect(held.stderr).not.toContain(ECHOED);
+  const [run] = await readdir(join(held.home, "runs"));
+  if (run === undefined) throw new Error("the failing run wrote no record");
+  const record = await readFile(join(held.home, "runs", run, "record.jsonl"), "utf8");
+  expect(record).not.toContain(ECHOED);
+  const events = record.trimEnd().split("\n").map((line) => JSON.parse(line) as Record<string, unknown>);
+  expect(events).toContainEqual(expect.objectContaining({ event: "run_end", cause: "fault", reason: REDACTED_SENTENCE }));
+});
+
+// The claim rests on a proxy over the settled message, and the retained Pi
+// session is written from that same message. A session file holding the raw
+// value would leave the credential on disk for every later reader of the run.
+test("the retained Pi session holds the redacted sentence and not the credential", async () => {
+  const held = await echoing("bot-provider-credential-session-");
+  const [run] = await readdir(join(held.home, "runs"));
+  if (run === undefined) throw new Error("the failing run wrote no record");
+  const session = join(held.home, "runs", run, "stages/01-work/1/session.jsonl");
+  const text = await readFile(session, "utf8");
+  expect(text).not.toContain(ECHOED);
+  // The session holds the sentence as a JSON string, so the pin is the escaped
+  // form of the same bytes rather than a looser substring.
+  expect(text).toContain(JSON.stringify(REDACTED_SENTENCE).slice(1, -1));
+});
+
+test("the --json envelope carries the redacted reason and never the credential", async () => {
+  const held = await echoing("bot-provider-credential-json-", ["--json"]);
+  expect(held.exit).toBe(2);
+  expect(held.stdout).not.toContain(ECHOED);
+  const envelope = JSON.parse(held.stdout) as { data: { cause: string; reason: { text: string; truncated: boolean } } };
+  expect(envelope.data.cause).toBe("fault");
+  expect(envelope.data.reason).toEqual({ text: REDACTED_SENTENCE, bytes: Buffer.byteLength(REDACTED_SENTENCE), truncated: false });
 });

@@ -1,5 +1,6 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { Harness, HarnessEvent, HarnessMessage } from "./harness.ts";
+import { redactCredentialValues } from "./credential-environment.ts";
 import { mapping } from "./model.ts";
 import {
   CONTROL_TOOLS,
@@ -201,7 +202,7 @@ function appendProviderTransport(context: PiTapContext, identity: StageIdentity,
   const configuredTransport = transport(details["configuredTransport"], "configured transport");
   const fallbackTransport = details["fallbackTransport"] === undefined ? undefined : transport(details["fallbackTransport"], "fallback transport");
   if (diagnostic.error === undefined) throw new TypeError("provider transport failure error must be an object");
-  return context.writer.append(providerTransportEvent({ ts: context.now(), identity, transport: fallbackTransport ?? configuredTransport, source: "diagnostic", configuredTransport, ...(fallbackTransport === undefined ? {} : { fallbackTransport }), eventsEmitted: boolean(details["eventsEmitted"], "provider transport events emitted"), phase: string(details["phase"], "provider transport phase"), error: { ...(diagnostic.error.name === undefined ? {} : { name: diagnostic.error.name }), message: diagnostic.error.message, ...(diagnostic.error.code === undefined ? {} : { code: diagnostic.error.code }) } }));
+  return context.writer.append(providerTransportEvent({ ts: context.now(), identity, transport: fallbackTransport ?? configuredTransport, source: "diagnostic", configuredTransport, ...(fallbackTransport === undefined ? {} : { fallbackTransport }), eventsEmitted: boolean(details["eventsEmitted"], "provider transport events emitted"), phase: string(details["phase"], "provider transport phase"), error: { ...(diagnostic.error.name === undefined ? {} : { name: diagnostic.error.name }), message: redactCredentialValues(diagnostic.error.message), ...(diagnostic.error.code === undefined ? {} : { code: diagnostic.error.code }) } }));
 }
 function appendTurn(context: PiTapContext, identity: StageIdentity, message: AssistantMessage): Promise<void> {
   if (message.stopReason === "pending") throw new TypeError("turn_end cannot carry a pending stop reason");
