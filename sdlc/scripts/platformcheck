@@ -1,5 +1,5 @@
 #!/bin/sh
-# Narrow offline qualification shared by the hosted Linux and macOS jobs.
+# Narrow offline qualification shared by the hosted Linux, macOS, and WSL jobs.
 set -eu
 
 case $0 in
