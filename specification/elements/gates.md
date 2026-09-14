@@ -24,7 +24,9 @@ An agent that stopped without writing `$OUTPUT` has not finished. That is caught
 first, and it is treated like any other failure below. This is the one gating
 text no author writes: the message is the runtime's fixed sentence, "Nothing
 was written to `$OUTPUT`.", and its capture under that attempt's `checks/` is
-named `output-missing.txt` ([the record](record.md#what-a-check-printed)).
+named `output-missing.txt` ([the record](record.md#what-a-check-printed)). An
+output check that passes records an empty `output.txt` capture in the same
+place, so the attempt's `checks/` folder shows that the check ran.
 
 ## What a failure does
 

@@ -21,7 +21,9 @@ export function parseFanout(
 ): FanoutNode {
   const file = `${path}/${sentinel}`, document = readMarkdown(join(dir, sentinel), file, faults);
   const keys = ["items", "subflow", "width", "max-items"];
-  if (document.sound) validateData(document.data, file, faults, keys, keys);
+  // fanout.md: exactly these four keys. No stage option reaches a fan-out, so
+  // the option names are empty rather than the default set (ticket 0282).
+  if (document.sound) validateData(document.data, file, faults, keys, keys, []);
   if (document.sound && document.body.trim().length > 0) fault(faults, "body-unexpected", file, "Remove the fan-out body.");
   for (const entry of entries(dir)) if (!ignored.has(entry.name)) {
     fault(faults, "entry-unknown", `${path}/${entry.name}`, "Keep only FANOUT.md and README.md here.");

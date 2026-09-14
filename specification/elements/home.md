@@ -112,7 +112,9 @@ and complete bundle without exposing the name in an agent prompt.
 
 The home and each run directory are created owner-only (`0700`), like `~/.ssh`.
 Nothing inside is made private separately — the directories close the tree — and
-a home that already exists is left as it stands. The scratch tree is created the
+the contents of a home that already exists are left as they stand. Its own mode
+is not: a run refuses a pre-existing home that is not a real directory owned by
+the effective user at exactly `0700`, before run birth. The scratch tree is created the
 same way, at its root: it holds the same prompts, inputs and outputs the run
 directory holds, so it is closed by the same door ([slots](slots.md)).
 

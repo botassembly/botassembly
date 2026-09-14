@@ -10,14 +10,14 @@ import { boundedText, inertText, newCommandFailure, type CommandResult } from ".
 import { assemblyMarker } from "./documents.ts";
 import { bytewise, errorCode, mapping } from "./model.ts";
 import { jsonValue } from "./schema-check.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { provenance } from "./management.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 interface AssemblyRow { name: string; kind: "installed" | "linked"; source: string | null; updated: string | null; target: string | null; broken: boolean }
 interface Request { args: string[]; json: boolean; count: boolean; fields: AssemblyListField[]; limit: number; after?: string; home?: string; failure?: CliFailure }
 
-function failure(cause: string, message: string, details: Record<string, unknown> = {}, exit: CliFailure["exit"] = 2): CliFailure {
+function failure(cause: ErrorCause, message: string, details: Record<string, unknown> = {}, exit: CliFailure["exit"] = 2): CliFailure {
   return { code: exit === 1 ? "home-not-found" : exit === 4 ? "dependency-failed" : exit === 5 ? "integrity-failed" : "request-invalid", cause, message, retryable: exit === 4, details, exit };
 }
 
@@ -185,7 +185,9 @@ function emitRows(path: string, parsed: Request, boundary: Boundary, rows: reado
 function inspect(path: string, parsed: Request, boundary: Boundary): Promise<number> {
   return stat(path).then(
     (held) => held.isDirectory() ? readRows(path, parsed, boundary) : Promise.resolve(emitFailure(boundary, failure("path-not-directory", `The bot home at ${path} is not a directory.`, { home: path }, 1), parsed.json)),
-    (reason: unknown) => emitFailure(boundary, failure(errorCode(reason) ?? "filesystem-error", errorCode(reason) === "ENOENT" ? `There is no bot home at ${path}.` : "Assembly list could not read the Bot home.", { home: path }, errorCode(reason) === "ENOENT" ? 1 : 4), parsed.json),
+    (reason: unknown) => emitFailure(boundary, errorCode(reason) === "ENOENT"
+      ? failure("path-missing", `There is no bot home at ${path}.`, { home: path }, 1)
+      : failure("filesystem-error", "Assembly list could not read the Bot home.", { home: path }, 4), parsed.json),
   );
 }
 

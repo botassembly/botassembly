@@ -56,13 +56,13 @@ The error-code list is a new public compatibility surface. A published code is a
 
 ## Size decision
 
-- Starting production size: 18483 nonblank lines
-- Ending production size:
+- Starting production size: 18524 nonblank lines
+- Ending production size: 18733 nonblank lines
 - Simpler approach tried: Write the error codes as prose, or derive them by scanning source text.
 - Why insufficient alternatives were rejected: Prose drifts on the next ticket. A text scan cannot tell a code from a test hook name.
-- Production code added: A closed error-code vocabulary in `spine.ts`, evidence validation in `mark`, a fan-out option-name restriction, a `DESCEND.md` body path.
+- Production code added: A closed error-code vocabulary in `spine.ts`, evidence validation in `mark`, a fan-out option-name restriction, a `DESCEND.md` body path. The vocabulary is 8 codes and 158 causes, one name per line as `REFUSAL_CODES` already is, which is almost the whole of the 209 lines.
 - Production code deleted: None. The `runtimeOnly` array leaves the test file for the specification.
-- Accepted cost: Assemblies using the four ignored fan-out keys now refuse, and every new `CliFailure` must name a declared code.
+- Accepted cost: Assemblies using the four ignored fan-out keys now refuse, and every new `CliFailure` must name a declared code. Four commands stopped passing an operating-system error name through as a cause; the name stays in the message.
 
 ## Complexity
 

@@ -6,7 +6,7 @@ import { AssemblyCreationFailure, assemblyCreationRequest, manage, type Assembly
 import { errorCode } from "./model.ts";
 import { boundedText, newCommandFailure } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { Refusal } from "./spine.ts";
 
 interface Boundary {
@@ -20,7 +20,7 @@ interface Boundary {
 type Operation = "assembly.install" | "assembly.link";
 interface ParsedCreation { home: string; args: string[]; json: boolean; link: boolean }
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

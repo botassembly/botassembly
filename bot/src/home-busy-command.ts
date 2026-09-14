@@ -3,7 +3,7 @@ import { isBusy } from "./busy.ts";
 import { jsonObject } from "./check.ts";
 import { takeHome } from "./flags.ts";
 import { newCommandFailure, type CommandResult } from "./new-command-result.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   cwd: string;
@@ -14,7 +14,7 @@ interface Boundary {
 
 interface Request { directory?: string; home?: string; json: boolean; quiet: boolean; failure?: CliFailure }
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

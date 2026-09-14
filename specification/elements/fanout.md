@@ -4,7 +4,7 @@
 
 This control may change in a later pre-1.0 release.
 
-A fan-out runs one authored subflow for every item in a checked JSON list. Bot derives the complete work set from the immediately preceding stage. The producing agent does not call the subflow itself.
+A fan-out is a container, and the sentinels chapter says so ([the sentinels](graph.md#the-sentinels)). Every sentence naming `FANOUT` in a settled chapter carries this chapter's label, not that one's. A fan-out runs one authored subflow for every item in a checked JSON list. Bot derives the complete work set from the immediately preceding stage. The producing agent does not call the subflow itself.
 
 `FANOUT.md` is a numbered folder in the root sequence of a named entry flow. One ordinary JSON stage must precede it. One ordinary stage must follow it. A fan-out cannot be first, last, nested, or placed in a subflow. Its folder holds only `FANOUT.md` and optional `README.md`.
 

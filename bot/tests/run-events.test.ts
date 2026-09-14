@@ -265,5 +265,7 @@ test("run events converts a synchronous output failure into exit 4", async () =>
     stderr: (bytes) => { errors.push(Buffer.from(bytes)); },
   });
   expect(code).toBe(4);
-  expect(JSON.parse(Buffer.concat(errors).toString())).toMatchObject({ error: { operation: "run.events", cause: "EIO" } });
+  expect(JSON.parse(Buffer.concat(errors).toString())).toMatchObject({
+    error: { operation: "run.events", cause: "output-error", message: expect.stringContaining("EIO") as string },
+  });
 });

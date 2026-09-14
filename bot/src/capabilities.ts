@@ -3,7 +3,7 @@ import { jsonObject } from "./check.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { bytewise } from "./model.ts";
 import { RUNTIME_VERSION } from "./record-events.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { resolveRuntimeSourceIdentity, type RuntimeSourceIdentity, type RuntimeSourceIdentityResolution } from "./runtime-provenance.ts";
 
 interface Boundary {
@@ -11,7 +11,7 @@ interface Boundary {
   stderr(bytes: string | Uint8Array): void;
 }
 
-function failure(cause: string, message: string, exit: CliFailure["exit"] = 2): CliFailure {
+function failure(cause: ErrorCause, message: string, exit: CliFailure["exit"] = 2): CliFailure {
   return { code: exit === 2 ? "request-invalid" : exit === 4 ? "dependency-failed" : "integrity-failed",
     cause, message, retryable: exit === 4, details: {}, exit };
 }

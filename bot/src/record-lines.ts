@@ -9,6 +9,7 @@ import { basename } from "node:path";
 import { errorCode, mapping } from "./model.ts";
 import { visitHeldRecordLines } from "./run-files.ts";
 import { classifyStory, type RecordClassification } from "./record-story.ts";
+import type { ErrorCause } from "./spine.ts";
 
 export interface HeldRecord {
   events: Record<string, unknown>[];
@@ -17,12 +18,12 @@ export interface HeldRecord {
   notice?: string;
   source?: { mtime: number; size: number };
   /** Why the record could not be read: the word the listing marks the entry with, and the sentence stderr gets. */
-  fault?: { mark: string; says: string };
+  fault?: { mark: ErrorCause; says: string };
 }
 
 const CURRENT_RECORD_VERSION = 1;
 
-const unread = (mark: string, says: string): HeldRecord => ({ events: [], lines: [], fault: { mark, says } });
+const unread = (mark: ErrorCause, says: string): HeldRecord => ({ events: [], lines: [], fault: { mark, says } });
 
 // One mark, several repairs, so the SENTENCE carries the cause the mark cannot:
 // the code the throw carried, not the platform's message, because the code is

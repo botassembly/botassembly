@@ -7,7 +7,7 @@ import { ASSEMBLY_READ_CONTRACT } from "./cli-contract.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { jsonValue } from "./schema-check.ts";
 import { mapping } from "./model.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   cwd: string;
@@ -25,7 +25,7 @@ interface Request {
   failure?: CliFailure;
 }
 
-function failure(cause: string, message: string, details: Record<string, unknown> = {}): CliFailure {
+function failure(cause: ErrorCause, message: string, details: Record<string, unknown> = {}): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details, exit: 2 };
 }
 

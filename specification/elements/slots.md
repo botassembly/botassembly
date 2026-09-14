@@ -148,6 +148,17 @@ language's temp-directory call — leaves them in `$TMP` instead of the machine'
 temporary directory. Those files remain available while the stage is live and
 disappear with `$TMP`.
 
+One directory, two strings. A hook, a gate, and every other process the runtime
+starts itself receive the backing path in `$TMP` and `TMPDIR`. The agent and
+every process the agent starts receive a short handle instead, and the agent's
+own file tools resolve that handle. The Bot runtime makes the handle a symbolic
+link in the machine's shared temporary directory, named `bot-` followed by a
+hash of the backing path, so that a Unix socket path built inside `$TMP` fits
+the platform's length limit. It refuses a handle already pointing somewhere
+else and removes only a handle that still names its own backing path. The two
+strings resolve to the same directory, and `stage_start.slots.tmp` holds the
+backing one ([the record](record.md)).
+
 `tmp: flow` on a `FLOW.md` makes every stage in that flow share one scratch
 directory instead, for the case where stages pass working material along that is
 not an output ([flow](flow.md)). That shared `$TMP` remains through handoffs and
@@ -160,7 +171,8 @@ retains the other runtime material, and sealed outputs, records, sessions,
 `$INPUT`, `$SKILLS`, and `$SUBFLOWS` retain their existing contracts. Scratch is
 outside the working tree (`$PWD`), does not live under the run's directory, and
 sits in a cache directory the runtime owns, so no slot value discloses where
-runs live ([home](home.md)).
+runs live ([home](home.md)). The Bot runtime puts that cache at
+`$XDG_CACHE_HOME/bot/tmp`, or under `~/.cache` when the variable is unset.
 
 Retained scratch is BEST-EFFORT, because a cache is the one directory on the
 machine whose contents anything may reclaim: the operating system, a cleaner, a
@@ -173,6 +185,34 @@ Scratch is created owner-only at its root, like the home ([home](home.md)), and
 each run's entry within it is keyed by the home as well as by the run: two homes
 on one machine can mint the same run name, and one shared directory would let
 the runs write over each other.
+
+## What is scrubbed
+
+A provider credential environment name consumed by the parent is removed before
+anything the run starts sees it. This runtime recognizes exactly these names:
+
+```
+AI_GATEWAY_API_KEY ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_OAUTH_TOKEN
+ANT_LING_API_KEY AWS_ACCESS_KEY_ID AWS_BEARER_TOKEN_BEDROCK
+AWS_CONTAINER_AUTHORIZATION_TOKEN AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE
+AWS_CONTAINER_CREDENTIALS_FULL_URI AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+AWS_PROFILE AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_WEB_IDENTITY_TOKEN_FILE
+AZURE_OPENAI_API_KEY BASETEN_API_KEY CEREBRAS_API_KEY CLOUDFLARE_ACCOUNT_ID
+CLOUDFLARE_API_KEY CLOUDFLARE_GATEWAY_ID COPILOT_GITHUB_TOKEN DEEPSEEK_API_KEY
+FIREWORKS_API_KEY GCLOUD_PROJECT GEMINI_API_KEY GOOGLE_APPLICATION_CREDENTIALS
+GOOGLE_CLOUD_API_KEY GOOGLE_CLOUD_LOCATION GOOGLE_CLOUD_PROJECT GROQ_API_KEY
+HF_TOKEN KIMI_API_KEY MINIMAX_API_KEY MINIMAX_CN_API_KEY MISTRAL_API_KEY
+MOONSHOT_API_KEY NVIDIA_API_KEY OPENAI_API_KEY OPENCODE_API_KEY
+OPENROUTER_API_KEY QWEN_TOKEN_PLAN_API_KEY QWEN_TOKEN_PLAN_CN_API_KEY
+RADIUS_API_KEY TOGETHER_API_KEY XAI_API_KEY XIAOMI_API_KEY
+XIAOMI_TOKEN_PLAN_AMS_API_KEY XIAOMI_TOKEN_PLAN_CN_API_KEY
+XIAOMI_TOKEN_PLAN_SGP_API_KEY ZAI_API_KEY ZAI_CODING_CN_API_KEY
+```
+
+The list is the set of names this runtime's pinned providers read, so it grows
+when they do. A name outside it is a name the runtime cannot recognize, and it
+reaches every stage. `BOT_HOME` is scrubbed for a different reason: it is the
+runtime's own variable and never the agent's to see ([the home](home.md)).
 
 ## Declared slots
 

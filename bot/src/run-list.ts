@@ -7,7 +7,7 @@ import { hashBytes } from "./record.ts";
 import type { RunStateFact } from "./run-state.ts";
 import { jsonValue } from "./schema-check.ts";
 import { isRunListState, RUN_LIST_CONTRACT, type CliFailure, type RunListField, type RunListQuery, type RunListState } from "./run-list-query.ts";
-import { CAUSES } from "./spine.ts";
+import { CAUSES, type ErrorCause } from "./spine.ts";
 import { compactMagnitude } from "./table.ts";
 import { boundedText as bounded, inertText as inert, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 
@@ -23,7 +23,7 @@ interface Selection { through: string | null; candidates: string[]; stableNames:
 interface Scan { rows: RunSummary[]; warnings: Warning[]; matched: number; warningCount: number; examined?: string }
 export type RunListResult = CommandResult;
 
-function failure(code: CliFailure["code"], cause: string, message: string, exit: CliFailure["exit"], retryable: boolean, details: Record<string, unknown> = {}): CliFailure {
+function failure(code: CliFailure["code"], cause: ErrorCause, message: string, exit: CliFailure["exit"], retryable: boolean, details: Record<string, unknown> = {}): CliFailure {
   return { code, cause, message, retryable, details, exit };
 }
 
@@ -294,12 +294,12 @@ function warningOutput(scanned: Scan): Buffer {
   return Buffer.from(lines.length === 0 ? "" : `${lines.join("\n")}\n`);
 }
 
-interface PathKind { kind: "directory" | "other" | "missing" | "error"; cause?: string }
+interface PathKind { kind: "directory" | "other" | "missing" | "error" }
 
 async function pathKind(path: string): Promise<PathKind> {
   return stat(path).then(
     (held) => ({ kind: held.isDirectory() ? "directory" : "other" }),
-    (reason: unknown) => errorCode(reason) === "ENOENT" ? { kind: "missing" } : { kind: "error", cause: errorCode(reason) ?? "filesystem-error" },
+    (reason: unknown) => errorCode(reason) === "ENOENT" ? { kind: "missing" } : { kind: "error" },
   );
 }
 
@@ -307,10 +307,10 @@ async function homeFault(home: string): Promise<CliFailure | undefined> {
   const root = await pathKind(home);
   if (root.kind === "missing") return failure("home-not-found", "path-missing", `There is no bot home at ${home}.`, 1, false, { home });
   if (root.kind === "other") return failure("home-invalid", "path-not-directory", `The bot home at ${home} is not a directory.`, 1, false, { home });
-  if (root.kind === "error") return failure("dependency-failed", root.cause ?? "filesystem-error", "Run list could not inspect the Bot home.", 4, true);
+  if (root.kind === "error") return failure("dependency-failed", "filesystem-error", "Run list could not inspect the Bot home.", 4, true);
   const runs = await pathKind(join(home, "runs"));
   if (runs.kind === "directory" || runs.kind === "missing") return undefined;
-  return failure("dependency-failed", runs.cause ?? "path-not-directory", "Run list could not inspect the runs directory.", 4, runs.kind === "error");
+  return failure("dependency-failed", runs.kind === "error" ? "filesystem-error" : "path-not-directory", "Run list could not inspect the runs directory.", 4, runs.kind === "error");
 }
 
 async function inspected(home: string, query: RunListQuery): Promise<RunListResult> {
@@ -326,6 +326,6 @@ async function inspected(home: string, query: RunListQuery): Promise<RunListResu
 export async function inspectRunList(home: string, query: RunListQuery): Promise<RunListResult> {
   return inspected(home, query).then(
     (result) => result,
-    (reason: unknown) => errorResult(failure("dependency-failed", errorCode(reason) ?? "filesystem-error", "Run list could not read the Bot home.", 4, true), query.json),
+    () => errorResult(failure("dependency-failed", "filesystem-error", "Run list could not read the Bot home.", 4, true), query.json),
   );
 }

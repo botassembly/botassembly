@@ -6,7 +6,7 @@ import { readRunShow, runShowFailure } from "./run-show.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 
-function requestFailure(message: string) { return { code: "request-invalid" as const, cause: "arguments-invalid", message, retryable: false, details: {}, exit: 2 as const }; }
+function requestFailure(message: string) { return { code: "request-invalid" as const, cause: "arguments-invalid" as const, message, retryable: false, details: {}, exit: 2 as const }; }
 
 export async function runShowCommand(args: string[], boundary: Boundary): Promise<number> {
   const json = args.includes("--json") || args.includes("-j");

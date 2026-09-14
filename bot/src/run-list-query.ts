@@ -1,5 +1,6 @@
 import { bytewise } from "./model.ts";
-import { CAUSES } from "./spine.ts";
+import { CAUSES, type ErrorCause, type ErrorCode } from "./spine.ts";
+export type { ErrorCause } from "./spine.ts";
 
 export const RUN_LIST_CONTRACT = {
   operation: "run.list", result: { kind: "bot.run.list", schemaVersion: 1 },
@@ -22,9 +23,15 @@ export interface RunListQuery {
   since?: number; until?: number; after?: string;
 }
 
+/**
+ * One structured command failure. `newCommandFailure` renders it as the JSON
+ * error envelope inspection.md documents. Both vocabularies are closed and
+ * live in spine.ts, so a new failure names a declared code and a declared
+ * cause or the build refuses it.
+ */
 export interface CliFailure {
-  code: "request-invalid" | "cursor-invalid" | "cursor-conflict" | "home-not-found" | "home-invalid" | "state-not-reached" | "dependency-failed" | "integrity-failed";
-  cause: string; message: string; retryable: boolean; details: Record<string, unknown>; exit: 1 | 2 | 3 | 4 | 5;
+  code: ErrorCode;
+  cause: ErrorCause; message: string; retryable: boolean; details: Record<string, unknown>; exit: 1 | 2 | 3 | 4 | 5;
 }
 
 export type RunListParse = { query: RunListQuery } | { failure: CliFailure };
@@ -33,7 +40,7 @@ interface Values { assemblies: string[]; flows: string[]; states: RunListState[]
 interface Bounds { since?: number; until?: number }
 interface Controls { fields: RunListField[]; limit: number; count: boolean; json: boolean; after?: string }
 
-function invalid(cause: string, message: string, details: Record<string, unknown> = {}): CliFailure {
+function invalid(cause: ErrorCause, message: string, details: Record<string, unknown> = {}): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details, exit: 2 };
 }
 

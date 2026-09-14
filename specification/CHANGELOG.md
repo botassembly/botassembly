@@ -1,8 +1,23 @@
 # Changelog
 
+> **Stability: not applicable.** This file is history, not a contract. A
+> chapter's own label is what binds a runtime.
+
 ## 2026-09-14
 
 Ticket 0281 repairs runtime defects an independent review confirmed. One 4 MiB request limit now governs both writing a child request and reading it back, so a child born with any admitted request is verified and its ancestor totals complete tokens. `bot assembly check` states arriving input honestly: `input` holds the files that arrive together, and `possible_inputs` lists every alternative when a choice or an exact depth state changes what arrives. The stage after a choice reports one arriving file, and no reported `input` holds a pair the checker would itself refuse. `child_options` now appears only when the child context differs. A valueless `--intelligence` with no resolvable row refuses with `intelligence-unresolved`. The raw output latch ends when a command asks for ordinary output, and the raw command keeps its own exit code and single diagnostic.
+
+Ticket 0282 aligns the specification with the runtime it describes and moves the runtime where the specification held the better contract. A `DESCEND.md` body is now the procedure every stage inside that flow receives (C4). `FANOUT.md` accepts exactly its four keys and refuses a stage option with `key-unknown` (C5). A checklist mark with whitespace-only evidence is rejected and leaves the item `todo` (C9).
+
+The specification moves for the rest. The exit-code table and invariant 23 admit `3`, `4`, and `5` (C1). The runtime and slots chapters state the agent's short `$TMP` handle, the backing path hooks and gates receive, and which one the record holds (C2). `bot auth list` describes its two standings and the stale three-standing sentence is gone (C6). The home chapter says that a pre-existing home's contents are left alone and its mode is not (C7). The refusal tables name a hook name and a source name instead of one word for two rules (C8). A child's stdin is described as end of file rather than written and closed (C10). The `$TMP` warning is placed where it fires, after the agent stops and before the checks (C11). C3 became the runtime-only exemption below; C12 belongs to ticket 0281.
+
+Inspection gains "The JSON error envelope": the document shape, the eight stable codes, and the complete cause vocabulary. `spine.ts` holds both as closed exported lists, every `CliFailure` draws from them, and `bot/tests/spec-error-vocabulary.test.ts` pins the lists to the chapter in both directions. Four commands stopped spelling a cause with an operating-system error name; the failing call's own name stays in the message.
+
+Newly stated: `--script` and `model_source`, the command spellings of `--timeout` and `--retries`, `--correlation` and its 256-byte bound, the credential environment names this runtime scrubs and its cache location, the 250 ms termination grace, the one-second and five-second capture drain with its terminal fault, the 250 ms `$TMP` sampling cadence, the 4 MiB request ceiling, the two container faults, the named runtime bounds, the retired credential store's path, an empty passing output capture, a flow's removal from its own scope, and the file tools' tilde refusal.
+
+`model-unresolved` is named as a runtime-only refusal in `refusals.md` and invariant 50, and the conformance harness reads that exemption from the chapter instead of a list in the test file. The corpus stays at 143 cases. The witness ledger repairs four dead test names and restates its walk against tickets 0270 through 0280.
+
+This publication is unreleased and targets `0.1.0`; the release ticket sets the final string. `FANOUT` takes its place in the sentinel taxonomy, the container key table, the nesting exceptions, and the stage sentinel list, and the settled chapters that name it carry its provisional label. The index, this changelog, and the witness ledger carry a stability line. The open WSL qualification leaves stable prose. `TMPDIR` joins the runtime's environment list. Nine dead changelog anchors point at their current chapters. The control tools are described as six plus the conditional `subflow` grant. The authentication chapter states plainly what its private-file check does not establish.
 
 ## 2026-09-13
 
@@ -631,7 +646,7 @@ same day. The record has carried a `sha256` for every sealed output since seal
 time, and no reader ever consulted it: the first sealed ladder's falsification
 proved a one-byte in-place corruption of a sealed file reddened nothing, because
 every reader of a seal reads the file itself and so confirms whatever it now
-holds. [Inspection](elements/inspection.md#bot-output-run-stage) now says the
+holds. [Inspection](elements/inspection.md#bot-run-output) now says the
 verb hashes what it read against the record and refuses a mismatch in one
 sentence, exit 1, nothing on stdout — because `output` REPRODUCES an answer
 where the other verbs describe one, and the scope stops there: no other verb
@@ -649,7 +664,7 @@ born owner-only, because a login belongs to the operator where a home is a
 workspace and no one should log in once per project. `--home` does not move them
 and no bot-named variable points at them — the pointer is gone, not renamed, and
 `$BOT_HOME` is again the only variable the runtime reads.
-[Inspection](elements/inspection.md#bot-auth) gains `bot auth import <file>`,
+[Authentication](elements/auth.md) gains `bot auth import <file>`,
 which fills that file from a credential file a person names: providers already
 stored are replaced, providers the named file does not mention are left alone,
 writing takes the lock every credential write takes while a file replaced whole
@@ -758,7 +773,7 @@ a pipe or a redirect receives exactly what it received before, the record holds
 no line of it, and standard output stays the answer alone. The terminal
 condition is the ticket's own rule for the trailing newline turned on the other
 stream: what is added for a terminal may not change what a pipe gets.
-[Inspection](elements/inspection.md#bot-output-run-stage) gains
+[Inspection](elements/inspection.md#bot-run-output) gains
 `bot output <run> [stage]`, the only command there that does not write lines:
 the run's answer, exactly the bytes it sealed, because `bot show` named the
 file and `cat` was the only way back to your own result. Only a run that ended
@@ -872,7 +887,7 @@ cannot find. [Invariant 50](elements/invariants.md) is scoped to match: every
 refusal a runtime gives when it reads an assembly is a case in the corpus, and
 these, which no checked-in case can hold, are named in that table and pinned by
 a runtime's own tests instead. Separately, the `bad-record` state in
-[`bot runs`](elements/inspection.md#bot-runs) now says that a truncated last
+`bot runs` now says that a truncated last
 line is [the record's](elements/record.md#how-it-is-written) case rather than
 one of the things bot established is not a record. That was already true and
 already tested; the enumeration alone read as though it were not.
@@ -881,12 +896,12 @@ The litter is named, cut as ticket 0124. Two things the home held that no
 command mentioned now have a name. An interrupted `bot assembly update` leaves
 its copy beside the assembly under a hidden name, and nothing sweeps it —
 after an interruption that copy may be the only one of the assembly there is —
-so [`bot status`](elements/inspection.md#bot-status) gives each one a line
+so `bot status` gives each one a line
 saying what it weighs and whether the assembly it belongs to is still standing,
 and [`bot assembly update`](elements/management.md#bot-assembly-update) says
 that recovering one is a person's move. A run killed before its directory
 existed leaves a lock beside no run, which no verb listed and nothing ever
-takes the name of again; [`bot prune`](elements/inspection.md#bot-prune) now
+takes the name of again; `bot prune` now
 names each one whatever was asked for and removes it under `--delete`, without
 `--refused`, because a lock holds no work and its claim that a process is here
 has already gone stale — the escalation flag guards runs bot could not account
@@ -912,7 +927,7 @@ runtime now applies one round trip to all three. The corpus gains
 
 The healthy ending column is specified, as ticket 0122. `bot runs` has always
 printed a finished run's ending as its exit code and cause joined by a slash,
-and [inspection](elements/inspection.md#bot-runs) named only the states a
+and inspection named only the states a
 reader meets when something is wrong — `running`, `crashed`, `no-record`,
 `bad-record`, `bad-version`, `unreadable` — so the column most runs show was
 the one column no chapter defined. One sentence, pointing at
@@ -922,7 +937,7 @@ Behaviour is unchanged and already witnessed, byte for byte, by
 
 Prune's selectors add up, said where the spec speaks, as ticket 0121. Ticket
 0110 made `--count`, `--age` and `--refused` union and 0111 put the line in
-`bot prune --help`; [inspection](elements/inspection.md#bot-prune) owed the
+`bot prune --help`; inspection owed the
 sentence, because a reader of the paragraph could as easily have derived that
 naming two selectors narrows to the runs both name — the opposite of what
 happens, and a reading under which `--age 7 --refused` would take nothing. The
@@ -1084,7 +1099,7 @@ self-pointing link `unreadable` and prunes neither, and
 UNWITNESSED and deliberately unnamed — the sentence covers it by not
 enumerating, and nothing in the suite would fail if a runtime marked an
 over-large record something else. The same error had been written twice, and
-both copies are corrected here: [`bot prune`](elements/inspection.md#bot-prune)
+both copies are corrected here: `bot prune`
 explained its refusal by saying those bytes "were never obtained", that the run
 had failed "to open", and that a `chmod` would have recovered it — three claims,
 each true of one arm and of no other. That rationale now says what the

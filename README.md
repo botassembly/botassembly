@@ -73,7 +73,7 @@ intelligences:
 
 **What work does it suit?** Bounded jobs with inspectable intermediate artifacts and real acceptance criteria: document extraction, research synthesis, code migrations, repository review, report production. It suits a trivial single-call task poorly, and it is the wrong central coordinator for a complex customer-facing service.
 
-**How far along is it?** Version `0.0.1`, the first public alpha. Assembly and record contracts may change before 1.0 without migrations, and 1.0 is the first promised compatibility boundary. One runtime implements the format, 143 conformance cases judge an implementation against it, and four examples ship and are checked in CI.
+**How far along is it?** Unreleased, targeting `0.1.0`, the first public alpha. Assembly and record contracts may change before 1.0 without migrations, and 1.0 is the first promised compatibility boundary. One runtime implements the format, 143 conformance cases judge an implementation against it, and four examples ship and are checked in CI.
 
 ## Examples
 

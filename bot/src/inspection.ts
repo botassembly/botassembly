@@ -16,11 +16,12 @@ import { CAPTURE } from "./record.ts";
 import { jsonObject } from "./check.ts";
 import { field, heldRecord } from "./record-lines.ts";
 import { byteMagnitude, compactMagnitude, renderRows, renderTable } from "./table.ts";
+import type { ErrorCause } from "./spine.ts";
 
 export interface InspectionResult {
   exitCode: 0 | 1;
   output: Buffer;
-  cause?: string;
+  cause?: ErrorCause;
   /** What could not be read, for stderr ("Diagnostics go to stderr", inspection.md). */
   diagnostics?: string[];
 }
@@ -36,7 +37,7 @@ export function result(lines: string[]): InspectionResult {
 // Nothing found is an answer and says which nothing: the sentence goes to
 // stderr beside the empty stdout, never instead of it, and the exit code stays
 // the found/not-found answer ("Diagnostics go to stderr", inspection.md).
-export const nothing = (says: string, cause?: string): InspectionResult => ({ exitCode: 1, output: output([]), diagnostics: [says], ...(cause === undefined ? {} : { cause }) });
+export const nothing = (says: string, cause?: ErrorCause): InspectionResult => ({ exitCode: 1, output: output([]), diagnostics: [says], ...(cause === undefined ? {} : { cause }) });
 
 /** The one sentence for a home that is not there; every path says it (0136). */
 export const noHome = (home: string): string => `There is no bot home at ${home}.`;

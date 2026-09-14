@@ -225,7 +225,7 @@ test("a pre-run refusal uses the common error and creates no run", async () => {
   await expect(runsIn(home).catch(() => [])).resolves.toEqual([]);
 });
 
-test("an unexpected pre-run dependency failure retains its immediate typed cause", async () => {
+test("an unexpected pre-run dependency failure names a declared cause and keeps the errno in the message", async () => {
   const { root, home } = await roots.scratch("bot-run-start-dependency-");
   await assembly(home);
   const out: Buffer[] = [], err: Buffer[] = [];
@@ -234,7 +234,11 @@ test("an unexpected pre-run dependency failure retains its immediate typed cause
   expect(code).toBe(4);
   expect(Buffer.concat(out)).toEqual(Buffer.alloc(0));
   expect(JSON.parse(Buffer.concat(err).toString())).toMatchObject({
-    kind: "error", error: { code: "dependency-failed", operation: "run.start", cause: "ENOENT", retryable: true },
+    kind: "error",
+    error: {
+      code: "dependency-failed", operation: "run.start", cause: "dependency-failed",
+      retryable: true, message: expect.stringContaining("ENOENT") as string,
+    },
   });
   await expect(runsIn(home).catch(() => [])).resolves.toEqual([]);
 });

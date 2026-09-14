@@ -70,7 +70,7 @@ The retired authored keys `model`, `provider`, `reasoning`, `profile`, and
 | `schema-duplicate`| more than one schema                                 |
 | `schema-invalid`  | a schema that does not parse, is not valid JSON Schema, or names a dialect other than 2020-12 |
 | `gate-conflict`   | a `gate` file beside a `gate/` folder                |
-| `hook-duplicate`  | two files whose name before the first dot is the same |
+| `hook-duplicate`  | two files whose **hook name** is the same. A hook name is everything before the first dot, so `success.v2.sh` and `success.sh` are one hook |
 | `not-runnable`    | a hook or gate that cannot run — no executable bit, or no shebang on something that is not a binary |
 | `skill-invalid`   | a skill folder with no `SKILL.md`                    |
 
@@ -95,7 +95,7 @@ The retired authored keys `model`, `provider`, `reasoning`, `profile`, and
 | `symlink`          | a symbolic link anywhere in the assembly        |
 | `entry-unknown`    | a visible file or directory the grammar does not recognize under the assembly's strict-by-default [root policy](assembly.md#assemblymd), or a name the grammar reserves for a folder (`skills`, `subflows`) held by a plain file |
 | `folder-empty`     | a folder that promises contents and holds none, wherever it stands — a flow, a `gate/`, a `subflows/`, a `skills/`, an alternative, a `CHOOSE` with no alternatives. The rule, not a list |
-| `input-collision`  | two things that would share one name where one is addressed — sources in one `$INPUT` (the stem is the name, so `review.txt` and `review.json` collide), or a flow and a root subflow in the assembly agent's scope |
+| `input-collision`  | two things that would share one name where one is addressed — sources in one `$INPUT` (the **source name** is everything before the last dot, so `review.txt` and `review.json` collide and `notes.v2.txt` and `notes.txt` do not), or a flow and a root subflow in the assembly agent's scope |
 | `assembly-incomplete` | no `ASSEMBLY.md`, or no `flows/`             |
 
 ## Resolution
@@ -120,6 +120,18 @@ pins them with its own tests instead ([invariant 50](invariants.md)).
 | `assembly-in-use`  | an assembly a live run holds, or one nothing can prove idle because a run whose record cannot be read is still going. One fault either way — a run in this home is going — and one fix: wait for it to end ([`bot run list`](inspection.md#bot-run-list)) |
 | `source-unknown`   | an installed assembly with no source to fetch again from — written by hand, or copied in by some other means |
 | `tool-missing`     | a program the runtime has to run is not there — installing from a git source runs `git` |
+
+## Runtime-only refusals
+
+Some refusals a runtime gives while reading an assembly have no corpus case. A
+code is exempt only when this section declares it, and a declaration is one
+sentence of the form "`<code>` is runtime-only, because <reason>." No other
+mention of a code here exempts it. A runtime pins each declared code with its
+own tests instead ([invariant 50](invariants.md)), for the reason
+[managing the home](#managing-the-home) is pinned that way.
+
+`model-unresolved` is runtime-only, because it is decided against the providers
+a runtime has configured, and a corpus case carries no provider configuration.
 
 ## Adding to this
 

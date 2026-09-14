@@ -6,7 +6,7 @@ const SPECIFICATION = new URL("../../specification/", import.meta.url).pathname;
 const REPOSITORY = new URL("../../", import.meta.url).pathname;
 const ELEMENTS = join(SPECIFICATION, "elements");
 const DOCUMENTATION = new URL("../../docs/src/content/docs/", import.meta.url).pathname;
-const PUBLICATION_VERSION = "0.0.1";
+const PUBLICATION_VERSION = "0.1.0";
 
 function read(relative: string): string {
   return readFileSync(join(SPECIFICATION, relative), "utf8");
@@ -93,9 +93,10 @@ test("portable contracts state observables without Bot implementation choices", 
   });
 });
 
-test("version 0.0.1 states its publication and compatibility policy", () => {
+test("the targeted publication states its version and compatibility policy", () => {
   const policy = section(read("README.md"), "Version and compatibility");
-  expect(policy).toMatch(/\b0\.0\.1\b/u);
+  expect(policy).toMatch(new RegExp(`\\b${PUBLICATION_VERSION.replaceAll(".", "\\.")}\\b`, "u"));
+  expect(policy).toMatch(/\bunreleased\b/iu);
   expect(policy).toMatch(/\bpublic alpha\b/iu);
   expect(policy).toMatch(/\btickets?\b/iu);
   expect(policy).toMatch(/\bcompatib/iu);
@@ -111,8 +112,8 @@ test("version 0.0.1 states its publication and compatibility policy", () => {
 test("active conformance protects one publication version", () => {
   const conformance = read("conformance.md");
   expect(conformance).toContain(`publication ${PUBLICATION_VERSION}`);
-  expect(conformance).not.toMatch(/publication 0\.1(?:\s|$)|(?<![0-9.])0\.1 (?:static|invariant)\b|(?<![0-9.])complete 0\.1 conformance\b/iu);
-  expect([...conformance.matchAll(/\b0\.0\.1\b/gu)]).toHaveLength(4);
+  expect(conformance).not.toMatch(/(?<![0-9.])0\.0\.1(?![0-9])/u);
+  expect([...conformance.matchAll(new RegExp(`\\b${PUBLICATION_VERSION.replaceAll(".", "\\.")}\\b`, "gu"))]).toHaveLength(4);
 });
 
 test("every published chapter declares its 0.1 stability level", () => {

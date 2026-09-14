@@ -32,7 +32,7 @@ before anything parses it, and readable with `jq` when something does.
 
 The first line names the record shape that wrote it ([invariant 48](invariants.md)). A program that has to guess which shape it is holding cannot promise that it read the file correctly.
 
-Bot remains pre-release software. The first line names current record shape `1`, and the current reader refuses any other shape instead of guessing. Additive fields on known events stay in shape `1` and readers ignore fields they do not recognize. Bot carries no record migration machinery or pre-release compatibility branches. Version `0.0.1` is the first public alpha; version 1.0 is the first promised cross-version compatibility boundary.
+Bot remains pre-release software. The first line names current record shape `1`, and the current reader refuses any other shape instead of guessing. Additive fields on known events stay in shape `1` and readers ignore fields they do not recognize. Bot carries no record migration machinery or pre-release compatibility branches. This publication is unreleased and targets `0.1.0`, the first public alpha; version 1.0 is the first promised cross-version compatibility boundary.
 
 Appending is what makes a run readable after a process crash. Completed
 appends leave complete newline-delimited lines readable after the writing
@@ -134,6 +134,11 @@ records bytes observed on disk but does not prove which modules Node already
 loaded or protect against same-account mutation. Hashing work grows with the
 trusted installed program. Every subflow child reuses its parent's values.
 Older shape-1 records without `runtime_tree_sha256` remain readable.
+
+`model_source` is present only when the run did not reach a model provider at
+all. Its one value is `scripted`, written when the invocation supplied a
+transcript in place of the model ([invocation](invocation.md#the-scripted-model)). Its
+absence is the ordinary case and means the run used the resolved provider.
 
 Current writers require `installation_id` as a canonical lowercase UUID version 4 on every root and child `run_start`. A root writer establishes the home identity before run birth and records that value. A first run creates a missing record. Concurrent first runs record the one published winner. Historical shape-1 records may omit this additive field. The record remains shape 1.
 

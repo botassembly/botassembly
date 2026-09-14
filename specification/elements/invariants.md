@@ -32,9 +32,11 @@ of where files sit rather than because something at run time arranged it.
    stage can call were placed in its scope, and placement is still the author's
    ([subflows](subflow.md)).
 9. Edit its checklist. It marks items; it does not write them.
-10. Affect control flow except through the seven control tools — mark, refuse,
+10. Affect control flow except through the control tools — mark, refuse,
     fault, continue, select, subflow, clean-temp
-    ([control tools](runtime.md#control-tools)).
+    ([control tools](runtime.md#control-tools)). Six of them are the ordinary
+    closed list. `subflow` is granted separately, only where the author placed
+    a subflow in scope, and never joins that list.
 11. Carry anything into the next stage except its output.
 
 ## What the runtime guarantees
@@ -65,7 +67,10 @@ of where files sit rather than because something at run time arranged it.
 23. The exit code says whether; the record says why. `1` is the work failing,
     `2` is the run being impossible — the assembly, the invocation, or the
     machinery beneath the run being wrong, whenever that is discovered — and
-    the record carries the cause.
+    the record carries the cause. A reading or a management command, and a run
+    that fails before it is born, may also exit `3` for a conflicting
+    continuation, `4` for a failed dependency, or `5` for unsafe, corrupt, or
+    invalid retained state ([exit codes](runtime.md#exit-codes)).
 
 ## Structure
 
@@ -151,7 +156,10 @@ of where files sit rather than because something at run time arranged it.
     corpus ([conformance](../conformance.md)). A rule with no case is not yet
     a rule. [Managing the home](refusals.md#managing-the-home) refuses what no
     case can hold — a live run, an absent program — and those codes are named
-    there and pinned by a runtime's own tests instead.
+    there and pinned by a runtime's own tests instead. One reader's refusal is
+    exempt on the same ground and is named in
+    [runtime-only refusals](refusals.md#runtime-only-refusals): a code decided
+    against configured providers cannot be reached by checked-in data.
 
 Number 6 is the one the others hang from. An agent with no model of the system
 it is inside has nothing to reason about except its task, which is the whole of

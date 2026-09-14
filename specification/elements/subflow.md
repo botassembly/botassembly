@@ -186,6 +186,11 @@ position 0, each child advances it by one, and a stage at position 10 has no
 subflows in scope. Every call is in the record; its `depth` is the greater of
 its self-chain depth and cumulative position.
 
+A flow is removed from its own stages' scope before anything else is added to
+it, whether it was placed at the assembly root or beside a stage. The rule is
+the runtime's, not a consequence of where the folder sits: without the marker
+below, a flow named `review` is not in the scope of the stages inside `review`.
+
 The one thing placement cannot express is a flow seeing *itself* in its own
 scope, and that takes the one marker written for it
 ([descend](descend.md)) — whose `max-depth` bounds that self-chain. The fixed

@@ -12,9 +12,12 @@ Moving a folder changes the graph; editing frontmatter does not.
 ## The sentinels
 
 A sentinel file names what the folder that holds it is, and sentinel names are
-in capitals. Three of the sentinels type **containers** — `LOOP.md`,
-`CHOOSE.md`, and `PARALLEL.md`; the others type a flow or a stage, which are
-not containers ([stage types](stage.md#stage-types)).
+in capitals. Four of the sentinels type **containers** — `LOOP.md`,
+`CHOOSE.md`, `PARALLEL.md`, and `FANOUT.md`; the others type a flow or a stage,
+which are not containers ([stage types](stage.md#stage-types)). `FANOUT.md` is
+the container whose contents are not folders: it runs one subflow per item and
+places what those runs produced, and [its own chapter](fanout.md) is
+provisional while the rest of this one is settled.
 
 A **sequence** is a folder of numbered entries that run in order and holds no
 sentinel: a flow's contents, a branch of a `PARALLEL`, an alternative of a
@@ -31,7 +34,7 @@ one is required, is a malformed assembly.
 | `LOOP.md`     | a stage that repeats what is inside it ([loop](loop.md)) |
 | `CHOOSE.md`   | a stage that runs one of several alternatives ([choose](choose.md)) |
 | `PARALLEL.md` | a stage that runs branches at once ([parallel](parallel.md)) |
-| `FANOUT.md`   | one subflow run for each checked list item ([fan-out](fanout.md)) |
+| `FANOUT.md`   | one subflow run for each checked list item ([fan-out](fanout.md), provisional) |
 | `DESCEND.md`  | a flow whose stages may call it again ([descend](descend.md)) |
 
 A stage that needs no files of its own is a single markdown file, `01-name.md`,
@@ -79,6 +82,7 @@ only which of their contents run, and how many times.
 | `LOOP.md`     | `repeat` |
 | `PARALLEL.md` | `width`  |
 | `CHOOSE.md`   | none of its own |
+| `FANOUT.md`   | `items`, `subflow`, `width`, `max-items` ([fan-out](fanout.md), provisional) |
 
 ## How a container's work reaches the next stage
 
@@ -92,9 +96,9 @@ nothing has to be combined ([slots](slots.md)).
 | `LOOP`        | one file, named after the loop, from the last stage of the last repeat |
 | `CHOOSE`      | one file, named after the alternative that ran       |
 | `PARALLEL`    | one file per branch, each named after its branch     |
-| `FANOUT`      | one file per item, each named after its item id      |
+| `FANOUT`      | one file per item, each named after its item id ([fan-out](fanout.md), provisional) |
 
-`PARALLEL` and `FANOUT` can contribute more than one file. This is why `$INPUT` is a directory.
+`PARALLEL` and `FANOUT` can contribute more than one file. This is why `$INPUT` is a directory. `FANOUT`'s rows here carry [its own chapter](fanout.md)'s provisional label.
 
 The filesystem is the namespace, so three branches producing three formats reach
 the next stage intact. An author who wants them as one file writes a stage that
@@ -104,16 +108,21 @@ thing.
 ## Where an agent gets a say
 
 Almost nowhere. The graph is the author's, written in folders, and no agent can
-change it. The exceptions are seven control tools, each a place where the format
+change it. The exceptions are the control tools, each a place where the format
 wants a judgment a model makes better than a path expression: marking a
 checklist item, refusing or reporting a fault for a stage, ending a loop,
 selecting an alternative, calling a subflow the author placed in scope, and
 confirming that this stage's temporary contents are disposable
-([control tools](runtime.md#control-tools)).
+([control tools](runtime.md#control-tools)). Six of them are the ordinary
+closed list every stage draws from; `subflow` is granted separately, only where
+the author placed a subflow in scope.
 
 ## Nesting
 
-Any container holds any container, to any depth, with two exceptions. A
+Any container holds any container, to any depth, with three exceptions. The
+third is `FANOUT.md`, which holds no container and stands in no container: it
+is a numbered folder in the root sequence of a named entry flow, never first,
+never last, never nested, and never in a subflow ([fan-out](fanout.md)). A
 branch or alternative that is directly a `PARALLEL` is refused
 (`tail-container`): it is one name that would have to carry several outputs,
 the tail rule below met in another position. A `LOOP` or a `CHOOSE` stands

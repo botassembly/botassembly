@@ -1,21 +1,24 @@
 import { isUtf8 } from "node:buffer";
 import { jsonObject } from "./check.ts";
 import { RUN_RESUME_OPTIONS, RUN_START_CONTRACT, RUN_START_OPTIONS, type CliOptionDescriptor } from "./cli-contract.ts";
-import { errorCode } from "./model.ts";
 import { boundedText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import type { StartedRunResult } from "./run.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { Refusal } from "./spine.ts";
 
 export type RunStartRequest = { args: string[]; json: boolean; correlation?: string };
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 
+// The cause is drawn from the declared vocabulary, never from the failing
+// call's own errno: a published cause is a promise, and an operating system's
+// error name is not this runtime's to promise (ticket 0282). The errno reaches
+// the reader in the message.
 export function runMutationFailure(operation: string, reason: unknown): CliFailure {
   return {
-    code: "dependency-failed", cause: errorCode(reason) ?? "dependency-failed",
+    code: "dependency-failed", cause: "dependency-failed",
     message: reason instanceof Error ? reason.message : `${operation} failed before the run began.`,
     retryable: true, details: {}, exit: 4,
   };

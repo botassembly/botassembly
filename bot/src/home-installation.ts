@@ -7,15 +7,16 @@ import { parseDocument } from "yaml";
 import { jsonObject } from "./check.ts";
 import { errorCode } from "./model.ts";
 import { jsonValue } from "./schema-check.ts";
+import type { ErrorCause } from "./spine.ts";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const LINK_SETTLED = new Error("The installation link count settled during its read.");
 
 export class HomeInstallationError extends Error {
   readonly exit: 3 | 4 | 5;
-  readonly causeCode: string;
+  readonly causeCode: ErrorCause;
   readonly published: boolean;
-  constructor(message: string, causeCode = "installation-invalid", exit: 3 | 4 | 5 = 5, published = false, cause?: unknown) {
+  constructor(message: string, causeCode: ErrorCause = "installation-invalid", exit: 3 | 4 | 5 = 5, published = false, cause?: unknown) {
     super(message, cause === undefined ? undefined : { cause });
     this.exit = exit;
     this.causeCode = causeCode;
@@ -43,7 +44,7 @@ interface HeldDirectory { handle: FileHandle; path: string; expected: BigIntStat
 
 export type InstallationReading = { initialized: false } | { initialized: true; installationId: string };
 
-function failure(message: string, causeCode = "installation-invalid", cause?: unknown): HomeInstallationError {
+function failure(message: string, causeCode: ErrorCause = "installation-invalid", cause?: unknown): HomeInstallationError {
   return new HomeInstallationError(message, causeCode, 5, false, cause); }
 
 function effectiveUser(): number {

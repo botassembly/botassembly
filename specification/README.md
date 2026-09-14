@@ -1,5 +1,9 @@
 # The Bot Assembly specification
 
+> **Stability: stable.**
+>
+> This index names the chapters and states the publication's version policy.
+
 [Changelog](CHANGELOG.md) — what changed here, and why.
 
 An assembly is a folder. A runtime executes it. Everything below is one element
@@ -29,9 +33,9 @@ each one, what in this repository would fail if a runtime stopped honoring it.
 
 ## Version and compatibility
 
-Version `0.0.1` is the first public alpha. The runtime, specification, and examples match within that release. Individual tickets do not bump a shared version or counter. A later pre-1.0 release may change assembly and record contracts without migration. Early alpha users may need to update assemblies and may need the matching older runtime to read an older record. Version 1.0 is the first promised cross-version compatibility boundary.
+This publication is unreleased. It targets `0.1.0`, the first public alpha, and the release that sets that string is the one that ships. The runtime, specification, and examples match within that release. Individual tickets do not bump a shared version or counter. A later pre-1.0 release may change assembly and record contracts without migration. Early alpha users may need to update assemblies and may need the matching older runtime to read an older record. Version 1.0 is the first promised cross-version compatibility boundary.
 
-Stability labels distinguish settled and provisional requirements inside the current publication. A runtime's conformance claim names the publication version it implements. Claiming conformance to 0.0.1 does not itself claim conformance to a later pre-1.0 publication or to 1.0.
+Stability labels distinguish settled and provisional requirements inside the current publication. A runtime's conformance claim names the publication version it implements. Claiming conformance to 0.1.0 does not itself claim conformance to a later pre-1.0 publication or to 1.0.
 
 ## The shape of an assembly
 

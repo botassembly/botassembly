@@ -5,7 +5,7 @@ import { writeInspection } from "./inspection-result.ts";
 import { boundedText, newCommandFailure } from "./new-command-result.ts";
 import { errorCode } from "./model.ts";
 import { selectOutput, selectRequest } from "./one-run.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { copyVerifiedOutput, type VerifiedOutputDependencies } from "./verified-output.ts";
 
 interface Boundary {
@@ -16,7 +16,7 @@ interface Boundary {
   stderr(bytes: string | Uint8Array): void;
 }
 
-function malformed(cause: string, message: string): CliFailure {
+function malformed(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

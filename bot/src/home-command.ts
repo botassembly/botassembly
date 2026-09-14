@@ -3,11 +3,11 @@ import { jsonObject } from "./check.ts";
 import { HOME_RESULT_BYTES } from "./cli-contract.ts";
 import { HomeInstallationError, readInstallation, type InstallationDependencies, type InstallationReading } from "./home-installation.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary { cwd: string; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

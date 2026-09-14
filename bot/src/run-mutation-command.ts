@@ -3,7 +3,7 @@ import { plainly } from "./model.ts";
 import { newCommandFailure } from "./new-command-result.ts";
 import { resumeOperation } from "./resume.ts";
 import { resumeDependencies, runOperation, type RunCommandBoundary, type RunOperation } from "./run-command.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import {
   parseRunResume, parseRunStart, renderRunStart, runMutationFailure, runMutationRefusal, type RunStartRequest,
 } from "./run-start.ts";
@@ -33,7 +33,7 @@ function writeHumanRun(operation: RunOperation, json: boolean, boundary: Boundar
   return result.exitCode;
 }
 
-function prestartFailure(operationName: "run.start" | "run.resume", result: { exitCode: number; cause: string; reason?: string }): CliFailure {
+function prestartFailure(operationName: "run.start" | "run.resume", result: { exitCode: number; cause: ErrorCause; reason?: string }): CliFailure {
   const integrity = result.exitCode === 5;
   return { code: integrity ? "integrity-failed" : "dependency-failed", cause: result.cause,
     message: result.reason ?? `${operationName} failed before the run began.`, retryable: !integrity,

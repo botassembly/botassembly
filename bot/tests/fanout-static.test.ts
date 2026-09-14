@@ -64,6 +64,20 @@ test.each([
   expect(parsed.faults.length).toBeGreaterThan(0);
 });
 
+// Ticket 0282, contradiction C5: fanout.md says the sentinel has exactly four
+// keys. The reader used to admit the four stage options as well and then drop
+// them, so `intelligence: cheap` on a fan-out earned neither a refusal nor an
+// effect.
+test.each(["timeout: 60", "retries: 1", "local-context: true", "intelligence: cheap"])(
+  "FANOUT refuses the stage option %s", async (option) => {
+    const root = await fixture(`items: jobs\nsubflow: worker\nwidth: 1\nmax-items: 2\n${option}\n`);
+    const parsed = readAssembly(root, {});
+    const key = option.slice(0, option.indexOf(":"));
+    expect(parsed.faults).toEqual([{
+      code: "key-unknown", path: "flows/main/02-run/FANOUT.md", sentence: `Remove the unknown key ${key}.`,
+    }]);
+  });
+
 test("FANOUT refuses a non-JSON predecessor", async () => {
   const root = await fixture();
   await rm(join(root, "flows/main/01-plan/schema.json"));

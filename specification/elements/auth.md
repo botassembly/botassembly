@@ -21,6 +21,8 @@ A credential-free provider catalog validates the agent directory and `models.jso
 
 These checks limit which operating-system accounts can supply credential or command-capable local configuration through ordinary file access. They do not sandbox trusted configuration. Pi may run a supported command-backed key from `auth.json` or a leading `!command` value from `models.json` with the operator's filesystem and network authority. A same-account replacement or path race remains outside this boundary.
 
+What the check does not do is worth saying plainly. It inspects a path and then lets Pi open that path again by name. It does not open the file without following links, and it does not compare the file it inspected with the file Pi then reads, so anything that can replace the path between the two wins. It validates the agent directory and stops: no ancestor of that directory is checked, so an agent directory reached through a writable or symlinked parent passes. The default agent directory sits under the operator's own home, where only the same account can do either. An agent directory redirected into a place another account can write is outside what these checks establish.
+
 ## The commands
 
 | Command                     | Does                                          |
@@ -84,10 +86,11 @@ its own bounded result or stable failure instead of the retired-store warning.
 
 One line per provider the runtime knows, whether or not anything is stored for
 it: the provider's name, how a person signs in to it — its own login where it
-has one, otherwise a key — and its standing. The standing is one of three
-plain answers: signed in, when the credential file holds one for it; from the
-environment, when it holds none and the environment answers instead; none,
-when neither does.
+has one, otherwise a key — and its standing. The standing is one of two plain
+answers: `stored`, when the credential store's safe metadata names the
+provider, and `unobserved` otherwise. The command reads no ambient secret, so
+`unobserved` says what was not observed and never that the provider is
+unavailable.
 
 ## Logging in
 
@@ -150,7 +153,10 @@ of what makes a terminal safe to paste.
 providers that have none. Provider API keys in the environment keep working
 exactly as their own documentation describes.
 
-**The runtime reads no other credential store.** If Bot's retired credential
+**The runtime reads no other credential store.** Bot's retired credential file
+is `$XDG_CONFIG_HOME/bot/credentials.json`, or `~/.config/bot/credentials.json`
+when the variable is unset. That is the path the warning below stats and the
+path `bot auth import` is normally pointed at. If Bot's retired credential
 file exists, `bot run start`, `bot run resume`, and `bot model list`, plus `bot auth list`, `bot auth login`, and `bot auth logout`, warn once after
 validation and before authentication begins. Help, capabilities, assembly commands, checks,
 and record inspection do not warn. `bot auth import` is excluded from this

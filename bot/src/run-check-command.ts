@@ -9,7 +9,7 @@ import { inertText, newCommandFailure, type CommandResult } from "./new-command-
 import { errorCode } from "./model.ts";
 import { heldRecord } from "./record-lines.ts";
 import { boundedHeldRunFile } from "./run-files.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 const RUN_CHECK_CAPTURE_BYTES = 16_777_216;
 
@@ -45,7 +45,7 @@ interface Recording {
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 const nonNegative = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 
-function failure(cause: string, message: string, exit: 1 | 2 | 5): CliFailure {
+function failure(cause: ErrorCause, message: string, exit: 1 | 2 | 5): CliFailure {
   return { code: exit === 2 ? "request-invalid" : exit === 5 ? "integrity-failed" : "home-not-found", cause, message, retryable: false, details: {}, exit };
 }
 
@@ -181,8 +181,8 @@ async function selectedRecord(query: Query, home: string): Promise<{ name: strin
 }
 
 function filesystemFailure(query: Query, reason: unknown): CommandResult {
-  const cause = errorCode(reason) ?? "filesystem-error";
-  return newCommandFailure("run.check", failure(cause, `Run check could not inspect the Bot home (${cause}).`, 1), query.json);
+  const detail = errorCode(reason) ?? "filesystem-error";
+  return newCommandFailure("run.check", failure("filesystem-error", `Run check could not inspect the Bot home (${detail}).`, 1), query.json);
 }
 
 async function safeSelectedRecord(query: Query, home: string): ReturnType<typeof selectedRecord> {

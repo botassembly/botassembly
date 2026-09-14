@@ -6,7 +6,7 @@ import { runNames } from "./inspection.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { errorCode } from "./model.ts";
 import { heldRecord } from "./record-lines.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   cwd: string;
@@ -39,7 +39,7 @@ const nonempty = (value: unknown): value is string => typeof value === "string" 
 const optionalNonempty = (value: unknown): value is string | undefined => value === undefined || nonempty(value);
 const markDecision = (value: unknown): value is ChecklistMark["decision"] => value === "done" || value === "skipped";
 
-function failure(cause: string, message: string, exit: 1 | 2 | 5): CliFailure {
+function failure(cause: ErrorCause, message: string, exit: 1 | 2 | 5): CliFailure {
   return { code: exit === 2 ? "request-invalid" : exit === 5 ? "integrity-failed" : "home-not-found",
     cause, message, retryable: false, details: {}, exit };
 }
@@ -163,8 +163,8 @@ async function selectedRecord(query: Query, home: string): Promise<{ name: strin
 }
 
 function filesystemFailure(query: Query, reason: unknown): CommandResult {
-  const cause = errorCode(reason) ?? "filesystem-error";
-  return newCommandFailure("run.checklist", failure(cause, `Run checklist could not inspect the Bot home (${cause}).`, 1), query.json);
+  const detail = errorCode(reason) ?? "filesystem-error";
+  return newCommandFailure("run.checklist", failure("filesystem-error", `Run checklist could not inspect the Bot home (${detail}).`, 1), query.json);
 }
 
 async function execute(query: Query, home: string): Promise<CommandResult> {

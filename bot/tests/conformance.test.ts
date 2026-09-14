@@ -161,6 +161,19 @@ function managementCodes(): string[] {
   return [...section.matchAll(/^\|\s*`([a-z0-9-]+)`\s*\|/gmu)].map((match) => String(match[1]));
 }
 
+/** The codes refusals.md's "Runtime-only refusals" section declares — a
+ *  reader's own, decided against configured providers, so no checked-in
+ *  directory can reach one (invariant 50). Read from the chapter for the same
+ *  reason the management codes are: the exemption is the specification's, not
+ *  this file's. Only the declaring sentence the chapter names counts, so a code
+ *  mentioned in that section's prose widens nothing (ticket 0282). */
+function runtimeOnlyCodes(): string[] {
+  const chapter = readFileSync(REFUSALS, "utf8");
+  const section = chapter.split(/^## /mu).find((part) => part.startsWith("Runtime-only refusals")) ?? "";
+  const declared = section.matchAll(/`([a-z][a-z0-9-]*)` is runtime-only,\s+because\s/gu);
+  return [...new Set([...declared].map((match) => String(match[1])))];
+}
+
 /** Whether some test in this suite asserts a whole stderr byte for byte —
  *  `.toBe("<code>  <path>\n  <sentence>\n")` — for this code. */
 function pinnedByTest(code: string, suite: string): boolean {
@@ -194,7 +207,8 @@ test("refusal codes: the reader's are corpus cases, the home's are pinned by tes
     [...corpus].filter((code) => !table.has(code)),
     "corpus codes missing from spine.ts",
   ).toEqual([]);
-  const runtimeOnly = ["model-unresolved"];
+  const runtimeOnly = runtimeOnlyCodes();
+  expect(runtimeOnly.length, "refusals.md's 'Runtime-only refusals' section read as empty").toBeGreaterThan(0);
   expect(
     [...table].filter((code) => !corpus.has(code)).sort(),
     "spine.ts codes no corpus case exercises — only home-management and runtime-only codes may stand here",

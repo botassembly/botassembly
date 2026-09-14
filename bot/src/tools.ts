@@ -115,6 +115,12 @@ const markTool: HarnessTool<ControlContext, typeof markParameters, Static<typeof
         if (item === undefined) {
           return Promise.reject(new Error(`Checklist item ${String(params.item)} does not exist.`));
         }
+        // checklist.md: a mark without nonempty evidence leaves the item todo.
+        // The parameter schema bounds the length; only a trim rejects a mark
+        // whose evidence is whitespace (ticket 0282).
+        if (params.evidence.trim().length === 0) {
+          return Promise.reject(new Error("A checklist mark requires evidence."));
+        }
         if (!validReason) {
           return Promise.reject(new Error("A skipped checklist item requires a reason."));
         }

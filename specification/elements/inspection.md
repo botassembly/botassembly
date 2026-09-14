@@ -220,6 +220,74 @@ The command reads run names, bounded root records, and authorized descendant rec
 `bot model list [provider] [--live] [--offset N] [--limit N] [--json|-j]` lists the models in Pi's local catalog. It sorts exact provider and model identities bytewise before applying offset paging. JSON returns one schema-version-1 `bot.model.list` document with model rows, page facts, and summary counts. Human output retains the model columns and ends with the number shown and the snapshot total. An empty valid snapshot succeeds.
 
 Without `--live`, the command reads Pi's local catalog and does not contact a provider. `--live` compares that set with current catalogs and may contact providers. A model seen only before is `local-only`; one seen only afterward is `live-only`; a shared identity has a null status and uses the post-refresh model facts. `PI_OFFLINE` vetoes catalog network during that refresh. A failed or aborted live refresh exits 4 and emits no model rows. A named provider without a credential is reported before contacting that provider.
+## The JSON error envelope
+
+Every command with a `--json` or `-j` mode writes one newline-terminated error
+document to standard error and nothing to standard output when it fails. The
+document is:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "error",
+  "error": {
+    "code": "request-invalid",
+    "operation": "run.list",
+    "cause": "option-repeated",
+    "message": "Run list accepts --home once.",
+    "retryable": false,
+    "details": { "option": "--home" }
+  }
+}
+```
+
+`operation` names the command that failed, in the dotted form the command
+matrix uses. `code` is what a program branches on. `cause` names the one fault
+inside that code. `message` is a bounded sentence for a person and occupies at
+most 2,048 UTF-8 bytes. `retryable` says whether repeating the same request
+could succeed without a change. `details` carries structured facts about this
+fault and is an object, empty when there are none; its members belong to the
+command and are not part of this vocabulary. Human mode writes the same message
+as one inert physical line of at most 2,048 bytes and no envelope.
+
+### Codes
+
+The code is the stable branch. Both vocabularies below are closed: a runtime
+that adds a fault names it with a code and a cause from these lists, or the
+lists grow and this chapter says so.
+
+| Code | What it says |
+| ---- | ------------ |
+| `request-invalid` | what was asked for cannot be acted on: an unknown option, a missing or repeated value, a conflicting mode, an extra argument, or a refused assembly or run |
+| `cursor-invalid` | a supplied continuation cursor is malformed, oversized, or does not decode to the shape the command emits |
+| `cursor-conflict` | the cursor is well formed and the retained state it continues has moved beneath it |
+| `home-not-found` | the home, the run, the record, or the selection the request names is not there |
+| `home-invalid` | the path given as a home is not a directory |
+| `state-not-reached` | the operation was cancelled or aborted before it reached the state the request asked for |
+| `dependency-failed` | something the command depends on failed: a filesystem call, a provider catalog, a lock another process holds, an interactive terminal |
+| `integrity-failed` | retained state or a result is unsafe, corrupt, invalid, or larger than its bound |
+
+The exit code follows the fault rather than the code
+([exit codes](runtime.md#exit-codes)): a request error exits `2`, a missing
+home or empty selection exits `1`, a cursor conflict exits `3`, a dependency
+failure exits `4`, and an integrity failure exits `5`.
+
+### Causes
+
+A cause is the specific fault inside its code, and a reader that reports the
+cause reports it without reading the message. A `*-busy` cause says a lock was
+held; a `*-failed` or `*-unavailable` cause says an operation the command
+depends on did not complete; a `*-invalid`, `*-missing`, or `*-changed` cause
+says the input or the retained state did not meet its shape. The complete
+vocabulary is:
+
+`argument-extra`, `argument-invalid`, `argument-unknown`, `arguments-invalid`, `assembly-invalid`, `assembly-refused`, `auth-runtime-invalid`, `authentication-unavailable`, `availability-unavailable`, `bad-record`, `bad-version`, `blocked`, `cancelled`, `candidate-create-failed`, `candidate-failed`, `candidate-finalization-failed`, `capture-unavailable`, `cause-unknown`, `child-disagrees`, `child-invalid`, `child-missing`, `child-unrecorded`, `close-failed`, `creation-busy`, `creation-failed`, `cursor-invalid`, `cursor-limit`, `cursor-malformed`, `cursor-ordinal`, `cursor-position`, `cursor-selection`, `cursor-snapshot`, `dependency-failed`, `descriptor-invalid`, `destination-changed`, `destination-invalid`, `destination-not-empty`, `destination-read-failed`, `document-too-large`, `exhausted`, `fault`, `field-empty`, `field-repeated`, `field-unknown`, `filesystem-error`, `filter-bytes-limit`, `filter-control`, `filter-limit`, `home-changed`, `home-create-failed`, `home-insecure`, `home-invalid`, `home-missing`, `home-unavailable`, `home-unreadable`, `import-busy`, `import-cleanup-failed`, `import-write-failed`, `installation-failed`, `installation-invalid`, `interaction-limit`, `invalid`, `limit-invalid`, `login-failed`, `logout-failed`, `mark-invalid`, `membership-changed`, `missing`, `mode-conflict`, `mode-missing`, `model-invalid`, `not-directory`, `offset-invalid`, `option-conflict`, `option-invalid`, `option-repeated`, `option-required`, `option-unknown`, `output-error`, `ownership-unavailable`, `parent-changed`, `parent-insecure`, `parent-missing`, `parent-sync-failed`, `parent-unreadable`, `path-missing`, `path-not-directory`, `provider-ambient-only`, `provider-catalog-unavailable`, `provider-failed`, `provider-invalid`, `provider-unconfigured`, `provider-unknown`, `publication-failed`, `publication-missing`, `record-changed`, `record-encoding`, `record-insecure`, `record-invalid`, `record-missing`, `record-shape`, `record-unavailable`, `record-unreadable`, `recording-invalid`, `refresh-aborted`, `refresh-failed`, `refused`, `rejected`, `removal-busy`, `removal-failed`, `removal-state-invalid`, `repeat-missing`, `request-invalid`, `result-oversized`, `result-too-large`, `run-ambiguous`, `run-missing`, `run-refused`, `runs-invalid`, `runs-unavailable`, `runtime-identity-unavailable`, `runtime-invalid`, `runtime-unavailable`, `scratch-unavailable`, `selection-ambiguous`, `selection-disagrees`, `selection-empty`, `selection-missing`, `selection-unavailable`, `selector-partial`, `session-invalid`, `session-missing`, `session-too-large`, `signal`, `source-changed`, `source-invalid`, `source-is-destination`, `source-missing`, `source-read-failed`, `stage-missing`, `state-unknown`, `stdout-delivery`, `success`, `synchronization-failed`, `temporary-changed`, `terminal-required`, `text-too-large`, `time-order-invalid`, `timeout`, `timestamp-invalid`, `unexpected`, `unreadable`, `update-busy`, `update-failed`, `value-empty`, `value-invalid`, `value-missing`, `value-oversized`.
+
+A cause a run's own ending supplies — `success`, `refused`, `exhausted`,
+`rejected`, `blocked`, `timeout`, `signal`, `fault` — reaches the envelope when
+a run fails before it is born, and means there what it means in the record
+([causes](record.md#what-it-names)).
+
 ## What a runtime has to provide
 
 - A record that `bot run events --json` can emit in one versioned document.

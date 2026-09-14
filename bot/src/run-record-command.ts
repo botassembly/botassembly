@@ -2,7 +2,7 @@ import { Writable } from "node:stream";
 import { takeHome } from "./flags.ts";
 import { newCommandFailure } from "./new-command-result.ts";
 import { inspectRawShow } from "./raw-record.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   cwd: string;
@@ -12,7 +12,7 @@ interface Boundary {
   stderr(bytes: string | Uint8Array): void;
 }
 
-function malformed(cause: string, message: string): CliFailure {
+function malformed(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

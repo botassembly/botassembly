@@ -121,9 +121,24 @@ requested name. A providerless row retains provider ambiguity as
 long options are `key-unknown` and point operators to the table and
 `--intelligence`.
 
-`timeout` defaults to 3600 and is at least 1; `retries` defaults to 2 and is at
-least 0; `local-context` defaults to `ignore`. A runtime refuses a timeout it
-cannot honour. Every effective value is recorded with its source rung.
+`timeout` defaults to 3600 and is at least 1 and at most 2,147,483; `retries`
+defaults to 2 and is at least 0; `local-context` defaults to `ignore`. A
+runtime refuses a timeout it cannot honour. Every effective value is recorded
+with its source rung.
+
+The command rung is spelled `--timeout SECONDS`, `--retries N`,
+`--local-context MODE`, and `--intelligence NAME`. `bot run start` accepts all
+four, and so does `bot assembly check`, which resolves the same ladder without
+running anything.
+
+## The scripted model
+
+`bot run start` also accepts `--script PATH`. It replaces the resolved model
+with a recorded transcript read from that file, so the run reaches no provider,
+and `run_start` says so with `model_source: "scripted"`
+([the record](record.md)). The option exists to exercise a runtime without
+spending a model call. Nothing else about the run changes: the assembly is read
+the same way, the checks run, and the record is an ordinary record.
 
 ## What `$PWD`'s own context does
 

@@ -6,7 +6,7 @@ import { AssemblyUpdateFailure, manage, type AssemblyUpdateOutcome, type Assembl
 import { errorCode } from "./model.ts";
 import { boundedText, inertText, newCommandFailure } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   cwd: string;
@@ -21,7 +21,7 @@ interface Boundary {
 
 interface ParsedUpdate { home: string; args: string[]; json: boolean }
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

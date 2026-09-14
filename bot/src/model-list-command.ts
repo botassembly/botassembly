@@ -3,7 +3,7 @@ import { jsonObject } from "./check.ts";
 import { MODEL_LIST_CONTRACT } from "./cli-contract.ts";
 import { bytewise, mapping } from "./model.ts";
 import { inertText, newCommandFailure } from "./new-command-result.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   env: NodeJS.ProcessEnv;
@@ -26,11 +26,11 @@ interface ModelRow {
   status: ModelStatus;
 }
 
-function failure(code: CliFailure["code"], cause: string, message: string, exit: CliFailure["exit"], retryable = false): CliFailure {
+function failure(code: CliFailure["code"], cause: ErrorCause, message: string, exit: CliFailure["exit"], retryable = false): CliFailure {
   return { code, cause, message, retryable, details: {}, exit };
 }
 
-function invalid(cause: string, message: string): CliFailure {
+function invalid(cause: ErrorCause, message: string): CliFailure {
   return failure("request-invalid", cause, message, 2);
 }
 

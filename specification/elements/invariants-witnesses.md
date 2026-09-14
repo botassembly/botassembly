@@ -1,12 +1,20 @@
 # The invariant witness ledger
 
+> **Stability: not applicable.** This ledger is evidence, not contract.
+
 This ledger is non-normative repository test and tooling evidence. It is not a
 chapter of the runtime contract.
 
 One row per numbered promise in [invariants.md](invariants.md): what in this
 repository would fail if a runtime stopped honoring it. Walked item by item on
 2026-08-03 (ticket 0061) by reading the tests and the corpus, never by guessing
-from an invariant's wording.
+from an invariant's wording. Re-walked against tickets 0270 through 0280 on
+2026-09-14 (ticket 0282): every file path a row names exists, and the four test
+names that no longer existed were repaired. Those tickets retired `access`,
+denial events, command-name filtering, the custom secret scanner, and the Git
+collector, and added `bot run resume`, `bot auth import`, platform
+qualification, and fan-out. Rows 34 through 37 carry the retirements; row 44
+carries `bot run resume`.
 
 Three verdicts, and only three:
 
@@ -45,7 +53,7 @@ the row says UNWITNESSED and names the rung as partial evidence.
 | 8 | Witnessed | `bot/tests/extract-tools.test.ts` "a subflow's own stages never see it in scope unless DESCEND below max-depth". Spot-falsified: deleting `scope.delete(flow.name)` from `scopedSubflows` turns it red. |
 | 9 | Witnessed | `bot/tests/extract-tools.test.ts` "each control tool's arguments are exactly the ones runtime.md fixes" — `mark` takes `item`, `state`, required `evidence`, and `reason` and nothing else, so an item's text is not something it can write. Items come from the body: same file, "checklist extraction follows the line grammar". |
 | 10 | Witnessed | `bot/tests/extract-tools.test.ts` (the tool list and the fixed argument sets); `bot/tests/hostile-gating.test.ts` "a tool call naming an unknown tool feeds back instead of faulting the stage"; `bot/tests/gating.test.ts` "CHOOSE sends back an invalid selection, asks again, and accepts the next valid selection". |
-| 11 | Witnessed | `bot/tests/cli.test.ts` "$TMP is per stage by default" asserts the second stage's `$TMP` is empty; `bot/tests/cli-fanout-handoff.test.ts` asserts each stage's `received` list exactly; one session per stage in `bot/tests/cli.test.ts` "CLI runs two faux-provider stages". Interpretation: `tmp: flow` (slots.md) is an authored opt-in to sharing scratch, pinned by "tmp: flow shares one $TMP across every stage of the flow". |
+| 11 | Witnessed | `bot/tests/cli.test.ts` "$TMP is per stage by default" asserts the second stage's `$TMP` is empty; `bot/tests/cli-fanout-handoff.test.ts` asserts each stage's `received` list exactly; one session per stage in `bot/tests/cli.test.ts` "CLI runs two faux-provider stages". Interpretation: `tmp: flow` (slots.md) is an authored opt-in to sharing scratch, pinned by "tmp: flow shares $TMP across stages and deletes it when the flow settles". |
 
 ## What the runtime guarantees
 
@@ -75,7 +83,7 @@ the row says UNWITNESSED and names the rung as partial evidence.
 | 28 | Witnessed | `bot/tests/hostile-flow.test.ts` "SEQUENCE: a provider fault in the first stage ends the run once; the next stage never appears"; `bot/tests/cli-rejected-choose.test.ts` (1/rejected at stage and run); `bot/tests/flow.test.ts` "LOOP records stop, fixed-count limit, and unanswered-question exhaustion". |
 | 29 | Witnessed | `specification/conformance/refuse/body-unexpected`, `refuse/body-missing`, `refuse/choose-body-missing`, `refuse/choose-body-comment`; `bot/tests/comment-stripping.test.ts` "a comment-only CHOOSE.md body faults body-missing, not alternative-mismatch". That the body is a *prompt*: `bot/tests/gating.test.ts` "LOOP holds an unanswered question" with `bot/tests/prompt.test.ts` "the later question is appended verbatim". |
 | 30 | Witnessed | `bot/tests/gating.test.ts` "a missing output is sent back into the same session and the next attempt passes" (the feedback bytes asserted at `checks/output-missing.txt`); `bot/tests/cli-scratch-session-prompt.test.ts` "legs 3 and 4" (the gate's reason lands in the session between the two attempts' turns). |
-| 31 | Witnessed | `bot/tests/cli-rung-precedence.test.ts` — eight peel runs plus innermost-first; `specification/conformance/accept/resolve-near`, `accept/resolve-far`, `accept/local-context-rung`. Spot-falsified: consulting containers before the stage turned "chain peel 2" red and regressed `accept/local-context-rung`. See note C on the "every key" half. |
+| 31 | Witnessed | `bot/tests/cli-rung-precedence.test.ts` "%s intelligence wins at its rung", one run for each of the six authored rungs, and "omission resolves default from home"; `specification/conformance/accept/resolve-near`, `accept/resolve-far`, `accept/local-context-rung`. Honest limit: the peel runs that once spot-falsified this row were replaced by the six rung cases in ticket 0128, so the falsification is history and the corpus cases carry the loose ladder. See note C on the "every key" half. |
 | 32 | Witnessed | `specification/conformance/refuse/key-missing-loop`, `refuse/key-missing-descend`, `refuse/value-invalid-repeat`, and `accept/descend-depth`; `bot/tests/flow.test.ts` "LOOP records stop, fixed-count limit", "DESCEND exposes only the remaining self-chain depth", and the 1-through-11 authored bound matrix; `bot/tests/cli-subflow-pins.test.ts` "leg 1" (ordinary calls across two batches); `bot/tests/subflow-depth.test.ts` covers the ten-call mixed-flow chain and a depth-11 self-chain with no tool at call position ten. |
 | 33 | Witnessed | `bot/tests/cli-checklist-schema-sendbacks.test.ts` "a skip needs a reason" — the bare skip leaves no `tool_call` event at all and the item stays `todo`; the reasoned skip is recorded with its reason. |
 
@@ -98,7 +106,7 @@ the row says UNWITNESSED and names the rung as partial evidence.
 | 41 | Witnessed | Name order: `bot/tests/cli-fanout-handoff.test.ts` (`alpha.txt` before `beta.txt`), `bot/tests/flow.test.ts` "PARALLEL width two starts in name order", `bot/tests/cli-gate-folder-faults.test.ts` (gate entries in name order), `bot/tests/record.test.ts` (prehash path order), `bot/tests/prompt.test.ts` "skills and callable helpers are flattened and bytewise ordered", `accept/shape-nesting`. Bytewise and not a locale: `bot/tests/spec-vocabulary.test.ts` "the one comparator is bytewise over UTF-8, never a locale collation". Written for this ledger: before it, replacing `bytewise` with `localeCompare` left the whole gate green, because every ordering fixture in the suite uses names the two comparators agree on. Honest limit: the pin holds the comparator, not that every call site uses it. |
 | 42 | Witnessed | `specification/conformance/refuse/frontmatter-invalid-unfenced`, `refuse/frontmatter-invalid-yaml`, `refuse/frontmatter-invalid-duplicate`, `refuse/frontmatter-bom`, `refuse/frontmatter-bom-task`; `bot/tests/fuzz-regressions.test.ts` "guard: zero-byte and BOM-prefixed sentinels refuse as unsound frontmatter". |
 | 43 | Witnessed | `bot/tests/cli.test.ts` "a caller variable passes through beneath the slots, and a slot overwrites a same-named caller variable" and "a gate script sees no BOT_HOME in its environment"; `bot/tests/cli-hook-env.test.ts` (the `HOOK_CANARY` canary through a real hook); `bot/tests/auth-snapshot.test.ts` "every built-in Pi credential environment name is removed from a stage environment"; `specification/conformance/refuse/slot-reserved-env`. |
-| 44 | Witnessed | A signal ends the run and nothing further starts: `bot/tests/flow.test.ts` "a signal mid-flow returns 128+n, starts no next stage, and runs no failure hook"; `bot/tests/gating.test.ts` "a signal-ended stage does not run its failure hook". Invoking again is a new run: `bot/tests/record.test.ts` "exclusive run-directory creation is the claim" and `bot/tests/cli-local-context.test.ts` "absence is silence", where three invocations over one fixture produce three runs. Honest limit: nothing asserts the CLI offers *no* `--resume`; `bot/tests/cli-help.test.ts` checks that every listed command appears, not that no other exists. |
+| 44 | Witnessed | A signal ends the run and nothing further starts: `bot/tests/flow.test.ts` "a signal mid-flow records what completed, where it died, and which signal arrived"; `bot/tests/gating.test.ts` "a signal-ended stage does not run its failure hook". Invoking again is a new run: `bot/tests/record.test.ts` "exclusive run-directory creation is the claim" and `bot/tests/cli-local-context.test.ts` "absence is silence", where three invocations over one fixture produce three runs. Honest limit: the signal test now asserts what the record holds rather than the `128+n` exit, the absent next stage, and the skipped failure hook, so those three claims rest on `bot/tests/gating.test.ts` and the exit table alone. `bot run resume` starts a new run from a dead donor and resumes no process, which is this invariant rather than an exception to it. |
 
 ## The record's contract
 
@@ -202,7 +210,8 @@ name would discriminate it.
 
 **C. Rung coverage is one key deep.**
 `bot/tests/cli-rung-precedence.test.ts` varies `intelligence` across all six
-authored model-choice rungs and proves the implicit home default. The loose
+authored model-choice rungs and proves the implicit home default. It holds no
+"every key" case, and none is claimed. The loose
 non-model ladder still shares one resolution path; `local-context`, `timeout`,
 and `retries` have narrower rung coverage.
 

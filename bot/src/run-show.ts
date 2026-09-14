@@ -6,7 +6,7 @@ import { bytewise } from "./model.ts";
 import { isRunLive } from "./inspection.ts";
 import { attemptKey, scratchAttempt, scratchOfRun } from "./invocation.ts";
 import { heldRecord } from "./record-lines.ts";
-import { CAUSES } from "./spine.ts";
+import { CAUSES, type ErrorCause } from "./spine.ts";
 import type { CliFailure } from "./run-list-query.ts";
 
 const RUN_SHOW_DOCUMENT_BYTES = 1_048_576;
@@ -31,10 +31,10 @@ class ReadingFailure extends Error {
   readonly failure: CliFailure;
   constructor(failure: CliFailure) { super(failure.message); this.failure = failure; }
 }
-const failure = (code: CliFailure["code"], cause: string, message: string, exit: CliFailure["exit"], details: Record<string, unknown> = {}): ReadingFailure =>
+const failure = (code: CliFailure["code"], cause: ErrorCause, message: string, exit: CliFailure["exit"], details: Record<string, unknown> = {}): ReadingFailure =>
   new ReadingFailure({ code, cause, message, retryable: false, details, exit });
-const integrity = (cause: string, message: string): ReadingFailure => failure("integrity-failed", cause, message, 5);
-const dependency = (cause: string, message: string): ReadingFailure => failure("dependency-failed", cause, message, 4);
+const integrity = (cause: ErrorCause, message: string): ReadingFailure => failure("integrity-failed", cause, message, 5);
+const dependency = (cause: ErrorCause, message: string): ReadingFailure => failure("dependency-failed", cause, message, 4);
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
 const timestamp = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
 

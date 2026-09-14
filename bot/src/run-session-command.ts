@@ -4,7 +4,7 @@ import { output, type InspectionResult } from "./inspection.ts";
 import { errorCode, plainly } from "./model.ts";
 import { newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { inspectSession } from "./one-run.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { validSessionCursor } from "./session-page.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
@@ -12,7 +12,7 @@ interface Query { run: string; stage: string; repeat?: number; limit: number; af
 
 const VALUED = ["--after", "--home", "--limit", "--repeat"] as const;
 
-function failure(cause: string, message: string, exit: 1 | 2 | 3 | 4 | 5): CliFailure {
+function failure(cause: ErrorCause, message: string, exit: 1 | 2 | 3 | 4 | 5): CliFailure {
   return { code: exit === 2 ? "request-invalid" : exit === 3 ? "cursor-conflict" : exit === 5 ? "integrity-failed" : exit === 4 ? "dependency-failed" : "home-not-found",
     cause, message, retryable: exit === 4, details: {}, exit };
 }
@@ -98,8 +98,8 @@ function rendered(query: Query, reading: InspectionResult): CommandResult {
 }
 
 function filesystemFailure(reason: unknown): CommandResult {
-  const cause = errorCode(reason) ?? "filesystem-error";
-  return newCommandFailure("run.session", failure(cause, `Run session could not inspect the Bot home (${cause}).`, 4), false);
+  const detail = errorCode(reason) ?? "filesystem-error";
+  return newCommandFailure("run.session", failure("filesystem-error", `Run session could not inspect the Bot home (${detail}).`, 4), false);
 }
 
 function write(boundary: Boundary, result: CommandResult): Promise<number> {
@@ -109,8 +109,8 @@ function write(boundary: Boundary, result: CommandResult): Promise<number> {
     return result.exit;
   });
   return attempted.then((exit) => exit, (reason: unknown) => {
-    const cause = errorCode(reason) ?? "output-error";
-    const failed = newCommandFailure("run.session", failure(cause, `Run session could not write its result (${cause}).`, 4), false);
+    const detail = errorCode(reason) ?? "output-error";
+    const failed = newCommandFailure("run.session", failure("output-error", `Run session could not write its result (${detail}).`, 4), false);
     const diagnostic = Promise.resolve().then(() => { boundary.stderr(failed.stderr); });
     return diagnostic.then(() => 4, () => 4);
   });

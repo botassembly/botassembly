@@ -4,7 +4,7 @@ import { credentialSynchronizationSettlement, type ModelRuntime } from "./model-
 import { jsonObject } from "./check.ts";
 import { AUTH_LOGIN_CONTRACT } from "./cli-contract.ts";
 import { inertText, newCommandFailure } from "./new-command-result.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary {
   stdinIsTTY: boolean;
@@ -22,12 +22,12 @@ interface ResolvedProvider { provider: Provider; type: AuthType }
 class LoginCancelledError extends Error {}
 class InteractionLimitError extends Error {}
 
-function failure(code: CliFailure["code"], cause: string, message: string, exit: CliFailure["exit"],
+function failure(code: CliFailure["code"], cause: ErrorCause, message: string, exit: CliFailure["exit"],
   retryable: boolean, provider?: string): CliFailure {
   return { code, cause, message, retryable, details: provider === undefined ? {} : { provider }, exit };
 }
 
-function invalid(cause: string, message: string, provider?: string): CliFailure {
+function invalid(cause: ErrorCause, message: string, provider?: string): CliFailure {
   return failure("request-invalid", cause, message, 2, false, provider);
 }
 

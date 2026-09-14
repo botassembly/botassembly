@@ -365,8 +365,10 @@ function parseChoose(
   };
 }
 
-function flowBody(sentinel: string, body: string): Pick<Flow, "body"> {
-  if (sentinel !== "FLOW.md" || body.trim().length === 0) return {};
+// A descend flow is otherwise ordinary (descend.md), so its body is the
+// procedure its stages receive exactly as a FLOW.md body is. Ticket 0282.
+function flowBody(body: string): Pick<Flow, "body"> {
+  if (body.trim().length === 0) return {};
   return { body };
 }
 
@@ -390,7 +392,7 @@ function parseFlow(dir: string, path: string, name: string, faults: Refusal[]): 
   validateFanoutPlacement(sequence, path, faults);
   return {
     name, path, options, sequence, skills, subflows,
-    ...flowBody(sentinel, document.body),
+    ...flowBody(document.body),
     ...(descend && typeof maxDepth === "number" ? { maxDepth } : {}),
     ...(document.data["tmp"] === "flow" ? { tmp: "flow" as const } : {}),
   };

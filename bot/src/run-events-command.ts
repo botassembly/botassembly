@@ -10,7 +10,7 @@ import { errorCode } from "./model.ts";
 import { newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { childReference, showRecord } from "./one-run.ts";
 import { heldRecord, type HeldRecord } from "./record-lines.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; resultBytesExclusive?: number; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 interface Query { run: string; child?: string; json: boolean }
@@ -19,7 +19,7 @@ type DirectoryState = "directory" | "missing" | "invalid";
 
 const VALUED = ["--child", "--home"] as const;
 
-function failure(cause: string, message: string, exit: 1 | 2 | 4 | 5): CliFailure {
+function failure(cause: ErrorCause, message: string, exit: 1 | 2 | 4 | 5): CliFailure {
   return { code: exit === 2 ? "request-invalid" : exit === 5 ? "integrity-failed" : exit === 4 ? "dependency-failed" : "home-not-found",
     cause, message, retryable: exit === 4, details: {}, exit };
 }
@@ -130,8 +130,8 @@ function render(query: Query, held: Selected, env: NodeJS.ProcessEnv, resultByte
 }
 
 function filesystemFailure(query: Query, reason: unknown): CommandResult {
-  const cause = errorCode(reason) ?? "filesystem-error";
-  return newCommandFailure("run.events", failure(cause, `Run events could not inspect the Bot home (${cause}).`, 4), query.json);
+  const detail = errorCode(reason) ?? "filesystem-error";
+  return newCommandFailure("run.events", failure("filesystem-error", `Run events could not inspect the Bot home (${detail}).`, 4), query.json);
 }
 
 function write(boundary: Boundary, query: Query, result: CommandResult): Promise<number> {
@@ -141,8 +141,8 @@ function write(boundary: Boundary, query: Query, result: CommandResult): Promise
     return result.exit;
   });
   return attempted.then((exit) => exit, (reason: unknown) => {
-    const cause = errorCode(reason) ?? "output-error";
-    const failed = newCommandFailure("run.events", failure(cause, `Run events could not write its result (${cause}).`, 4), query.json);
+    const detail = errorCode(reason) ?? "output-error";
+    const failed = newCommandFailure("run.events", failure("output-error", `Run events could not write its result (${detail}).`, 4), query.json);
     const diagnostic = Promise.resolve().then(() => { boundary.stderr(failed.stderr); });
     return diagnostic.then(() => 4, () => 4);
   });

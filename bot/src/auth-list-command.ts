@@ -3,7 +3,7 @@ import { jsonObject } from "./check.ts";
 import { AUTH_LIST_CONTRACT } from "./cli-contract.ts";
 import { bytewise, mapping } from "./model.ts";
 import { inertText, newCommandFailure } from "./new-command-result.ts";
-import type { CliFailure } from "./run-list-query.ts";
+import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { AuthListRuntime } from "./model-runtime.ts";
 
 interface Boundary {
@@ -19,7 +19,7 @@ type AuthState = "stored" | "unobserved";
 type CredentialType = CredentialInfo["type"] | null;
 interface AuthRow { provider: string; method: AuthMethod; state: AuthState; credentialType: CredentialType }
 
-function failure(cause: string, message: string): CliFailure {
+function failure(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
 }
 

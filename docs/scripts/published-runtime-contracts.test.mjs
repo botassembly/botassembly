@@ -191,7 +191,7 @@ test('the retired-contract validator permits refusal prose, negated compatibilit
 test('the specification introduction states the accepted pre-release rule', async () => {
 	const content = await readFile(join(repository, 'specification', 'README.md'), 'utf8');
 	const normalized = content.replaceAll(/\s+/gu, ' ');
-	assert.match(normalized, /Version `0\.0\.1` is the first public alpha\./u);
+	assert.match(normalized, /This publication is unreleased\. It targets `0\.1\.0`, the first public alpha,/u);
 	assert.match(normalized, /Version 1\.0 is the first promised cross-version compatibility boundary\./u);
 });
 

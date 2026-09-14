@@ -293,6 +293,10 @@ capitalized.
 | `LOOP.md`     | repeats its contents                            |
 | `CHOOSE.md`   | selects one of several alternatives and runs it |
 | `PARALLEL.md` | runs several branches at once                   |
+| `FANOUT.md`   | runs one subflow per checked list item ([fan-out](fanout.md), provisional) |
+
+`DESCEND.md` types a flow rather than a stage, so it never stands in a stage
+folder ([descend](descend.md)). Every other sentinel is in the table.
 
 **Stage** in this document means the first row, in either form: a folder typed
 by `STAGE.md`, or a single `01-name.md`. Those run an agent and produce an
