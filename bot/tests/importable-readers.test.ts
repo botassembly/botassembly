@@ -43,21 +43,26 @@ async function consumer(): Promise<{ home: string; file: string; run: string }> 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as inspection from "bot/inspection";
-import { inspectSession } from "bot/one-run";
+import * as oneRun from "bot/one-run";
 import { heldRecord } from "bot/record-lines";
+import * as readings from "bot/run-readings";
 import { renderSession, renderSessionTools } from "bot/session";
 
 const [home, directory, session] = process.argv.slice(2);
 const transcript = await readFile(join(directory, session), "utf8");
 const record = await heldRecord(directory);
-const listed = await inspection.inspectRuns(home);
-const rendered = await inspectSession(home, "${RUN}", "01-read", undefined, false);
+const parsed = readings.parseRunList([]);
+if (!("query" in parsed)) throw new Error("the run list parse refused an empty request");
+const listed = await readings.inspectRunList(home, parsed.query);
+const rendered = await oneRun.inspectSession(home, "${RUN}", "01-read", undefined, false);
 if (!record?.events.some((event) => event.run === "${RUN}")) throw new Error("record reader did not read the run");
 if (!renderSession(transcript).some((line) => line.includes("outside reader"))) throw new Error("session reader did not render the transcript");
 if (!renderSessionTools(transcript, "01-read").some((line) => line.includes("lookup"))) throw new Error("session tool reader did not render the call");
-if (!listed.output.toString().includes("${RUN}")) throw new Error("inspection reader did not list the run");
+if (!listed.stdout.toString().includes("${RUN}")) throw new Error("run list reader did not list the run");
 if (!rendered.output.toString().includes("outside reader")) throw new Error("one-run reader did not render the session");
 if ("lockRun" in inspection || "inspectPrune" in inspection) throw new Error("the reader door exposed runtime or mutation");
+if ("inspectRuns" in inspection) throw new Error("the inspection door still carries inspectRuns");
+if ("inspectShow" in oneRun) throw new Error("the one-run door still carries inspectShow");
 `);
   return { home, file, run: directory };
 }

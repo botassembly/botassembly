@@ -1,7 +1,7 @@
-// Ticket 0289 — one operation, `run.session`, is compared live against its
-// importable counterpart so the suite lands with a real comparison and no
-// allowlist covers every operation. Every other operation sits in exactly one
-// of two checked in allowlists until the export tickets shrink them.
+// Ticket 0289 opened this suite with one operation, `run.session`, compared
+// live against its importable counterpart. Ticket 0291 added `run.list`,
+// `run.show`, and `run.record`. Every other operation sits in exactly one of
+// two checked in allowlists until the export tickets shrink them.
 //
 // The map is the trigger for both allowlist directions (`bot/package.json`'s
 // export paths carry no operation names): an operation absent from the map
@@ -27,12 +27,12 @@ const STAGE = "01-read";
 const SESSION = `stages/${STAGE}/1/session.jsonl`;
 const CLI = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
-// Sixteen operations carry `mutates: false` (ticket "Current facts"). One of
-// them, `run.session`, is compared live below. The other fifteen have no
-// importable counterpart yet.
+// Sixteen operations carry `mutates: false` (ticket "Current facts"). Four of
+// them are compared live below. The other twelve have no importable
+// counterpart yet.
 const PENDING_EXPORT: readonly NewOperation[] = [
   "assembly.check", "assembly.list", "auth.list", "capabilities", "home.busy", "home.show", "model.list",
-  "run.check", "run.checklist", "run.events", "run.list", "run.output", "run.record", "run.request", "run.show",
+  "run.check", "run.checklist", "run.events", "run.output", "run.request",
 ];
 
 // The nine operations that mutate the Bot home or the credential store. The
@@ -44,11 +44,16 @@ const PENDING_MUTATION: readonly NewOperation[] = [
   "auth.import", "auth.login", "auth.logout", "run.start", "run.resume",
 ];
 
-// The only entry: `run-session-command.ts:124` calls the same `inspectSession`
-// (`one-run.ts:413`) the consumer imports. The command runs with `--raw`; the
-// import runs with `raw = true` and `page = undefined`.
+// Each entry names the function the command itself calls. `run-session-command.ts:124`
+// calls `inspectSession` (`one-run.ts:413`); `run-list-command.ts:38` calls
+// `inspectRunList`; `run-show-command.ts:22` and `runShowReading` both call
+// `readRunShow`; `run-record-command.ts:54` and `runRecordReading` both call
+// `inspectRawShow`.
 const COUNTERPARTS: Readonly<Partial<Record<NewOperation, string>>> = {
   "run.session": "inspectSession (bot/one-run)",
+  "run.list": "inspectRunList (bot/run-readings)",
+  "run.show": "runShowReading (bot/run-readings)",
+  "run.record": "runRecordReading (bot/run-readings)",
 };
 
 function operationFault(
@@ -78,20 +83,24 @@ test("an operation added to CLI_CONTRACTS with no export or allowlist entry fail
     .toBe("assembly.retire has no importable counterpart and sits in no allowlist");
 });
 
-// Red demonstration 2: an entry removed from PENDING_EXPORT with no counterpart added.
-test("an operation dropped from PENDING_EXPORT with no counterpart fails naming the missing counterpart", () => {
-  const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
-  const shrunk = PENDING_EXPORT.filter((operation) => operation !== "run.list");
-  expect(operationFault(operations, shrunk, PENDING_MUTATION, COUNTERPARTS))
-    .toBe("run.list has no importable counterpart and sits in no allowlist");
-});
+// Red demonstration 2, one mutated copy per exported operation because
+// `operationFault` returns on the first offender. Dropping one export without
+// returning its name to an allowlist fails naming exactly that operation.
+for (const operation of ["run.list", "run.show", "run.record"]) {
+  test(`${operation} dropped from the counterpart map with no allowlist entry fails naming it`, () => {
+    const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
+    const shrunk = Object.fromEntries(Object.entries(COUNTERPARTS).filter(([name]) => name !== operation));
+    expect(operationFault(operations, PENDING_EXPORT, PENDING_MUTATION, shrunk))
+      .toBe(`${operation} has no importable counterpart and sits in no allowlist`);
+  });
+}
 
 // Red demonstration 3: an operation named in both the map and an allowlist.
 test("an operation named in both the counterpart map and an allowlist fails naming the stale entry", () => {
   const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
-  const stale = { ...COUNTERPARTS, "run.list": "inspectRuns (bot/inspection)" };
-  expect(operationFault(operations, PENDING_EXPORT, PENDING_MUTATION, stale))
-    .toBe("run.list sits in the counterpart map and in an allowlist");
+  const stale = { ...COUNTERPARTS, "run.output": "selectOutput (bot/run-output)" };
+  expect(operationFault(operations, [...PENDING_EXPORT], PENDING_MUTATION, stale))
+    .toBe("run.output sits in the counterpart map and in an allowlist");
 });
 
 test("the allowlists and the map cover CLI_CONTRACTS exactly once, with no leftovers", () => {
@@ -108,7 +117,33 @@ const transcript = [
   "",
 ].join("\n");
 
-async function fixture(): Promise<{ home: string; file: string }> {
+// Every live comparison runs the command in a child process and the import in
+// the consumer's own process, then requires the same bytes and the fixture's
+// own run name inside them.
+const PREAMBLE = `
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const runChild = promisify(execFile);
+const [home, cli] = process.argv.slice(2);
+
+async function commandBytes(args) {
+  const done = await runChild(process.execPath, [cli, ...args, "--home", home],
+    { env: { ...process.env }, encoding: "buffer", maxBuffer: 16 * 1024 * 1024 });
+  return Buffer.from(done.stdout);
+}
+
+function agree(operation, imported, commanded) {
+  if (!imported.equals(commanded)) {
+    throw new Error(\`\${operation} bytes differ: command \${commanded.length} bytes, import \${imported.length} bytes\`);
+  }
+  if (!commanded.toString("utf8").includes("${RUN}")) {
+    throw new Error(\`the compared \${operation} bytes did not carry the fixture run name\`);
+  }
+}
+`;
+
+async function fixture(consumer: string): Promise<{ home: string; file: string }> {
   const root = await mkdtemp(join(tmpdir(), "bot-library-contract-"));
   roots.push(root);
   const home = join(root, "home");
@@ -124,7 +159,14 @@ async function fixture(): Promise<{ home: string; file: string }> {
   await mkdir(join(root, "node_modules"));
   await symlink(join(import.meta.dirname, ".."), join(root, "node_modules", "bot"), "dir");
   const file = join(root, "consumer.mjs");
-  await writeFile(file, `
+  await writeFile(file, consumer);
+  return { home, file };
+}
+
+afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+
+test("run.session compared live: `bot run session --raw` and inspectSession(raw=true) agree byte for byte", async () => {
+  const held = await fixture(`
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { inspectSession } from "bot/one-run";
@@ -148,12 +190,37 @@ if (!commandedBytes.toString("utf8").includes("live contract reader")) {
   throw new Error("the compared bytes did not carry the fixture transcript");
 }
 `);
-  return { home, file };
-}
+  await run(process.execPath, [held.file, held.home, CLI], { encoding: "utf8" });
+});
 
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+test("run.list compared live: `bot run list --json` and inspectRunList agree byte for byte", async () => {
+  const held = await fixture(`${PREAMBLE}
+import { inspectRunList, parseRunList } from "bot/run-readings";
 
-test("run.session compared live: `bot run session --raw` and inspectSession(raw=true) agree byte for byte", async () => {
-  const held = await fixture();
+const parsed = parseRunList(["--json"]);
+if (!("query" in parsed)) throw new Error("the run list parse refused --json");
+const imported = await inspectRunList(home, parsed.query);
+agree("run.list", imported.stdout, await commandBytes(["run", "list", "--json"]));
+`);
+  await run(process.execPath, [held.file, held.home, CLI], { encoding: "utf8" });
+});
+
+test("run.show compared live: `bot run show --json` and runShowReading agree byte for byte", async () => {
+  const held = await fixture(`${PREAMBLE}
+import { runShowReading } from "bot/run-readings";
+
+const imported = await runShowReading(home, "${RUN}", true, { ...process.env });
+agree("run.show", imported.stdout, await commandBytes(["run", "show", "${RUN}", "--json"]));
+`);
+  await run(process.execPath, [held.file, held.home, CLI], { encoding: "utf8" });
+});
+
+test("run.record compared live: `bot run record --raw` and runRecordReading agree byte for byte", async () => {
+  const held = await fixture(`${PREAMBLE}
+import { runRecordReading } from "bot/run-readings";
+
+const imported = await runRecordReading(home, "${RUN}");
+agree("run.record", imported.stdout, await commandBytes(["run", "record", "${RUN}", "--raw"]));
+`);
   await run(process.execPath, [held.file, held.home, CLI], { encoding: "utf8" });
 });

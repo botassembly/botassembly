@@ -1,7 +1,6 @@
 import { basename, isAbsolute, join } from "node:path";
 import { jsonObject } from "./check.ts";
 import { lstatExists } from "./documents.ts";
-import { childRecordAgrees } from "./child-record.ts";
 import { explainRun } from "./explain.ts";
 import { scratchOfRun } from "./invocation.ts";
 import { noHome, nothing, output, result, runNames, RUNS_BOUND, type InspectionResult } from "./inspection.ts";
@@ -219,8 +218,6 @@ export function childReference(reference: string): boolean {
   return !isAbsolute(reference) && childParts(parts) && childSuffix(parts);
 }
 
-const childUnavailable = (): InspectionResult => nothing("The recorded child is unavailable.");
-
 // `bot show --check`: the sealed captured output of one named check. A run may
 // record the same check more than once — a warning turn once did, a retry still
 // can — and the recordings answer as one only when every successful one agrees
@@ -257,30 +254,6 @@ export async function inspectCheck(home: string, prefix: string, file: string): 
   const held = await heldRunFile(run.directory, first.capture);
   if (held.kind !== "held") return nothing(`Run ${name} no longer holds ${first.capture}.`);
   return { exitCode: 0, output: held.bytes };
-}
-
-async function showChild(
-  home: string, directory: string, parent: Record<string, unknown>, child: string, json: boolean, scratchRoot: string,
-): Promise<InspectionResult> {
-  const record = await heldRecord(directory, `${child}/record.jsonl`);
-  if (record === undefined) return childUnavailable();
-  if (json && record.classification === "invalid") {
-    return showRecord(home, join(directory, ...child.split("/")), record, true, scratchRoot);
-  }
-  if (record.fault !== undefined || !await childRecordAgrees(directory, child, parent, record)) return childUnavailable();
-  return showRecord(home, join(directory, ...child.split("/")), record, json, scratchRoot);
-}
-
-export async function inspectShow(home: string, prefix: string, json: boolean, scratchRoot: string, child?: string): Promise<InspectionResult> {
-  const run = await openRun(home, prefix, json && child === undefined);
-  if ("failed" in run) return run.failed;
-  if (child === undefined) return showRecord(home, run.directory, run.record, json, scratchRoot);
-  const parent = run.record.events.find((event) => event["event"] === "subflow_call" && event["started"] === true && event["child"] === child);
-  if (!childReference(child) || parent === undefined) return childUnavailable();
-  // The child spelling came from its parent, but it is still an opaque path:
-  // heldRecord walks it from the held parent root and rejects every linked
-  // component before it opens the child's record.
-  return showChild(home, run.directory, parent, child, json, scratchRoot);
 }
 
 /** What `bot logs` was asked for: one run or the whole home, narrowed by

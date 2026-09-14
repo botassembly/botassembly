@@ -29,7 +29,7 @@ function rawUnavailable(copied: CopiedRunFile): string {
   return "The selected record cannot be read safely.";
 }
 
-function unavailable(stderr: (bytes: string | Uint8Array) => void): number {
+function unavailable(stderr: (bytes: string | Uint8Array) => void): 0 | 1 {
   stderr("The recorded child is unavailable.\n");
   return 1;
 }
@@ -48,7 +48,7 @@ async function rawPath(directory: string, child: string | undefined): Promise<st
 export async function inspectRawShow(
   home: string, prefix: string, child: string | undefined,
   stdout: () => Writable, stderr: (bytes: string | Uint8Array) => void,
-): Promise<number> {
+): Promise<0 | 1> {
   const selected = await openRunDirectory(home, prefix);
   if ("failed" in selected) {
     if (selected.failed.diagnostics !== undefined) stderr(output(selected.failed.diagnostics.map(plainly)));

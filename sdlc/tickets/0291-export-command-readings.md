@@ -67,7 +67,7 @@ Ticket 0289, landed at `e6923ec`.
 ## Size decision
 
 - Starting production size: 18878 nonblank lines
-- Ending production size: 18888 nonblank lines
+- Ending production size: 18882 nonblank lines
 - Simpler approach tried: exporting all fifteen read-only operations in one ticket, then exporting five by adding `run.output` and `run.request`.
 - Why insufficient alternatives were rejected: twelve of the fifteen need handler surgery first. Ten build the document or the runtime input inside the handler, and two of those, `auth.list` and `model.list`, also need a Pi runtime handed to the importer, which is an export shape this ticket should not decide in passing. `run.output` and `run.request` look ready because `selectOutput`, `selectRequest`, and `copyVerifiedOutput` are already exported, but the rule that turns a mismatch or a fault into the command's bytes lives in the module-private `copySelected` (`bot/src/run-output-command.ts:56-70`), so a wrapper would match the command only on success. The three here need no handler surgery: the whole reading, faults included, already exists as a function the handler only prints.
 - Production code added: one file of about 35 nonblank lines and one export path.
