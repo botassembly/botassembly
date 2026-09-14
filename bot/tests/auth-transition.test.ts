@@ -55,31 +55,31 @@ async function fixture() {
   return { root, home, retired, held, faux, output, errors };
 }
 
-test("every authentication surface warns once and leaves the retired store byte-for-byte rollback-readable", async () => {
+test("auth commands warn once; run and model-list commands stay silent about the retired store", async () => {
   const held = await fixture();
   const beforeBytes = await readFile(held.retired);
   const before = await lstat(held.retired);
   held.faux.setResponses([fauxAssistantMessage("done")]);
   const firstOffset = Buffer.concat(held.errors).length;
   expect(await main(["run", "start", "review/main", "request", "--retries", "0"], held.held)).toBe(1);
-  expect(Buffer.concat(held.errors).subarray(firstOffset).toString().split(WARNING).length - 1).toBe(1);
+  expect(Buffer.concat(held.errors).subarray(firstOffset).toString().split(WARNING).length - 1).toBe(0);
   const donor = (await runsIn(held.home)).at(-1);
   if (donor === undefined) throw new Error("fixture created no donor run");
 
   const surfaces = [
-    ["run", "start", "review/main", "request"],
-    ["run", "resume", donor],
-    ["model", "list", "faux"],
-    ["auth", "list"],
-    ["auth", "login", "openai"],
-    ["auth", "logout", "openai"],
+    [["run", "start", "review/main", "request"], 0],
+    [["run", "resume", donor], 0],
+    [["model", "list", "faux"], 0],
+    [["auth", "list"], 1],
+    [["auth", "login", "openai"], 1],
+    [["auth", "logout", "openai"], 1],
   ] as const;
-  for (const argv of surfaces) {
+  for (const [argv, expected] of surfaces) {
     held.faux.setResponses([writes("$OUTPUT", "done"), fauxAssistantMessage("done")]);
     const offset = Buffer.concat(held.errors).length;
     await main([...argv], held.held);
     const addition = Buffer.concat(held.errors).subarray(offset).toString();
-    expect(addition.split(WARNING).length - 1, argv.join(" ")).toBe(1);
+    expect(addition.split(WARNING).length - 1, argv.join(" ")).toBe(expected);
     expect(addition).not.toContain(SECRET);
   }
 
@@ -89,6 +89,30 @@ test("every authentication surface warns once and leaves the retired store byte-
     .toEqual({ ino: before.ino, uid: before.uid, gid: before.gid, mode: before.mode & 0o777 });
   expect(await fileCredentialStore(held.retired, held.held.clock).read("openai"))
     .toEqual({ type: "api_key", key: SECRET });
+});
+
+test("run start, run resume, and model list write nothing about the retired store; auth list writes exactly the advisory", async () => {
+  const held = await fixture();
+  held.faux.setResponses([fauxAssistantMessage("done")]);
+  await main(["run", "start", "review/main", "request", "--retries", "0"], held.held);
+  const donor = (await runsIn(held.home)).at(-1);
+  if (donor === undefined) throw new Error("fixture created no donor run");
+
+  const silent = [
+    ["run", "start", "review/main", "request"],
+    ["run", "resume", donor],
+    ["model", "list", "faux"],
+  ] as const;
+  for (const argv of silent) {
+    held.faux.setResponses([writes("$OUTPUT", "done"), fauxAssistantMessage("done")]);
+    const offset = Buffer.concat(held.errors).length;
+    await main([...argv], held.held);
+    expect(Buffer.concat(held.errors).subarray(offset).toString(), argv.join(" ")).toBe("");
+  }
+
+  const offset = Buffer.concat(held.errors).length;
+  await main(["auth", "list"], held.held);
+  expect(Buffer.concat(held.errors).subarray(offset).toString()).toBe(WARNING);
 });
 
 test("help, checks, inspections, and import refusal do not warn", async () => {
@@ -122,7 +146,7 @@ test("help and specification publish the current authentication surface", async 
     expect(specification).toContain(surface);
   }
   const normalizedSpecification = specification.replace(/\s+/gu, " ");
-  expect(normalizedSpecification).toContain("`bot run start`, `bot run resume`, and `bot model list`, plus `bot auth list`, `bot auth login`, and `bot auth logout`, warn once after validation and before authentication begins. Help, capabilities, assembly commands, checks, and record inspection do not warn. `bot auth import` is excluded from this warning and emits its import-specific result or failure.");
+  expect(normalizedSpecification).toContain("`bot auth list`, `bot auth login`, and `bot auth logout` warn once after validation and before authentication begins. `bot run start`, `bot run resume`, and `bot model list` never warn about the retired store. Help, capabilities, assembly commands, checks, and record inspection do not warn. `bot auth import` is excluded from this warning and emits its import-specific result or failure.");
 
   const reference = await readFile(new URL("../../docs/src/content/docs/operate/providers-and-credentials.md", import.meta.url), "utf8");
   for (const anchor of ["authentication", "the-commands", "the-listing", "logging-in", "the-laws"]) {

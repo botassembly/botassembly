@@ -11,7 +11,6 @@ interface Boundary {
   stderr(bytes: string | Uint8Array): void;
   modelRuntime?: () => Promise<Models>;
   authProvider?: (id: string) => Provider | undefined | Promise<Provider | undefined>;
-  beforeCredentialAccess?: () => void;
 }
 
 interface Request { provider?: string; live: boolean; json: boolean; offset: number; limit: number }
@@ -264,7 +263,6 @@ async function liveSelection(request: Request, boundary: Boundary, models: Model
 async function run(request: Request, boundary: Boundary): Promise<number> {
   const invalidProvider = await validateProvider(request, boundary);
   if (invalidProvider !== undefined) return emitFailure(boundary, invalidProvider, request.json);
-  boundary.beforeCredentialAccess?.();
   const acquired = await acquireRuntime(boundary);
   if ("failure" in acquired) return emitFailure(boundary, acquired.failure, request.json);
   const models = acquired.value;

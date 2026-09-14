@@ -219,7 +219,6 @@ test("unknown providers and invalid runtime rows fail with no partial result", a
 test("an unknown provider stops at safe provider metadata before warning or runtime construction", async () => {
   const runtime = fixtureRuntime([listedModel("alpha", "one")]);
   const held = boundary(runtime);
-  held.value.beforeCredentialAccess = () => { runtime.events.push("warning"); };
   held.value.authProvider = (id) => { runtime.events.push(`catalog:${id}`); return undefined; };
 
   expect(await main(["model", "list", "missing", "--json"], held.value)).toBe(2);
@@ -303,18 +302,17 @@ test("empty and maximum pages stay within their complete output bounds", async (
   expect(human.out).toContain("Showing 200 of 200 models.\n");
 });
 
-test("the current route stays separate from legacy models and warns before runtime construction", async () => {
+test("the current route stays separate from legacy models and emits nothing about the retired store", async () => {
   const root = await mkdtemp(join(tmpdir(), "bot-model-list-warning-")); roots.push(root);
   const retired = join(root, "credentials.json"); await writeFile(retired, "{}", { mode: 0o600 });
   const runtime = fixtureRuntime([listedModel("alpha", "one")]);
   const held = boundary(runtime); held.value.retiredCredentialPath = retired;
-  held.value.beforeCredentialAccess = () => { runtime.events.push("warning"); };
   const legacy = createModels(); legacy.setProvider(fauxProvider({ provider: "legacy", models: [{ id: "old" }] }).provider);
   held.value.models = legacy;
 
   expect(await main(["model", "list", "--json"], held.value)).toBe(0);
-  expect(runtime.events).toEqual(["warning", "runtime"]);
-  expect(Buffer.concat(held.err).toString()).toBe("The retired Bot credential store is inactive; this command uses Pi's auth.json.\n");
+  expect(runtime.events).toEqual(["runtime"]);
+  expect(Buffer.concat(held.err).toString()).toBe("");
 
 });
 

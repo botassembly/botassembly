@@ -19,7 +19,6 @@ export interface RunCommandBoundary {
   clock: DriverClock;
   models?: MutableModels;
   modelRuntime?: () => Promise<Models>;
-  beforeCredentialAccess?: () => void;
   createGating?: RunDependencies["createGating"];
   executeFlow?: RunDependencies["executeFlow"];
   captured?: RunDependencies["captured"];
@@ -91,12 +90,10 @@ export async function runOperation(args: string[], boundary: RunCommandBoundary,
     const none = { code: "request-invalid" as const, path: read.invocation.target, sentence: "Give exactly one request." };
     return { kind: "faults", faults: held.length > 0 ? held : [none] };
   }
-  boundary.beforeCredentialAccess?.();
   const result = await runCommand(read, request, dependencies(boundary, options.idFile, script), undefined, correlation);
   return "faults" in result ? { kind: "faults", faults: result.faults } : { kind: "result", result };
 }
 
 export function resumeDependencies(boundary: RunCommandBoundary, idFile: string | undefined): RunDependencies {
-  boundary.beforeCredentialAccess?.();
   return dependencies(boundary, idFile);
 }

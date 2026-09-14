@@ -157,9 +157,10 @@ exactly as their own documentation describes.
 is `$XDG_CONFIG_HOME/bot/credentials.json`, or `~/.config/bot/credentials.json`
 when the variable is unset. That is the path the warning below stats and the
 path `bot auth import` is normally pointed at. If Bot's retired credential
-file exists, `bot run start`, `bot run resume`, and `bot model list`, plus `bot auth list`, `bot auth login`, and `bot auth logout`, warn once after
-validation and before authentication begins. Help, capabilities, assembly commands, checks,
-and record inspection do not warn. `bot auth import` is excluded from this
+file exists, `bot auth list`, `bot auth login`, and `bot auth logout` warn once after
+validation and before authentication begins. `bot run start`, `bot run resume`, and
+`bot model list` never warn about the retired store. Help, capabilities, assembly commands,
+checks, and record inspection do not warn. `bot auth import` is excluded from this
 warning and emits its import-specific result or failure. The
 retired file remains unchanged and inactive except as this command's explicit
 source. An operator can still roll back to a version that reads the preserved

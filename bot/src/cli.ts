@@ -33,6 +33,7 @@ export interface CliBoundary extends RunCommandBoundary {
   signal?: AbortSignal;
   /** Retired Bot store used only for the transition-preservation warning. */
   retiredCredentialPath?: string;
+  beforeCredentialAccess?: () => void;
   afterAssemblyUpdateAside?: () => Promise<void>;
   afterAssemblyUpdateSelection?: () => Promise<void>;
   afterAssemblyUpdatePublish?: () => Promise<void>;
