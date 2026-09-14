@@ -33,15 +33,15 @@ Every selected implementation ticket is complete, and the release rule now appli
 19. **Completed in ticket 0289:** hold every operation in `CLI_CONTRACTS` to an importable counterpart with a contract test, comparing `run.session` live and carrying the rest in two checked in allowlists that a counterpart map forces to shrink. Requirement L4, the structured refusal comparison, is deferred to the export tickets below.
 20. **Completed in ticket 0290:** the credential advisory about the retired store now prints only from `bot auth list`, `bot auth login`, and `bot auth logout`, exactly once; `bot run start`, `bot run resume`, and `bot model list` write nothing to stderr on success. Closes the seventh issue in the 2026-09-14 admin surface and library requirements note.
 21. **Completed in ticket 0291:** export `run.list`, `run.show`, and `run.record` through the new `run-readings` package door and retire `inspectRuns` and `inspectShow` as public. Turns three of the fifteen read-only operations in the 0289 contract test green.
-22. **Planned:** admit the nine mutating operations to the export door under Ian's child-process ruling, and replace the internals assertion at `importable-readers.test.ts:60` with one that names what stays private.
-23. **Planned:** declare `types` and the compatibility rule for every export path in `bot/package.json`.
-24. **Planned:** check the specification's operation inventory against `CLI_CONTRACTS` and add the missing `auth.import`.
-25. **Planned:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
-26. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
-27. **Planned:** add one read-only operation that lists the home's intelligence table.
-28. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
-29. **Planned:** make `bot run resume` inherit the donor's recorded command-rung intelligence.
-30. **Planned:** add the WSL leg to `.github/workflows/runtime.yml` and widen the `platformcheck` comment.
+22. **Completed in ticket 0292:** add a `wsl` job to `.github/workflows/runtime.yml`, triggered by manual dispatch and `v*` tag pushes, that installs WSL2 on a hosted Windows runner, clones the exact dispatched commit inside the distribution's own filesystem, and runs `make -C bot install` then `make platformcheck` as a non-root user; widen `sdlc/scripts/platformcheck`'s comment to name the Linux, macOS, and WSL legs.
+23. **Planned:** admit the nine mutating operations to the export door under Ian's child-process ruling, and replace the internals assertion at `importable-readers.test.ts:60` with one that names what stays private.
+24. **Planned:** declare `types` and the compatibility rule for every export path in `bot/package.json`.
+25. **Planned:** check the specification's operation inventory against `CLI_CONTRACTS` and add the missing `auth.import`.
+26. **Planned:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
+27. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
+28. **Planned:** add one read-only operation that lists the home's intelligence table.
+29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
+30. **Planned:** make `bot run resume` inherit the donor's recorded command-rung intelligence.
 31. **Planned:** give `run.output` and `run.request`'s fault-to-bytes rule an exported home apart from the module-private `copySelected`, then export both through the `run-readings` door ticket 0291 opened.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
