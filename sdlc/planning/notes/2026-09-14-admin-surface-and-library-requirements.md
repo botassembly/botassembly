@@ -152,4 +152,6 @@ Tickets 1 through 4 come first so that every command added in 6 through 9 ships 
 
 ## Open questions for Ian
 
+Ruled by Ian, 2026-09-14: the importable `run.start` and `run.resume` functions start the run in a child process and return the same document the command prints. In-process run execution is not promised. Every other operation runs in the importer's process. The question below is answered and stays for the record.
+
 - Ruling 1 admits `run.start` and `run.resume` to the importable door. A consuming application that starts runs in its own process shares that process's lifetime with the run. Bot's locking and signal handling were designed for a CLI process that owns its run. Whether the library contract promises in-process run execution, or promises only that the mutation is reachable and still uses a child process, is a design commitment worth Ian's ruling before ticket 3.
