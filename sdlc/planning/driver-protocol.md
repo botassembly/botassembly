@@ -105,3 +105,9 @@ around, or it will invent one.
 Codex 5.6 refuses robustness- and security-flavored tickets;
 route those to a Claude lane. Opus is the default builder for
 everything in this queue.
+
+Ruled by Ian, 2026-09-14: writing work goes to Opus. A ticket
+whose deliverable is documentation pages, specification chapters,
+planning notes, or records is built by an Opus agent at medium
+effort. Code tickets follow the complexity rubric, where level 1
+and 2 go to Sonnet and level 3 to Opus.
