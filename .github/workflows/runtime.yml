@@ -77,6 +77,7 @@ jobs:
           git fetch --depth 1 origin "$SHA"
           git checkout FETCH_HEAD
       - run: |
+          cd /home/builder
           curl -fsSLO https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
           echo "9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37  node-v22.22.0-linux-x64.tar.xz" | sha256sum -c -
           mkdir -p /home/builder/node
