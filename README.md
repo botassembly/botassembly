@@ -63,7 +63,7 @@ intelligences:
     reasoning: low
 ```
 
-`bot auth login openai-codex` stores a credential, and the provider's documented environment key works too. `bot home show` prints the home Bot found. The home's `config.yaml` contains its intelligence choices. [Your first assembly](https://botassembly.org/guides/first-assembly/) walks the whole path and builds a small two-stage workflow.
+`bot auth login openai-codex` stores a credential, and the provider's documented environment key works too. `bot home show` prints the home Bot found. The home's `config.yaml` contains its intelligence choices. [Install](https://botassembly.org/start/install/) walks the whole path, and [Write your own](https://botassembly.org/start/write-your-own/) builds a small two-stage workflow.
 
 ## Four questions
 
@@ -86,7 +86,7 @@ intelligences:
 
 ## The format and the runtime
 
-The format is a folder contract with a versioned specification and a conformance corpus of 143 cases. It is plain text on disk and it names no program. The runtime is `bot`, one implementation that reads such a folder, calls providers, and seals a record. `bot assembly check` is the seam between them. It reports the statically reachable flow definitions and nodes within Bot's fixed ten-child-call ceiling without calling a model. Read [the format and the runtime](https://botassembly.org/format-and-runtime/) before anything else.
+The format is a folder contract with a versioned specification and a conformance corpus of 143 cases. It is plain text on disk and it names no program. The runtime is `bot`, one implementation that reads such a folder, calls providers, and seals a record. `bot assembly check` is the seam between them. It reports the statically reachable flow definitions and nodes within Bot's fixed ten-child-call ceiling without calling a model. Read [the format and the runtime](https://botassembly.org/understand/format-and-runtime/) before anything else.
 
 ## What it is not
 

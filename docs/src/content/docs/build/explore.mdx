@@ -1,0 +1,13 @@
+---
+title: Explore an assembly
+description: Thirty-five real assembly folders beside the exact lines bot assembly check prints for each one.
+tableOfContents: false
+---
+
+import AssemblyExplorer from '../../../components/AssemblyExplorer.astro';
+
+Pick a case, click through its files, and read what `bot assembly check` resolves for it on the right.
+
+Every resolved option carries the rung it came from. A rung is one place a value can be set. `from stage` means the stage's own frontmatter set it. `from assembly` means `ASSEMBLY.md` did. `from default` means nothing in the tree did and the format's own default stands.
+
+<AssemblyExplorer />

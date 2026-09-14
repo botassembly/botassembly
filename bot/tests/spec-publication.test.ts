@@ -169,9 +169,9 @@ test("public guidance states the file-observation and operating-system boundary"
     witnesses: read("elements/invariants-witnesses.md"),
     slots: read("elements/slots.md"),
     inspection: read("elements/inspection.md"),
-    inspectionReference: readFileSync(join(DOCUMENTATION, "reference/inspection.md"), "utf8"),
-    principles: readFileSync(join(DOCUMENTATION, "principles.md"), "utf8"),
-    guide: readFileSync(join(DOCUMENTATION, "guides/install-and-use.md"), "utf8"),
+    inspectionReference: readFileSync(join(DOCUMENTATION, "operate/reading-a-record.md"), "utf8"),
+    principles: readFileSync(join(DOCUMENTATION, "understand/principles.md"), "utf8"),
+    guide: readFileSync(join(DOCUMENTATION, "operate/before-you-pilot-it.md"), "utf8"),
   };
 
   for (const [name, prose] of Object.entries(publications)) {
@@ -201,7 +201,7 @@ test("public guidance states the file-observation and operating-system boundary"
 test("published model readings distinguish pinned and live network behavior", () => {
   const published = [
     commandSection(read("elements/inspection.md"), "bot model list"),
-    readFileSync(join(DOCUMENTATION, "reference/models.md"), "utf8"),
+    readFileSync(join(DOCUMENTATION, "operate/providers-and-credentials.md"), "utf8"),
   ];
   for (const text of published) {
     expect(text).toMatch(/without `--live`[\s\S]*(?:locally configured|local) catalog[\s\S]*does not contact/iu);
@@ -214,7 +214,7 @@ test("published model readings distinguish pinned and live network behavior", ()
 });
 
 test("the model reference publishes the trusted local configuration limit", () => {
-  const text = readFileSync(join(DOCUMENTATION, "reference/models.md"), "utf8");
+  const text = readFileSync(join(DOCUMENTATION, "operate/providers-and-credentials.md"), "utf8");
   expect(text).toMatch(/models\.json[\s\S]*trusted operator input[\s\S]*command[\s\S]*process owner's filesystem and network authority/iu);
   expect(text).toMatch(/agent directory[\s\S]*real directory[\s\S]*0700/iu);
   expect(text).toMatch(/models\.json[\s\S]*real regular file[\s\S]*0600[\s\S]*symbolic link/iu);
@@ -307,7 +307,7 @@ test("the hooks contract sends an agent-reported fault and its retained reason t
 });
 
 test("both source run id file statements name the current run-creation commands", () => {
-  const reference = readFileSync(join(DOCUMENTATION, "reference/invocation.md"), "utf8");
+  const reference = readFileSync(join(DOCUMENTATION, "reference/commands.md"), "utf8");
   const statements = new Map([
     ["runtime", nestedSection(read("elements/runtime.md"), "Run id file")],
     ["invocation", section(read("elements/invocation.md"), "Run id file")],

@@ -131,7 +131,7 @@ export const steps = [
 		layout: 'wide',
 		blurb:
 			'`bot assembly check` calls no model and costs nothing. It prints one flow-definition row and one row for each reachable node. Six rows appear here. Two node rows are the choice arms, so a run walks four nodes.',
-		spec: { href: '/reference/inspection/', label: 'Inspection' },
+		spec: { href: '/operate/reading-a-record/', label: 'Reading a record' },
 		github: 'triage/README.md',
 	},
 	{

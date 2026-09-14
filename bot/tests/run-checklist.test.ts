@@ -206,7 +206,7 @@ test("the specification, conformance, changelog, and documentation publish the c
     ["../../specification/elements/inspection.md", ["`bot run checklist RUN", "`bot.run.checklist`", "480-byte limit", "1 MiB limit"]],
     ["../../specification/conformance.md", ["`run checklist` tests", "absent repeat versus explicit repeat one"]],
     ["../../specification/CHANGELOG.md", ["Ticket 0237", "`bot run checklist RUN`"]],
-    ["../../docs/src/content/docs/reference/inspection.md", ["`bot run checklist RUN", "480 bytes", "1 MiB reader limit"]],
+    ["../../docs/src/content/docs/operate/reading-a-record.md", ["`bot run checklist RUN", "480 bytes", "1 MiB reader limit"]],
   ]);
   for (const [file, phrases] of publications) {
     const text = await readFile(new URL(file, import.meta.url), "utf8");

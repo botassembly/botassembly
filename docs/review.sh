@@ -5,7 +5,7 @@ set -eu
 OUT=${1:-/tmp/brand-review}
 URL=${URL:-http://localhost:8899}
 mkdir -p "$OUT"
-for page in "home:/" "first-assembly:/guides/first-assembly/" "graph:/specification/graph/" "inspection:/reference/inspection/" "format-and-runtime:/format-and-runtime/" "blog:/blog/"; do
+for page in "home:/" "install:/start/install/" "graph:/specification/graph/" "reading-a-record:/operate/reading-a-record/" "format-and-runtime:/understand/format-and-runtime/" "blog:/blog/"; do
 	name=${page%%:*}
 	path=${page#*:}
 	shot-scraper shot "$URL$path" -o "$OUT/$name-desktop-light.png" --width 1440 --wait 1500

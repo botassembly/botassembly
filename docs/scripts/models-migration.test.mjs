@@ -7,12 +7,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const docs = dirname(dirname(fileURLToPath(import.meta.url)));
-const modelsReference = join(docs, 'src', 'content', 'docs', 'reference', 'models.md');
+const modelsReference = join(docs, 'src', 'content', 'docs', 'operate', 'providers-and-credentials.md');
 
 async function procedure() {
 	const source = await readFile(modelsReference, 'utf8');
 	const match = /For a linked default model file[^\n]*:\n\n```sh\n([\s\S]*?)\n```/u.exec(source);
-	assert.ok(match, 'the model reference has no migration procedure');
+	assert.ok(match, 'the providers page has no migration procedure');
 	return match[1];
 }
 

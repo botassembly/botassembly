@@ -36,6 +36,8 @@ Merges, moves, and cuts: `first-assembly.md` and `install-and-use.md` split acro
 
 Every authored page that changes slug keeps a redirect to its replacement. No retired `/guides/` or `/reference/` URL 404s.
 
+The redirects and the sidebar are proved against the built site, so `sdlc/scripts/install` installs the documentation dependencies with `npm ci --prefix docs` beside Bot's.
+
 Writing rules for authored pages, not generated ones: one fact per sentence; subject, verb, object; define a term at first use; one job per page; no sentence about the site or the page itself; no release-note prose; no project-internal milestone; no per-page taxonomy disclaimer; transcripts only from real command output.
 
 Accuracy problems this ticket removes, numbered from the assessment: 2, 5, 7, 8, 9, 10, and 11. Problems 1, 3, and 4 turn on runtime output that tickets 0281 and 0283 change, so ticket 0285 owns them. Problem 6 lives in `specification/`, which ticket 0282 owns.
@@ -61,7 +63,14 @@ Every published URL under `/guides/` and `/reference/` changes. A missed redirec
 
 ## Size decision
 
-Production size does not change. This ticket edits `docs/` content, `docs/astro.config.mjs`, and documentation tests.
+Production size does not change. This ticket edits `docs/` content, `docs/astro.config.mjs`, documentation tests, and the documentation paths three `bot/tests` files pin.
+
+- Starting production size: 18483 nonblank lines
+- Ending production size: 18483 nonblank lines
+- Simpler approach tried: leave the sidebar alone and repair only the eleven accuracy problems in place.
+- Why insufficient alternatives were rejected: the assessment's journey breaks are structural. A first-time reader hit nine prerequisites before writing a file, met four undefined nouns, and had no troubleshooting page to reach. None of that is an accuracy fix, and repairing accuracy inside the old structure would have to be redone when the structure moved.
+- Production code deleted: none. `bot/src` and `specification/` are untouched and `sdlc/ratchet.json` is unchanged at 18483.
+- Accepted cost: zero production lines. The cost is in `docs/`: nine authored pages retired, seven written, six moved, one link-check script, one build helper, a redirect test and a sidebar test added, and five existing tests retargeted at the pages they pin. `sdlc/scripts/install` gains one `npm ci --prefix docs` line, about three seconds on a warm cache, because those two tests build the site.
 
 ## Complexity
 
@@ -80,5 +89,7 @@ Production size does not change. This ticket edits `docs/` content, `docs/astro.
 
 - Origin: plan outcome 14, from `sdlc/planning/notes/2026-09-14-review-docs-site.md`. Design review rejected the first draft for carrying two outcomes, so the accuracy pass and the transcript test became ticket 0285.
 - Deviation: the review proposed publishing the draft blog post as the Understand page. That post is out of scope, so the page is written fresh from the home page's story.
+- Deviation: `docs/scripts/redirects.test.mjs` and `docs/scripts/sidebar.test.mjs` prove the navigation against the built site, so the gate needs the documentation dependencies. `sdlc/scripts/install` now runs `npm ci --prefix docs` beside `make -C bot install`. The added step takes about three seconds on a warm cache and keeps network use in the one step that already downloads packages.
+- Deviation: the ticket named five `docs/scripts` tests that move with the text. Three `bot/tests` files pin documentation paths as well, and `scripts/tutorial-walkthrough.test.mjs` materialized the retired `reading-list` tutorial. All four move with the pages they pin. No `bot/src` file changed.
 - Design review: accepted after one rejection and a split.
 - Code review: pending

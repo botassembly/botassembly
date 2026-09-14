@@ -3,7 +3,12 @@
 #
 # `prepare` invokes this script with that tree as its working directory; do not
 # derive it from $0, which names the copied script inside that tree.
+#
+# The documentation site is a checked artifact, not only a published one:
+# docs/scripts/redirects.test.mjs and docs/scripts/sidebar.test.mjs build it and
+# read the HTML, so the gate needs its dependencies the same way it needs Bot's.
 set -eu
 
 make -C bot install
+npm ci --prefix docs --no-audit --no-fund
 exec sh sdlc/scripts/install-gitleaks

@@ -124,11 +124,13 @@ test("help and specification publish the current authentication surface", async 
   const normalizedSpecification = specification.replace(/\s+/gu, " ");
   expect(normalizedSpecification).toContain("`bot run start`, `bot run resume`, and `bot model list`, plus `bot auth list`, `bot auth login`, and `bot auth logout`, warn once after validation and before authentication begins. Help, capabilities, assembly commands, checks, and record inspection do not warn. `bot auth import` is excluded from this warning and emits its import-specific result or failure.");
 
-  const reference = await readFile(new URL("../../docs/src/content/docs/reference/auth.md", import.meta.url), "utf8");
+  const reference = await readFile(new URL("../../docs/src/content/docs/operate/providers-and-credentials.md", import.meta.url), "utf8");
   for (const anchor of ["authentication", "the-commands", "the-listing", "logging-in", "the-laws"]) {
     expect(reference).toContain(`/specification/running/#${anchor}`);
   }
-  expect(reference).toContain("/guides/install-and-use/#credentials");
+  expect(reference).toContain("bot auth login");
+  const start = await readFile(new URL("../../docs/src/content/docs/start/run-the-example.md", import.meta.url), "utf8");
+  expect(start).toContain("/operate/providers-and-credentials/");
 });
 
 test("concurrent Pi runtime mutations refresh each other's stored credentials", async () => {

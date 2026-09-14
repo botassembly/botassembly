@@ -8,12 +8,12 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
-const guide = join(repository, 'docs/src/content/docs/guides/first-assembly.md');
+const guide = join(repository, 'docs/src/content/docs/start/write-your-own.md');
 const expected = new Set([
-	'reading-list/ASSEMBLY.md',
-	'reading-list/flows/digest/FLOW.md',
-	'reading-list/flows/digest/01-summarize.md',
-	'reading-list/flows/digest/02-title.md',
+	'welcome/ASSEMBLY.md',
+	'welcome/flows/greet/FLOW.md',
+	'welcome/flows/greet/01-welcome.md',
+	'welcome/flows/greet/02-subject.md',
 ]);
 
 function blocks(source) {
@@ -50,9 +50,9 @@ test('a clean local clone can materialize the tutorial blocks and check them off
 		run('make', ['install', `BINDIR=${bindir}`], { cwd: clone });
 		const launcher = join(bindir, 'bot');
 
-		const assembly = join(root, 'reading-list');
+		const assembly = join(root, 'welcome');
 		for (const [path, content] of files) {
-			const target = join(assembly, path.slice('reading-list/'.length));
+			const target = join(assembly, path.slice('welcome/'.length));
 			await mkdir(dirname(target), { recursive: true });
 			await writeFile(target, content);
 		}
@@ -69,11 +69,11 @@ test('a clean local clone can materialize the tutorial blocks and check them off
 		await mkdir(isolatedHome, { recursive: true });
 		await writeFile(join(isolatedHome, 'config.yaml'), `intelligences:\n  default:\n    provider: ${first.provider}\n    model: ${first.model}\n    reasoning: low\n`);
 
-		const check = run(launcher, ['assembly', 'check', join(assembly, 'digest')], {
+		const check = run(launcher, ['assembly', 'check', join(assembly, 'greet')], {
 			env: { PATH: process.env.PATH, HOME: root, BOT_HOME: isolatedHome, XDG_CONFIG_HOME: isolatedConfig, XDG_CACHE_HOME: join(root, 'cache') },
 		});
-		assert.match(check, /01-summarize/u);
-		assert.match(check, /02-title/u);
+		assert.match(check, /01-welcome/u);
+		assert.match(check, /02-subject/u);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

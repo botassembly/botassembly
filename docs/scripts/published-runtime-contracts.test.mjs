@@ -90,12 +90,16 @@ function promisesCompatibility(paragraph) {
 	return false;
 }
 
+// The authored site groups, as the 2026-09-14 rewrite named them. The
+// generated specification pages are excluded: their source is checked above.
+const authoredGroups = ['start', 'build', 'operate', 'understand', 'reference', 'project'];
+
 export function isActiveSurfacePath(filePath) {
 	const normalized = filePath.replaceAll('\\', '/');
 	if (normalized === 'specification/CHANGELOG.md' || normalized.startsWith('specification/conformance/')) return false;
 	if (normalized.startsWith('specification/')) return normalized.endsWith('.md');
 	if (normalized.startsWith('docs/src/content/docs/specification/')) return false;
-	return normalized.startsWith('docs/src/content/docs/guides/') || normalized.startsWith('docs/src/content/docs/reference/');
+	return authoredGroups.some((group) => normalized.startsWith(`docs/src/content/docs/${group}/`));
 }
 
 export function validateDocument(filePath, content) {
@@ -127,7 +131,10 @@ async function markdownFiles(directory) {
 }
 
 async function activeDocuments() {
-	const roots = [join(repository, 'specification'), join(docs, 'src', 'content', 'docs', 'guides'), join(docs, 'src', 'content', 'docs', 'reference')];
+	const roots = [
+		join(repository, 'specification'),
+		...authoredGroups.map((group) => join(docs, 'src', 'content', 'docs', group)),
+	];
 	const files = (await Promise.all(roots.map(markdownFiles))).flat();
 	return Promise.all(files.map(async (file) => ({
 		path: relative(repository, file).replaceAll('\\', '/'),
@@ -201,10 +208,16 @@ test('the maintained resume document states the accepted resume contract', async
 	for (const [label, assertion] of resumeAssertions) assert.equal(assertion(normalized), true, `${path} omits ${label}`);
 });
 
-// The reference page earns its place by sending the reader somewhere exact.
-test('the resume reference page points at the specification rather than repeating it', async () => {
-	const content = await readFile(join(repository, 'docs', 'src', 'content', 'docs', 'reference', 'resume.md'), 'utf8');
+// The command reference states the resume spelling and sends the reader to the
+// specification for the contract. A second copy is the thing that goes stale,
+// so the page must link the anchor and must not restate the carry rules.
+test('the command reference points at the specification for the resume contract', async () => {
+	const content = await readFile(join(repository, 'docs', 'src', 'content', 'docs', 'reference', 'commands.md'), 'utf8');
+	assert.match(content, /`bot run resume RUN`/u);
 	assert.match(content, /\/specification\/running\/#resuming-a-run/u);
-	const words = content.split('---')[2].trim().split(/\s+/u).length;
-	assert.ok(words < 120, `the page carries ${String(words)} words and must stay under 120`);
+	const section = content.slice(content.indexOf('## Resuming a run'));
+	const resume = section.slice(0, section.indexOf('\n## ', 1));
+	for (const carried of ['LOOP', 'CHOOSE', 'PARALLEL', 'FANOUT', 'DESCEND']) {
+		assert.ok(!resume.includes(carried), `the page restates the ${carried} carry boundary`);
+	}
 });

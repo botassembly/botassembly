@@ -127,8 +127,8 @@ const canonicalExcluded = new Map([
 	],
 ]);
 const referencePages = new Map([
-	['specification/elements/inspection.md', '/reference/inspection/'],
-	['specification/elements/management.md', '/reference/management/'],
+	['specification/elements/inspection.md', '/operate/reading-a-record/'],
+	['specification/elements/management.md', '/build/sharing/'],
 ]);
 
 // Starlight slugs a heading the way GitHub does: lower case, punctuation

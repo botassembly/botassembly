@@ -6,6 +6,26 @@ import starlightBlog from 'starlight-blog';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://botassembly.org',
+	// Every authored URL the 2026-09-14 rewrite retired answers here instead of
+	// 404ing. docs/scripts/redirects.test.mjs is the list and the proof.
+	redirects: {
+		'/guides/first-assembly/': '/start/install/',
+		'/guides/install-and-use/': '/start/run-the-example/',
+		'/guides/authoring-assemblies/': '/build/stages-and-checks/',
+		'/format-and-runtime/': '/understand/format-and-runtime/',
+		'/principles/': '/understand/principles/',
+		'/format/explore/': '/build/explore/',
+		'/format/refusals-explorer/': '/operate/refusals-explorer/',
+		'/reference/invocation/': '/reference/commands/',
+		'/reference/resume/': '/reference/commands/',
+		'/reference/inspection/': '/operate/reading-a-record/',
+		'/reference/management/': '/build/sharing/',
+		'/reference/models/': '/operate/providers-and-credentials/',
+		'/reference/auth/': '/operate/providers-and-credentials/',
+		'/reference/agent-tools/': '/operate/before-you-pilot-it/',
+		'/reference/trust-boundary/': '/operate/before-you-pilot-it/',
+		'/reference/limits/': '/operate/before-you-pilot-it/',
+	},
 	integrations: [
 		starlight({
 			title: 'botassembly',
@@ -63,52 +83,69 @@ export default defineConfig({
 					href: 'https://github.com/botassembly/botassembly',
 				},
 			],
-			// Two groups carry the argument. Format is what you own: a folder
-			// contract with a versioned specification and a conformance corpus.
-			// Runtime is bot, one implementation of it. Every page appears in
-			// exactly one group; sidebar-coverage.test.mjs enforces that.
+			// Six groups, one job each. Start is the reading path in order.
+			// Build and Operate are how-to. Understand is explanation. Reference
+			// is lookup, with the generated specification collapsed inside it.
+			// Every page appears in exactly one group; navigation.test.mjs
+			// enforces that and redirects.test.mjs enforces the retired URLs.
 			sidebar: [
 				{
 					label: 'Start',
 					items: [
-						{ label: 'Your First Assembly', slug: 'guides/first-assembly' },
-						{ label: 'The format and the runtime', slug: 'format-and-runtime' },
-						{ label: 'Authoring Assemblies', slug: 'guides/authoring-assemblies' },
-						{ label: 'Operating runs', slug: 'guides/install-and-use' },
+						{ label: 'What it is', link: '/' },
+						{ label: 'Why not a script', slug: 'start/why-not-a-script' },
+						{ label: 'Install', slug: 'start/install' },
+						{ label: 'Run the shipped example', slug: 'start/run-the-example' },
+						{ label: 'Write your own', slug: 'start/write-your-own' },
 					],
 				},
 				{
-					// Generated from specification/*.md by scripts/generate-specification.mjs,
-					// which wipes and rewrites that directory on every build, so the
-					// two authored explorers live in docs/.../format/ instead. The
-					// worked example is a walkthrough rather than law, so it sits
-					// second, right after the overview that sends a reader to it.
-					label: 'Format',
+					label: 'Build',
 					items: [
-						{ slug: 'specification/overview' },
-						{ label: 'The Worked Example', slug: 'specification/example' },
-						{ label: 'Explore an Assembly', slug: 'format/explore' },
-						{ label: 'Explore a Refusal', slug: 'format/refusals-explorer' },
-						{ slug: 'specification/structure' },
-						{ slug: 'specification/slots-and-skills' },
-						{ slug: 'specification/graph' },
-						{ slug: 'specification/gating' },
-						{ slug: 'specification/running' },
-						{ slug: 'specification/refusals' },
-						{ slug: 'specification/record' },
-						{ slug: 'specification/invariants' },
-						{ slug: 'specification/conformance' },
+						{ label: 'Stages and checks', slug: 'build/stages-and-checks' },
+						{ label: 'Control flow', slug: 'build/control-flow' },
+						{ label: 'Skills and slots', slug: 'build/skills-and-slots' },
+						{ label: 'Sharing an assembly', slug: 'build/sharing' },
+						{ label: 'Explore an assembly', slug: 'build/explore' },
 					],
 				},
 				{
-					label: 'Runtime',
-					items: [{ autogenerate: { directory: 'reference' } }],
+					label: 'Operate',
+					items: [
+						{ label: 'Reading a record', slug: 'operate/reading-a-record' },
+						{ label: 'Providers, models, and credentials', slug: 'operate/providers-and-credentials' },
+						{ label: 'When it refuses or fails', slug: 'operate/when-it-refuses' },
+						{ label: 'Explore a refusal', slug: 'operate/refusals-explorer' },
+						{ label: 'Before you pilot it', slug: 'operate/before-you-pilot-it' },
+					],
 				},
-				// Two tail pages, one each. Starlight takes a bare link entry at
-				// the top level, so neither wears a group heading over a single
-				// child. Add a group back the day either grows a sibling.
-				{ label: 'Principles', slug: 'principles' },
-				{ label: 'Development and Testing', slug: 'project/development' },
+				{
+					label: 'Understand',
+					items: [
+						{ label: 'A folder in, a record out', slug: 'understand/folder-in-record-out' },
+						{ label: 'The format and the runtime', slug: 'understand/format-and-runtime' },
+						{ label: 'Principles', slug: 'understand/principles' },
+					],
+				},
+				{
+					label: 'Reference',
+					items: [
+						{ label: 'Command reference', slug: 'reference/commands' },
+						{
+							// Generated from specification/*.md by
+							// scripts/generate-specification.mjs, which wipes and
+							// rewrites that directory on every build. Collapsed, so the
+							// format's law is a destination rather than a third of the nav.
+							label: 'Specification',
+							collapsed: true,
+							items: [{ autogenerate: { directory: 'specification' } }],
+						},
+					],
+				},
+				{
+					label: 'Project',
+					items: [{ label: 'Development and testing', slug: 'project/development' }],
+				},
 			],
 		}),
 	],
