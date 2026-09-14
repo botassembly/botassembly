@@ -70,6 +70,10 @@ jobs:
           SERVER: ${{ github.server_url }}
           REPOSITORY: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          # The wsl-bash wrapper runs wsl.exe as a Windows-side process; WSL
+          # interop only carries a step's env: values into the distribution
+          # for the names listed here.
+          WSLENV: SERVER:REPOSITORY:SHA
         run: |
           git init /home/builder/repo
           cd /home/builder/repo

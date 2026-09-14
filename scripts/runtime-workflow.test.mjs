@@ -89,6 +89,9 @@ function validate(document) {
 		} },
 		{ env: {
 			SERVER: '${{ github.server_url }}', REPOSITORY: '${{ github.repository }}', SHA: '${{ github.sha }}',
+			// WSL interop only carries step env: values into the distribution
+			// for names listed in WSLENV; without it $SERVER is unbound there.
+			WSLENV: 'SERVER:REPOSITORY:SHA',
 		}, run: WSL_CLONE },
 		{ run: WSL_NODE_INSTALL },
 		{ run: wslStep('test "$(id -u)" -ne 0') },
@@ -163,6 +166,8 @@ test('the workflow contract rejects each weakened essential and prohibited work'
 		(document) => { action(document.jobs.wsl.steps, 'Vampire/setup-wsl').with['wsl-shell-user'] = 'root'; },
 		(document) => { document.jobs.wsl.steps.push({ uses: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' }); },
 		(document) => { document.jobs.wsl.steps[4].run = document.jobs.wsl.steps[4].run.replace('make -C bot install', 'npm install'); },
+		(document) => { delete document.jobs.wsl.steps[1].env.WSLENV; },
+		(document) => { document.jobs.wsl.steps[1].env.WSLENV = 'SERVER'; },
 	];
 	for (const mutate of mutations) {
 		const changed = structuredClone(original);
