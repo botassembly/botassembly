@@ -27,6 +27,8 @@ Every selected implementation ticket is complete, and the release rule now appli
 13. **Completed in ticket 0283:** make missing or unavailable model failures actionable without claiming that a local catalog miss proves provider retirement or global unavailability.
 14. **Completed in ticket 0284:** rewrite the public documentation site for a first-time user, adopting the reviewed page structure, removing the eleven confirmed inaccuracies, and testing example transcripts against real output. Preserve historical provenance and the existing biomedical vocabulary guard. Its accuracy pass rebases onto 0283.
 15. **Completed in ticket 0285:** verify documentation accuracy against landed behavior and pin every example transcript to real output. Depends on 0283.
+16. **Completed in ticket 0286:** provider error reports redact credential values this run supplied through recognized environment names before they reach stderr, the JSON envelope, or the record.
+17. **Ticket 0287:** reduce the local gate's machine load without removing any proof: coverage moves to its own target, workers are capped, buffer assertions stop deep-comparing megabytes, and duplicate tests merge.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 

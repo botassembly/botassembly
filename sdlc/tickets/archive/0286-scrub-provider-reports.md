@@ -70,4 +70,4 @@ Redaction changes provider text a reader may match on. The registry is split so 
 - Origin: Issue `2026-09-14-provider-report-unscrubbed.md`, held by record 0283.
 - Design review: rejected once. The draft overclaimed the outcome, missed `pi-tap.ts:204`, left the value seam unnamed, and excluded no session files.
 - Code review: accepted with one medium and two low findings, all fixed here. The medium: the registry held non-secret names, so `AWS_PROFILE=default` rewrote every `default` in a report and labelled it a credential. The lows: no proof that the retained Pi session held the redacted text, and four fixtures each inventing their own synthetic value.
-- Completion: pending.
+- Completion: implementation commit `44d8dbf9539eb489dba60db0850b92eb7e58441e` is published, passed the complete local gate, and passed independent code review. Hosted runtime run `34860487948` and hosted docs run `34860488140` both passed on that commit.
