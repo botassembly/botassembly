@@ -18,7 +18,7 @@ make installcheck
 sh sdlc/scripts/examples
 
 files='tests/cli-assembly-install-atomic.test.ts tests/cli-assembly-install-process.test.ts tests/install-refuses-a-non-assembly.test.ts tests/owned-removal.test.ts tests/flow-cleanup.test.ts tests/process.test.ts tests/cli-signal-boundary.test.ts tests/subflow-local-signal.test.ts tests/cli-worktree-lock.test.ts tests/run-birth-reservation.test.ts tests/request-limit.test.ts tests/process-stdin.test.ts tests/cli-exit.test.ts tests/ordinary-cli-output.test.ts tests/ordinary-output.test.ts tests/raw-record-races.test.ts'
-(cd bot && npm run test -- $files)
+(cd bot && npm run test -- --maxWorkers=1 $files)
 
 repeat=1
 while [ "$repeat" -le 10 ]; do

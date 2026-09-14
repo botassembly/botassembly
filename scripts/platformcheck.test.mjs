@@ -17,7 +17,7 @@ const files = [
 	'tests/cli-exit.test.ts', 'tests/ordinary-cli-output.test.ts', 'tests/ordinary-output.test.ts',
 	'tests/raw-record-races.test.ts',
 ];
-const mainTest = `npm run test -- ${files.join(' ')}`;
+const mainTest = `npm run test -- --maxWorkers=1 ${files.join(' ')}`;
 const expected = ['make installcheck', 'sh sdlc/scripts/examples', mainTest];
 for (let repeat = 0; repeat < 10; repeat += 1) {
 	expected.push('npm run test -- tests/install-refuses-a-non-assembly.test.ts');

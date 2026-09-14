@@ -297,8 +297,11 @@ test("an evidence removal failure remains visible in the process result", async 
     await unlink(evidence);
     await mkdir(evidence);
     const result = await running;
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error).toMatchObject({ code: "EISDIR" });
+    if (!(result.error instanceof Error) || !("code" in result.error)) throw new Error("removal did not return an operating-system error");
+    // Linux reports EISDIR for unlinking the replacement directory. macOS
+    // reports EPERM for the same forbidden operation. Both preserve the exact
+    // semantic proof: evidence removal failed and the directory remains.
+    expect(["EISDIR", "EPERM"]).toContain(result.error.code);
     expect((await readdir(evidenceRoot)).length).toBe(1);
   } finally {
     await rm(root, { recursive: true, force: true });
