@@ -1,6 +1,6 @@
 # Adversarial review — botassembly tickets 0270, 0272–0280
 
-Repository `/home/ian/workspace/repos/botassembly` at HEAD `084c956`. Read-only review.
+Repository `the repository` at HEAD `084c956`. Read-only review.
 
 ## Verdict
 
@@ -30,7 +30,7 @@ Lever: add `possible_inputs` symmetric with `possible_outputs`, or keep `input` 
 
 ### M3 — Ticket 0277's read-only open buys no safety (medium)
 
-`/home/ian/workspace/repos/botassembly/bot/src/model-runtime.ts:92`:
+`bot/src/model-runtime.ts:92`:
 
 ```ts
 const handle = await open(path, constants.O_RDONLY).catch(() => { … });
@@ -57,7 +57,7 @@ Failure scenario: any command that calls `boundary.rawStdout()` and afterwards w
 
 ### M6 — Dead eslint overrides for the modules ticket 0272 deleted (medium)
 
-`/home/ian/workspace/repos/botassembly/bot/eslint.config.js:266-271` and `:272-277`:
+`bot/eslint.config.js:266-271` and `:272-277`:
 
 ```js
 { files: ["src/stored-git-secrets.ts"],        rules: { "complexity": ["error", 43] } },
@@ -87,7 +87,7 @@ Cheapest lever: memoise `scopedSubflows` per `(flow, stage, selfDepth, callPosit
 
 ### M8 — Shipped example transcripts are unverified prose, and they are the docs site's source of truth (medium)
 
-`/home/ian/workspace/repos/botassembly/sdlc/scripts/examples:54` redirects check output to `/dev/null` and asserts exit status only. `bot/tests/examples-gate.test.ts` tests the gate script's own plumbing. `docs/scripts/extract-walkthrough.test.mjs:152-163` parses the README's fenced block and asserts its *structure* (six rows, stage names, an `options=intelligence=default` prefix) — it never runs the real command and compares.
+`sdlc/scripts/examples:54` redirects check output to `/dev/null` and asserts exit status only. `bot/tests/examples-gate.test.ts` tests the gate script's own plumbing. `docs/scripts/extract-walkthrough.test.mjs:152-163` parses the README's fenced block and asserts its *structure* (six rows, stage names, an `options=intelligence=default` prefix) — it never runs the real command and compares.
 
 Drift already happened undetected. At the pre-0279 base `6664e73`, `examples/hello/README.md` showed `options=intelligence=default@assembly,…` while the renderer at that same commit (`git show 6664e73:bot/src/assembly-check-command.ts:81`) emitted `${name}=${value.value}` with no `@rung` suffix. Ticket 0279 rewrote the transcript and it now matches byte-for-byte — care, not a check.
 
