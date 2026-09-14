@@ -21,7 +21,7 @@ Observed at `deab1b2`, `bot/src` 18899 nonblank lines, on the Linux box.
 
 ## The source decision
 
-Resume adopts the first `stage_start` whose `options` holds `intelligence` at rung `command`. It adopts the name because the home table turns a name into a model. A donor that recorded no `stage_start`, or whose ladder names no `command` rung, inherits nothing: resume resolves through the assembly, the home, and the defaults as today. A dropped name refuses with `intelligence-unresolved` before birth.
+Resume adopts the first `stage_start` whose `options` holds `intelligence` at rung `command`. It adopts the name because the home table turns a name into a model. A donor that recorded no `stage_start`, or whose ladder names no `command` rung, inherits nothing: resume resolves through the assembly, the home, and the defaults as today. A dropped name refuses with `intelligence-unresolved` after the run directory exists. Birth happens at `bot/src/run.ts:322`. Model validation runs later and returns the refusal at `:216`. The unborn path at `:330` removes the directory. The refused resume leaves no run behind.
 
 ## Scope
 
@@ -41,9 +41,9 @@ Start the donor with `--intelligence fast`, resume it, read the first `stage_sta
 
 ## Size decision
 
-- Starting production size: 18899 nonblank lines
+- Starting production size: 19061 nonblank lines
 - Ending production size: 19079 nonblank lines
-- Production code added: about 11 lines in `bot/src/resume.ts`.
+- Production code added: 18 lines in `bot/src/resume.ts`.
 - Production code deleted: None.
 - Simpler approach tried: accept `--intelligence` on resume.
 - Why insufficient alternatives were rejected: an accepted option lets a caller change models mid-recovery, against the refusal at `:46-47`. A `run_start` field duplicates the ladder. Copying the resolved model is inexpressible (`invocation.ts:203`).

@@ -37,9 +37,8 @@ function changed(donor: ResumeDonor): Refusal {
 function donorTarget(donor: ResumeDonor): string { return donor.flow === undefined ? donor.assembly : `${donor.assembly}/${donor.flow}`; }
 
 /** The intelligence name the donor's command rung named, from its first
- *  `stage_start`. The stage option ladder is the only record of the name; a
- *  donor that recorded no stage, or named none on the command line, inherits
- *  nothing and resolves through the assembly, the home, and the defaults. */
+ *  `stage_start`. The stage option ladder is the only record of the name, and
+ *  the command rung outranks every other rung. */
 function donorIntelligence(donor: ResumeDonor): string | undefined {
   const options = donor.events.find((event) => event["event"] === "stage_start")?.["options"];
   if (!Array.isArray(options)) return undefined;
@@ -51,7 +50,8 @@ function donorIntelligence(donor: ResumeDonor): string | undefined {
 function carrying(donor: ResumeDonor, resolved: PreparedResume["resolved"]): PreparedResume["resolved"] {
   const name = donorIntelligence(donor);
   if (name === undefined) return resolved;
-  return { ...resolved, invocation: { ...resolved.invocation, commandOptions: { intelligence: name } } };
+  const invocation = { ...resolved.invocation, commandOptions: { ...resolved.invocation.commandOptions, intelligence: name } };
+  return { ...resolved, invocation };
 }
 
 async function prepare(input: ResumeArguments, boundary: ResumeBoundary, writers: Writers): Promise<PreparedResume | undefined> {

@@ -5,7 +5,7 @@ import { main } from "../src/cli.ts";
 import { parseRunResume, renderRunStart } from "../src/run-start.ts";
 import { prehashAssembly } from "../src/record.ts";
 import type { StartedRunResult } from "../src/run.ts";
-import { events, realBoundary, runsIn, tempRoots, TEST_INSTALLATION_ID, writes } from "./cli-boundary.ts";
+import { at, events, realBoundary, runsIn, tempRoots, TEST_INSTALLATION_ID, writes } from "./cli-boundary.ts";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai";
 
 const roots = tempRoots();
@@ -300,4 +300,24 @@ test("resume resolves as before when the donor named no intelligence", async () 
     { name: "intelligence", value: "default", rung: "assembly" },
   ]);
   expect(ladders.resumed).toEqual(ladders.donor);
+});
+
+test("a resume whose inherited intelligence left the home refuses and leaves no run", async () => {
+  const { root, home } = await roots.scratch("bot-run-resume-dropped-intelligence-");
+  await assembly(home);
+  const donorRun = await donor(home, root, ["--intelligence", "fast"]);
+  await writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n");
+  const out: Buffer[] = [], err: Buffer[] = [];
+  const { held } = realBoundary(root, home, out, err);
+  const code = await main(["run", "resume", donorRun, "-j"], held);
+  expect(code).toBe(2);
+  expect(Buffer.concat(out)).toEqual(Buffer.alloc(0));
+  const envelope = JSON.parse(Buffer.concat(err).toString()) as
+    { error: { operation: string; cause: string; details: { refusals: Record<string, unknown>[] } } };
+  expect(envelope.error).toMatchObject({ operation: "run.resume", cause: "run-refused" });
+  expect(at(envelope.error.details.refusals, 0)).toMatchObject({
+    code: "intelligence-unresolved",
+    message: "Define an intelligence named fast in the home configuration, or name one it defines: default.",
+  });
+  expect(await runsIn(home)).toEqual([donorRun]);
 });
