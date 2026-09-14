@@ -17,8 +17,8 @@ const files = [
 	'tests/cli-exit.test.ts', 'tests/ordinary-cli-output.test.ts', 'tests/ordinary-output.test.ts',
 	'tests/raw-record-races.test.ts',
 ];
-const mainTest = `npm run test -- --maxWorkers=1 ${files.join(' ')}`;
-const expected = ['make installcheck', 'sh sdlc/scripts/examples', mainTest];
+const expected = ['make installcheck', 'sh sdlc/scripts/examples'];
+for (const file of files) expected.push(`npm run test -- ${file}`);
 for (let repeat = 0; repeat < 10; repeat += 1) {
 	expected.push('npm run test -- tests/install-refuses-a-non-assembly.test.ts');
 	expected.push('npm run test -- tests/subflow-local-signal.test.ts');
@@ -77,8 +77,8 @@ test('an unsupported uname refuses before an owner runs', async () => {
 for (const [name, failAt, count] of [
 	['install', 'make installcheck#1', 1],
 	['examples', 'sh sdlc/scripts/examples#2', 2],
-	['main platform test process', `${mainTest}#3`, 3],
-	['a repeated test process', 'npm run test -- tests/subflow-local-signal.test.ts#5', 5],
+	['named platform test process', 'npm run test -- tests/process.test.ts#8', 8],
+	['a repeated test process', 'npm run test -- tests/subflow-local-signal.test.ts#20', 20],
 ]) {
 	test(`a failed ${name} owner stops at its exact invocation`, async () => {
 		const held = await fixture('Linux', String(failAt));
