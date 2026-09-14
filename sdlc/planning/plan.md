@@ -29,6 +29,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 15. **Completed in ticket 0285:** verify documentation accuracy against landed behavior and pin every example transcript to real output. Depends on 0283.
 16. **Completed in ticket 0286:** provider error reports redact credential values this run supplied through recognized environment names before they reach stderr, the JSON envelope, or the record.
 17. **Completed in ticket 0287:** reduce the local gate's machine load without removing any proof: coverage moves to its own target, workers are capped, buffer assertions stop deep-comparing megabytes, and duplicate tests merge.
+18. **Completed in ticket 0288:** pin the credential registry to Pi's own provider sources with a scanning test, so a Pi upgrade that adds, renames, or removes a credential environment name fails the gate instead of drifting silently. Eight authentication inputs Pi reads join the non-secret list. Closes the limit record 0286 left open.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 
