@@ -5,6 +5,8 @@
 
 ## 2026-09-14
 
+Ticket 0293 names `auth.import` in the capabilities inventory sentence. The chapter had omitted it since the operation joined the code. A new test now pins the chapter's inventory sentence to `CLI_CONTRACTS` in both directions.
+
 Ticket 0291 opens the `bot/run-readings` export path. An outside consumer imports `inspectRunList`, `parseRunList`, `runListFailure`, `runShowReading`, and `runRecordReading` and receives the same bytes `bot run list`, `bot run show`, and `bot run record` write to standard output. A run show or run record fault reaches the consumer the same way. A run list home fault stays in the command handler, and `runListFailure` builds it for a consumer that needs it. `runShowReading` takes the environment and derives the scratch root from it, so the consumer's environment decides the scratch paths in the document. `runRecordReading` holds the record snapshot in memory where the command streams it. The two legacy readers leave the public surface: `inspectRuns` stops being exported through `bot/inspection` and `inspectShow` is deleted.
 
 Ticket 0290 narrows the retired-store advisory to the three commands that manage credentials. `bot auth list`, `bot auth login`, and `bot auth logout` still warn once when the retired credential file exists. `bot run start`, `bot run resume`, and `bot model list` no longer call the warning path. A successful run and a model listing write nothing about the retired store to standard error.
