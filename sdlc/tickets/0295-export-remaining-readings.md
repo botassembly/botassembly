@@ -84,10 +84,13 @@ Required follow-up, not here: these readings hand back bytes, so a consumer pars
 
 ## Size decision
 
-- Starting size: 18882 nonblank lines, about 18904 once 0294 lands; the implementer measures first.
-- Ending size: 125 to 135 lines more, mostly `assemblyCheckReading`'s option encoding. `sdlc/ratchet.json` rises by the measured delta.
-- Tried and rejected: extract a reading out of each handler, as `runShowReading` does. That puts the fault rule in a second place, the limitation record 0291 carries.
-- Added: one helper module, ten wrappers.
+- Starting production size: 18899 nonblank lines
+- Ending production size: 19061 nonblank lines
+- Simpler approach tried: extract a reading out of each handler, as `runShowReading` does.
+- Why insufficient alternatives were rejected: extracting a reading puts each handler's fault rule in a second place, the limitation record 0291 carries. The collecting boundary leaves every rule where it is and costs one helper module instead of ten extracted readers.
+- Production code added: 162 nonblank lines, against an estimate of 125 to 135, mostly `assemblyCheckReading`'s option encoding. `bot/src/command-reading.ts` holds 43, `bot/src/public-admin-readings.ts` holds 67, and the five new wrappers in `bot/src/public-run-readings.ts` hold 52.
+- Production code deleted: none.
+- Accepted cost: a reading hands back bytes, so a consumer parses JSON itself, and `runOutputReading`, `runRequestReading`, and `runCheckReading --raw` hold the delivered bytes in memory where the command streams them.
 
 ## Complexity
 

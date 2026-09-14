@@ -5,6 +5,8 @@
 
 ## 2026-09-14
 
+Ticket 0295 opens the `bot/admin-readings` export path and widens `bot/run-readings`. An outside consumer imports `capabilitiesReading`, `homeShowReading`, `homeBusyReading`, `assemblyCheckReading`, and `assemblyListReading` from the new path, and `runCheckReading`, `runChecklistReading`, `runEventsReading`, `runOutputReading`, and `runRequestReading` from the existing one. Each function builds the command's own words and drives the command's own handler through a collecting boundary. It returns the exact standard output, the exact standard error, and the exact exit code the command writes. A refusal reaches the consumer as the same bytes on standard error with an empty standard output. `bot home busy --quiet` writes no bytes and answers with exit 1 alone. No handler changed and no command output changed.
+
 Ticket 0294 reports the assembly hash in two readings. `bot assembly check --json` carries `data.hash` on every page, including a continuation page, and it holds the same string a `run_start` of that target records in `assembly_hash`. `bot assembly list` accepts `hash` through `--fields`, and the field holds the installed assembly's content hash. A refused resolve, a broken link, and a tree the runtime cannot hash each report `null`. The default `--fields` projection keeps its six names. Neither command writes a hash in human output. Both documents stay at schema version 1.
 
 Ticket 0293 names `auth.import` in the capabilities inventory sentence. The chapter had omitted it since the operation joined the code. A new test now pins the chapter's inventory sentence to `CLI_CONTRACTS` in both directions.

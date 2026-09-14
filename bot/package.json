@@ -5,6 +5,7 @@
   "license": "MIT",
   "type": "module",
   "exports": {
+    "./admin-readings": "./src/public-admin-readings.ts",
     "./inspection": "./src/public-inspection.ts",
     "./one-run": "./src/one-run.ts",
     "./record-lines": "./src/record-lines.ts",
