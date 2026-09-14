@@ -74,4 +74,5 @@ The raw exit path keeps its own failure ownership: `bot run output --raw` to a f
 - Origin: The independent reviews `sdlc/planning/notes/2026-09-14-review-recent-work.md` (M1, M2, M5, M6, L1, L2, L7) and `sdlc/planning/notes/2026-09-14-review-specification.md` (U13). Every cited line was reopened at HEAD `9699a10`.
 - Design review rejection 1: the six findings were the false `--raw` fact, a latch clear that would move raw commands onto the ordinary exit branch, an unstated `possible_inputs` rule, a scope bullet with no acceptance, an unstated overlap with ticket 0282, and the dead `inspectRequest`.
 - Design review: accepted after one rejection.
-- Code review: pending
+- Code review: accepted after one rejection. The rejected implementation was missing a `possible_inputs` fold at the child merge, left the bytewise-first rule for the post-choice stage unstated, built stdout lazily where the ordinary path needed it built eagerly, and had no test proving the human-rendered output changed the same way the JSON row did.
+- Completion: implementation commit `b4ad8f41b5ce8161a87731208a165519ee711e2d` is published, passed the complete local gate, and passed independent code review. Hosted runtime run `34841312929` passed on that commit.
