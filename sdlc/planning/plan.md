@@ -36,7 +36,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 22. **Completed in ticket 0292:** add a `wsl` job to `.github/workflows/runtime.yml`, triggered by manual dispatch and `v*` tag pushes, that installs WSL2 on a hosted Windows runner, clones the exact dispatched commit inside the distribution's own filesystem, and runs `make -C bot install` then `make platformcheck` as a non-root user; widen `sdlc/scripts/platformcheck`'s comment to name the Linux, macOS, and WSL legs.
 23. **Planned:** admit the nine mutating operations to the export door under Ian's child-process ruling, and replace the internals assertion at `importable-readers.test.ts:60` with one that names what stays private.
 24. **Planned:** declare `types` and the compatibility rule for every export path in `bot/package.json`.
-25. **Planned:** check the specification's operation inventory against `CLI_CONTRACTS` and add the missing `auth.import`.
+25. **Completed in ticket 0293:** pin the specification's operation inventory sentence to `CLI_CONTRACTS` with a test that checks both directions, and add the missing `auth.import`.
 26. **Planned:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
 27. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
 28. **Planned:** add one read-only operation that lists the home's intelligence table.
