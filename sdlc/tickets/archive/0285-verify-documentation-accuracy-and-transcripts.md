@@ -80,4 +80,5 @@ Production size does not change. This ticket adds a test and edits documentation
 
 - Origin: finding M8 in `sdlc/planning/notes/2026-09-14-review-recent-work.md` and accuracy problems 1, 3, and 4 in `sdlc/planning/notes/2026-09-14-review-docs-site.md`. Design review split this outcome out of ticket 0284 so the structural rewrite could start without waiting on 0281 and 0283.
 - Design review: accepted after one correction.
-- Code review: pending
+- Code review: accepted after four must-change findings: an over-specific `possible_inputs` sentence, a site paste that disagreed with the README and could not be pinned, the free smoke rung named by the wrong number, and a stale Makefile comment.
+- Completion: implementation commit `6184e12d18c4bcbd0f44dd7f9de247a1df870001` is published, passed the complete local gate, and passed independent code review. Hosted runtime run `34852835859` and hosted docs run `34852836201` both passed on that commit.

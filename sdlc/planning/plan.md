@@ -10,7 +10,7 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Four implementation outcomes remain. Tickets 0270 and 0272 through 0280 completed the first ten. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair. Ian pulled the documentation review forward on 2026-09-14 and widened it into a full rewrite for first-time readers. Outcomes 11 and 12 run in parallel worktrees, then 13 and 14. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count is a forecast, not a quota. Shape one reviewed ready ticket when each outcome becomes next. Keep no draft or calendar-hold queue.
+Every selected implementation ticket is complete, and the release rule now applies. Tickets 0270 and 0272 through 0285 completed the fifteen outcomes this plan selected. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair, and Ian pulled the documentation review forward the same day and widened it into a full rewrite for first-time readers. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count was a forecast, not a quota. Shape one reviewed ready ticket when a new outcome is selected. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
@@ -26,7 +26,7 @@ Four implementation outcomes remain. Tickets 0270 and 0272 through 0280 complete
 12. **Completed in ticket 0282:** align the specification with the runtime: twelve contradictions, the structured error vocabulary, exit codes, unspecified options and bounds, the `model-unresolved` conformance case, stale witnesses, and the version statement. The specification describes the runtime except where the ticket names a small runtime fix.
 13. **Ticket 0283:** make missing or unavailable model failures actionable without claiming that a local catalog miss proves provider retirement or global unavailability.
 14. **Completed in ticket 0284:** rewrite the public documentation site for a first-time user, adopting the reviewed page structure, removing the eleven confirmed inaccuracies, and testing example transcripts against real output. Preserve historical provenance and the existing biomedical vocabulary guard. Its accuracy pass rebases onto 0283.
-15. **Ticket 0285:** verify documentation accuracy against landed behavior and pin every example transcript to real output. Depends on 0283.
+15. **Completed in ticket 0285:** verify documentation accuracy against landed behavior and pin every example transcript to real output. Depends on 0283.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 
