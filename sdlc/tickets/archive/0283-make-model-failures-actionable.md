@@ -84,4 +84,8 @@ this branch measures 18733, which is the ceiling those tickets left.
 
 - Origin: Plan outcome 13.
 - Design review: rejected once. The first draft had `bot assembly check` consult the catalog, reversing record 0270, and claimed an item 0282 owns.
-- Code review: pending
+- Design review: rejected a second time. The second draft left the new code without a conformance closure exemption.
+- Design review: accepted after two rejections.
+- Code review: rejected once. The rejected implementation had unbounded envelope fields, an untested admission shape, a string-grep pin, and two weakened tests.
+- Code review: accepted after one rejection, with one minor regex-anchoring fix made before landing.
+- Completion: implementation commit `2b01f98684195c0ded85700bb26c024d7c75ef0f` is published, passed the complete local gate, and passed independent code review. Hosted runtime run `34850112117` and hosted docs run `34852836201` passed.
