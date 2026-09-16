@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +9,7 @@ import {
   authImportReading, authLoginReading, authLogoutReading, runResumeReading, runStartReading,
 } from "../src/public-mutation-readings.ts";
 import { settleCommand } from "../src/cli-boundary.ts";
-import { CHILD_MS } from "./boundary.ts";
+import { BOUNDARY_MS, CHILD_MS } from "./boundary.ts";
 
 const roots: string[] = [];
 const cli = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
@@ -68,6 +68,54 @@ async function expectRetainedRun(home: string, document: { data: Record<string, 
   expect(await readFile(join(directory, output.path), "utf8")).toBe("answer");
 }
 
+function commandForPid(pid: number): string | undefined {
+  const probe = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+  if (probe.error !== undefined) throw probe.error;
+  if (probe.status === 1) return undefined;
+  if (probe.status !== 0) throw new Error(`ps failed for ${String(pid)}: ${probe.stderr}`);
+  return probe.stdout.trim();
+}
+
+function pidsWithIdentity(identity: string): number[] {
+  const probe = spawnSync("ps", ["-eo", "pid=,command="], { encoding: "utf8" });
+  if (probe.error !== undefined) throw probe.error;
+  if (probe.status !== 0) throw new Error(`process inventory failed: ${probe.stderr}`);
+  return probe.stdout.split("\n").flatMap((line) => {
+    const match = /^\s*(\d+)\s+(.*)$/u.exec(line);
+    return match !== null && match[2]?.includes(identity) === true ? [Number(match[1])] : [];
+  });
+}
+
+async function fixturePid(pidFile: string): Promise<number | undefined> {
+  let bytes: string;
+  try { bytes = await readFile(pidFile, "utf8"); } catch (reason) {
+    if (reason instanceof Error && "code" in reason && reason.code === "ENOENT") return;
+    throw reason;
+  }
+  const pid = Number(bytes);
+  if (pid <= 0) throw new Error(`invalid fixture pid in ${pidFile}`);
+  return pid;
+}
+
+function killFixtureProcess(pid: number, identity: string): void {
+  const command = commandForPid(pid);
+  if (command === undefined || !command.includes(identity)) return;
+  try { process.kill(pid, "SIGKILL"); } catch (reason) {
+    if (!(reason instanceof Error && "code" in reason && reason.code === "ESRCH")) throw reason;
+  }
+}
+
+async function removeFixtureProcess(pidFile: string, identity: string): Promise<void> {
+  const pid = await fixturePid(pidFile);
+  const pids = new Set([...(pid === undefined ? [] : [pid]), ...pidsWithIdentity(identity)]);
+  for (const ownedPid of pids) killFixtureProcess(ownedPid, identity);
+  const deadline = Date.now() + 5_000;
+  while (pidsWithIdentity(identity).length > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  expect(pidsWithIdentity(identity)).toEqual([]);
+}
+
 test("all nine mutation readings return only command bytes and a numeric exit on refusals", async () => {
   const { root, home, env } = await place();
   const readings = await Promise.all([
@@ -91,7 +139,7 @@ test("all nine mutation readings return only command bytes and a numeric exit on
   expect(readings[5].stderr.toString()).toContain('"cause":"terminal-required"');
   expect(readings[7].stderr.toString()).toContain('"operation":"run.start"');
   expect(readings[8].stderr.toString()).toContain('"operation":"run.resume"');
-});
+}, BOUNDARY_MS);
 
 test("all nine refused readings match the invoked CLI bytes and exit", async () => {
   const { root, home, env } = await place();
@@ -106,8 +154,10 @@ test("all nine refused readings match the invoked CLI bytes and exit", async () 
     [() => runStartReading(home, "absent/main", undefined, { json: true }, root, env), ["run", "start", "--json", "--home", home, "--", "absent/main"]],
     [() => runResumeReading(home, "absent", { json: true }, root, env), ["run", "resume", "absent", "--json", "--home", home]],
   ];
+  // Each cold CLI child has CHILD_MS to identify a genuine hang. This outer
+  // bound must sit above it even though nine parity cases run serially.
   for (const [reading, args] of cases) expect(await reading()).toEqual(await invoke(args, root, env));
-});
+}, BOUNDARY_MS);
 
 test("an in-process mutation copies the caller environment and leaves process.env unchanged", async () => {
   const { root, home, env } = await place();
@@ -128,7 +178,11 @@ test("the shared outer settlement turns a handler rejection into the CLI's stder
 test("a real human assembly dependency rejection matches the invoked CLI", async () => {
   const reading = await place(), command = await place(), tools = join(reading.root, "tools"), git = join(tools, "git");
   const readingPid = join(reading.root, "escaped.pid"), commandPid = join(command.root, "escaped.pid");
+  const holder = join(tools, "held-output.mjs");
+  const readingIdentity = `bot-mutation-reading-${reading.root.slice(reading.root.lastIndexOf("-") + 1)}`;
+  const commandIdentity = `bot-mutation-command-${command.root.slice(command.root.lastIndexOf("-") + 1)}`;
   await mkdir(tools);
+  await writeFile(holder, "setInterval(() => {}, 1000);\n");
   await writeFile(git, [
     `#!${process.execPath}`,
     'import { spawn } from "node:child_process";',
@@ -136,26 +190,23 @@ test("a real human assembly dependency rejection matches the invoked CLI", async
     'const root = process.argv.at(-1);',
     'mkdirSync(`${root}/.git`, { recursive: true });',
     'writeFileSync(`${root}/ASSEMBLY.md`, "---\\nintelligence: default\\n---\\nFetched.\\n");',
-    'const child = spawn("/bin/sleep", ["10"], { detached: true, stdio: ["ignore", process.stdout, process.stderr] });',
+    'const child = spawn(process.execPath, [process.env.ESCAPED_HOLDER, process.env.ESCAPED_ID], { detached: true, stdio: ["ignore", process.stdout, process.stderr] });',
     'writeFileSync(process.env.ESCAPED_PID, String(child.pid));',
     'child.unref();',
   ].join("\n"));
   await chmod(git, 0o755);
-  const readingEnv = { ...reading.env, PATH: tools, ESCAPED_PID: readingPid };
-  const commandEnv = { ...command.env, PATH: tools, ESCAPED_PID: commandPid };
+  const readingEnv = { ...reading.env, PATH: tools, ESCAPED_PID: readingPid, ESCAPED_HOLDER: holder, ESCAPED_ID: readingIdentity };
+  const commandEnv = { ...command.env, PATH: tools, ESCAPED_PID: commandPid, ESCAPED_HOLDER: holder, ESCAPED_ID: commandIdentity };
   try {
     const imported = await assemblyInstallReading(reading.home, "https://example.invalid/review.git", {}, reading.root, readingEnv);
     const invoked = await invoke(["assembly", "install", "https://example.invalid/review.git", "--home", command.home], command.root, commandEnv);
     expect(imported).toEqual(invoked);
     expect(imported).toEqual({ exit: 2, stdout: Buffer.alloc(0), stderr: Buffer.from("Git clone did not close its captured output after exiting.\n") });
   } finally {
-    for (const file of [readingPid, commandPid]) {
-      const pid = Number(await readFile(file, "utf8").catch(() => "0"));
-      if (pid <= 0) continue;
-      try { process.kill(-pid, "SIGKILL"); } catch { /* already gone */ }
-    }
+    await removeFixtureProcess(readingPid, readingIdentity);
+    await removeFixtureProcess(commandPid, commandIdentity);
   }
-});
+}, BOUNDARY_MS);
 
 test("assembly install succeeds in process and returns the command's structured bytes", async () => {
   const { root, home, env } = await place(), source = join(root, "review");
@@ -213,7 +264,7 @@ test("assembly and auth-import successes match equivalent invoked CLI state and 
     .toEqual(await invoke(["auth", "import", credential, "--json"], command.root, command.env));
   expect(JSON.parse(await readFile(join(String(reading.env["PI_CODING_AGENT_DIR"]), "auth.json"), "utf8")))
     .toEqual(JSON.parse(await readFile(join(String(command.env["PI_CODING_AGENT_DIR"]), "auth.json"), "utf8")));
-});
+}, BOUNDARY_MS);
 
 test("authentication import, login, and logout mutate Pi state without returning a typed answer", async () => {
   const { root, env } = await place(), agent = String(env["PI_CODING_AGENT_DIR"]), source = join(root, "credentials.json");
@@ -301,7 +352,7 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
     kind: "bot.run.result", data: { donor: directRun, complete: true, exit: 0, correlation: "resume", carried: { count: 1 } },
   });
   await expectRetainedRun(home, directResumeDocument);
-});
+}, BOUNDARY_MS);
 
 test("run start preserves the private-home refusal", async () => {
   const { root, home, env } = await place();
@@ -318,4 +369,4 @@ test("run start preserves the private-home refusal", async () => {
   const document = JSON.parse(reading.stderr.toString()) as { kind: string; error: { operation: string; cause: string; message: string } };
   expect(document).toMatchObject({ kind: "error", error: { operation: "run.start", cause: "fault" } });
   expect(document.error.message).toContain("private owner-only");
-});
+}, BOUNDARY_MS);

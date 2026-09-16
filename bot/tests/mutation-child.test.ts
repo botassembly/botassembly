@@ -30,6 +30,46 @@ class FakeChild extends EventEmitter {
 
 afterEach(() => { vi.useRealTimers(); });
 
+function processCommand(pid: number): string | undefined {
+  const probe = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+  if (probe.error !== undefined) throw probe.error;
+  if (probe.status === 1) return undefined;
+  if (probe.status !== 0) throw new Error(`ps failed for ${String(pid)}: ${probe.stderr}`);
+  return probe.stdout.trim();
+}
+
+function ownedPids(identity: string): number[] {
+  const probe = spawnSync("ps", ["-eo", "pid=,command="], { encoding: "utf8" });
+  if (probe.error !== undefined) throw probe.error;
+  if (probe.status !== 0) throw new Error(`process inventory failed: ${probe.stderr}`);
+  return probe.stdout.split("\n").flatMap((line) => {
+    const match = /^\s*(\d+)\s+(.*)$/u.exec(line);
+    return match !== null && match[2]?.includes(identity) === true ? [Number(match[1])] : [];
+  });
+}
+
+function isEsrch(reason: unknown): boolean {
+  return reason instanceof Error && "code" in reason && reason.code === "ESRCH";
+}
+
+function killOwnedProcess(pid: number, identity: string): void {
+  const command = processCommand(pid);
+  if (command === undefined || !command.includes(identity)) return;
+  try { process.kill(pid, "SIGKILL"); } catch (reason) { if (!isEsrch(reason)) throw reason; }
+}
+
+async function removeOwnedProcesses(owned: readonly { identity: string; pid: number | undefined }[]): Promise<void> {
+  for (const target of owned) {
+    const pids = new Set([...(target.pid === undefined ? [] : [target.pid]), ...ownedPids(target.identity)]);
+    for (const pid of pids) killOwnedProcess(pid, target.identity);
+  }
+  const deadline = Date.now() + 5_000;
+  while (owned.some(({ identity }) => ownedPids(identity).length > 0) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  for (const { identity } of owned) expect(ownedPids(identity), `owned process remained: ${identity}`).toEqual([]);
+}
+
 test("the mutation child pins the direct invocation and preserves separate bytes", async () => {
   const child = new FakeChild(), calls: unknown[][] = [];
   const promise = runMutationChild(["run", "start", "--json"], "/work", { MARK: "held" }, { stdin: Buffer.from([0, 255]) }, {
@@ -290,7 +330,10 @@ test.skipIf(process.platform !== "linux" && process.platform !== "darwin")(
     const root = await mkdtemp(join(tmpdir(), "bot-mutation-real-child-"));
     const preload = join(root, "preload.mjs"), descendant = join(root, "descendant.mjs");
     const marker = join(root, "ready"), directPid = join(root, "direct.pid"), descendantPid = join(root, "descendant.pid"), done = join(root, "descendant.done");
-    let cleanupPid = 0;
+    const ownerIdentity = `bot-mutation-owner-${root.slice(root.lastIndexOf("-") + 1)}`;
+    let directProcessPid: number | undefined, descendantProcessPid: number | undefined;
+    let controller: AbortController | undefined;
+    let promise: Promise<unknown> | undefined;
     try {
       await writeFile(descendant, [
         'import { spawnSync } from "node:child_process";',
@@ -312,26 +355,39 @@ test.skipIf(process.platform !== "linux" && process.platform !== "darwin")(
         'writeFileSync(process.env["READY"], "ready");',
         'setInterval(() => {}, 1000); await new Promise(() => {});',
       ].join("\n"));
-      const controller = new AbortController();
-      const promise = runMutationChild([], root, {
+      controller = new AbortController();
+      promise = runMutationChild([ownerIdentity], root, {
         ...process.env, NODE_OPTIONS: `--import=${preload}`, READY: marker, DIRECT_PID: directPid,
-        DESCENDANT_SCRIPT: descendant, DESCENDANT_PID: descendantPid, DESCENDANT_DONE: done, OWNER_ID: preload,
+        DESCENDANT_SCRIPT: descendant, DESCENDANT_PID: descendantPid, DESCENDANT_DONE: done, OWNER_ID: ownerIdentity,
       }, { signal: controller.signal });
+      void promise.catch(() => undefined);
       const deadline = Date.now() + 10_000;
       while (!existsSync(marker) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
       expect(existsSync(marker)).toBe(true);
-      cleanupPid = Number(await readFile(descendantPid, "utf8"));
+      directProcessPid = Number(await readFile(directPid, "utf8"));
+      descendantProcessPid = Number(await readFile(descendantPid, "utf8"));
+      expect(processCommand(directProcessPid)).toContain(ownerIdentity);
+      expect(processCommand(descendantProcessPid)).toContain(descendant);
+      expect(existsSync(done)).toBe(false);
       controller.abort();
       await expect(promise).rejects.toMatchObject({ name: "AbortError" });
-      const descendantProbe = spawnSync("ps", ["-p", String(cleanupPid), "-o", "pid=,ppid=,command="], { encoding: "utf8" });
-      expect({ done: existsSync(done), descendant: descendantProbe.stdout }).toEqual({ done: true, descendant: "" });
-      for (const [file, identity] of [[directPid, preload], [descendantPid, descendant]] as const) {
-        const pid = (await readFile(file, "utf8")).trim();
-        const probe = spawnSync("ps", ["-p", pid, "-o", "command="], { encoding: "utf8" });
-        expect(probe.stdout).not.toContain(identity);
-      }
+      expect(existsSync(done)).toBe(true);
+      expect(ownedPids(ownerIdentity)).toEqual([]);
+      expect(ownedPids(descendant)).toEqual([]);
     } finally {
-      if (cleanupPid > 0) { try { process.kill(-cleanupPid, "SIGKILL"); } catch { /* the owned group ended */ } }
+      controller?.abort();
+      const readPid = async (path: string): Promise<number | undefined> => {
+        try { return Number(await readFile(path, "utf8")); } catch (reason) {
+          if (reason instanceof Error && "code" in reason && reason.code === "ENOENT") return undefined;
+          throw reason;
+        }
+      };
+      directProcessPid ??= await readPid(directPid);
+      descendantProcessPid ??= await readPid(descendantPid);
+      await removeOwnedProcesses([
+        { identity: ownerIdentity, pid: directProcessPid }, { identity: descendant, pid: descendantProcessPid },
+      ]);
+      if (promise !== undefined) await promise.catch(() => undefined);
       await rm(root, { recursive: true, force: true });
     }
   }, 15_000,
