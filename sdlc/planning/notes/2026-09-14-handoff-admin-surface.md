@@ -4,15 +4,11 @@ Ian stopped the session for budget. This note says where the sequence from the [
 
 ## Landed on main
 
-Tickets 0287 through 0300 are complete, recorded, and archived. Ticket 0300 exported nine mutating operations. Seven assembly and authentication mutations use the shared in-process command boundary; `run.start` and `run.resume` use direct children with bounded failure cleanup. The operation inventory is 27. Twenty-five operations now have public counterparts. `auth.list` and `model.list` stay pending export because they need the Pi runtime.
+Tickets 0287 through 0301 are complete, recorded, and archived. Ticket 0300 exported nine mutating operations. Seven assembly and authentication mutations use the shared in-process command boundary; `run.start` and `run.resume` use direct children with bounded failure cleanup. Ticket 0301 made all seven export paths installable from the packed artifact with emitted ESM JavaScript and generated declarations. The operation inventory is 27. Twenty-five operations now have public counterparts. `auth.list` and `model.list` stay pending export because they need the Pi runtime.
 
-## Next ticket: package types and compatibility
+## Next implementation: typed readings
 
-Draft the plan item 24 ticket. Declare `types` for every export path in `bot/package.json` and record the pre-1.0 compatibility rule. Do not implement before independent design review accepts the ticket.
-
-## Then
-
-After package types and compatibility, add the typed layer over the byte readings.
+Add the typed layer over the byte readings. Shape and independently review that ticket before implementation.
 
 ## Housekeeping
 
