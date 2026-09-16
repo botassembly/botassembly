@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -5,6 +6,7 @@ import { afterEach, expect, test } from "vitest";
 import { runSearchReading } from "../src/public-run-readings.ts";
 
 const roots: string[] = [];
+const hasRealRg = spawnSync("/bin/sh", ["-c", "command -v rg >/dev/null 2>&1"], { env: { PATH: process.env["PATH"] }, stdio: "ignore" }).status === 0;
 afterEach(async () => { const { rm } = await import("node:fs/promises"); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 async function fixture(): Promise<{ root: string; home: string }> {
@@ -24,7 +26,7 @@ async function fixture(): Promise<{ root: string; home: string }> {
   return { root, home };
 }
 
-test("real ripgrep searches literal retained lines in bytewise file order", async () => {
+test.skipIf(!hasRealRg)("real ripgrep searches literal retained lines in bytewise file order", async () => {
   const held = await fixture();
   const result = await runSearchReading(held.home, "a+b", { json: true }, held.root, { PATH: process.env["PATH"] });
   expect(result.exit).toBe(0); expect(result.stderr.toString()).toBe("");
