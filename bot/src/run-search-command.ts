@@ -203,13 +203,11 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
       if (child.pid !== undefined && signalGroup(child.pid, "SIGTERM").error !== undefined) reason = "signal";
       killer = clock.setTimeout(() => {
         const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL");
-        if (killed.error !== undefined) reason = "signal";
-        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = !killed.exists;
+        if (killed.error !== undefined) { fail(new Error("signal-failed")); return; }
+        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = true;
         complete(); if (settled) return;
         cleanup = clock.setTimeout(() => {
-          const survived = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL"); if (survived.error !== undefined) { fail(new Error("signal-failed")); return; }
-          if (survived.exists) { fail(new Error("close-failed")); return; }
-          terminationReady = true; complete(); if (!settled) fail(new Error("close-failed"));
+          complete(); if (!settled) fail(new Error("close-failed"));
         }, RUN_SEARCH_CONTRACT.cleanupMilliseconds);
       }, RUN_SEARCH_CONTRACT.graceMilliseconds);
     };
@@ -251,7 +249,7 @@ async function selectTool(runs: string, deadline: number, env: NodeJS.ProcessEnv
       return { name, version: Buffer.from(version).subarray(0, 256).toString("utf8") };
     } catch (reason) {
       if (errorCode(reason) === "ENOENT") continue;
-      return fault("dependency-failed", reason instanceof Error && reason.message === "close-failed" ? "close-failed" : "dependency-failed", `${name} version probing failed.`, 4);
+      return fault("dependency-failed", settlementCause(reason), `${name} version probing failed.`, 4);
     }
   }
   return fault("dependency-failed", "dependency-failed", "Run search requires rg or grep on PATH.", 4);
