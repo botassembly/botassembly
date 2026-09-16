@@ -4,15 +4,15 @@ Ian stopped the session for budget. This note says where the sequence from the [
 
 ## Landed on main
 
-Tickets 0287 through 0298 are complete, recorded, and archived. Ticket 0298 added six resolved home paths and their point-in-time existence to `bot home show` without loading Pi or reaching the network. The operation inventory is 26. The library door compares fifteen read-only operations live; `auth.list` and `model.list` stay pending export because they need the Pi runtime; nine mutating operations stay pending under the child-process ruling.
+Tickets 0287 through 0299 are complete, recorded, and archived. Ticket 0299 added bounded literal search across retained run records and sessions without loading Pi or reaching the network. The operation inventory is 27. The library door compares sixteen read-only operations live; `auth.list` and `model.list` stay pending export because they need the Pi runtime; nine mutating operations stay pending under the child-process ruling.
 
-## Ticket 0299, `bot run search`
+## Next ticket: mutating exports
 
-Not drafted. The brief: literal fixed-string search over session and event files under the runs directory, spawning `rg --fixed-strings --json` when present, else `grep -rnF`, refusing with an admitted cause when neither exists; rows of run, stage, relative file, line number, truncated line; JSON document `bot.run.search` schema 1; a limit with a default and maximum; oversize refusal as 0297. Closes `sdlc/issues/2026-09-14-retired-find-left-no-text-search.md`. Copy 0297's pin list from its archived ticket: every new operation touches `capabilities.test.ts`, `cli-lazy-model-runtime.test.ts`, `help.ts`, the inventory sentence, the library contract counts, and the docs commands page.
+Draft the plan item 23 ticket for the nine mutating operations under Ian's child-process ruling. Replace the internals assertion at `importable-readers.test.ts:60` with one that names what stays private. Keep `run.start` and `run.resume` behind the child-process boundary. Do not implement before independent design review accepts the ticket.
 
 ## Then
 
-Plan items 23 and 24: the nine mutating operations through the door with `run.start` and `run.resume` spawning a child process, and `types` plus a compatibility statement in `bot/package.json`. After those, the typed layer over the byte readings.
+After plan item 23, declare `types` plus the compatibility rule for every export path in `bot/package.json`. Then add the typed layer over the byte readings.
 
 ## Housekeeping
 
