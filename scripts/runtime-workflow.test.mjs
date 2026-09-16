@@ -20,6 +20,7 @@ const WSL_NODE_INSTALL = 'cd /home/builder\ncurl -fsSLO https://nodejs.org/dist/
 const wslStep = (script) => `export PATH="/home/builder/node/bin:$PATH"\ncd /home/builder/repo\n${script}\n`;
 const ANCESTRY_GUARD = "git cat-file -e 'HEAD^{commit}' || exit 1; commit=$(git cat-file commit HEAD) || exit 1; header=$(printf '%s\\n' \"$commit\" | sed -n '2p') || exit 1; case \"$header\" in parent\\ *) git rev-parse --verify HEAD^ >/dev/null 2>&1;; author\\ *) true;; *) exit 1;; esac";
 const FETCH_REFS = "git fetch --force --tags origin '+refs/heads/*:refs/remotes/origin/*'";
+const PIN_NPM = 'npm install --global npm@10.9.8';
 
 function command(steps, run) {
 	return steps.find((step) => step.run === run);
@@ -53,6 +54,7 @@ function validate(document) {
 		{ uses: SETUP_NODE, with: {
 			'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/npm-shrinkwrap.json',
 		} },
+		{ run: PIN_NPM },
 		{ run: FETCH_REFS },
 		{ run: 'sh sdlc/scripts/install' },
 		{ run: 'test "$(id -u)" -ne 0' },
@@ -135,6 +137,7 @@ test('the workflow contract rejects each weakened essential and prohibited work'
 		(document) => { action(document.jobs.check.steps, 'actions/setup-node').uses = 'actions/setup-node@v4'; },
 		(document) => { action(document.jobs.check.steps, 'actions/setup-node').uses = 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020'; },
 		(document) => { action(document.jobs.check.steps, 'actions/setup-node').with['node-version'] = '22.21.0'; },
+		(document) => { command(document.jobs.check.steps, PIN_NPM).run = 'npm install --global npm@latest'; },
 		(document) => { command(document.jobs.check.steps, FETCH_REFS).run = 'git fetch --tags origin main'; },
 		(document) => { command(document.jobs.check.steps, 'sh sdlc/scripts/install').run = 'npm ci'; },
 		(document) => { command(document.jobs.check.steps, 'test "$(id -u)" -ne 0').run = 'true'; },

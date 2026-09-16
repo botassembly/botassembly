@@ -3,13 +3,22 @@ import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterEach, test } from "vitest";
+import { afterAll, afterEach, beforeAll, test } from "vitest";
+import { builtPackage } from "./built-package.ts";
 import { currentRecord } from "./current-record.ts";
 
 const run = promisify(execFile);
 const roots: string[] = [];
 const RUN = "2026-08-11T17-00-00-aaaa";
 const SESSION = "stages/01-read/1/session.jsonl";
+let packageRoot: string;
+let removePackage = async (): Promise<void> => {};
+
+beforeAll(async () => {
+  ({ packageRoot, remove: removePackage } = await builtPackage("bot-reader-package-"));
+});
+
+afterAll(async () => { await removePackage(); });
 
 const transcript = [
   JSON.stringify({
@@ -40,7 +49,8 @@ async function consumer(): Promise<{ home: string; file: string; run: string }> 
   ]));
   await writeFile(join(directory, SESSION), transcript);
   await mkdir(join(root, "node_modules"));
-  await symlink(join(import.meta.dirname, ".."), join(root, "node_modules", "bot"), "dir");
+  await symlink(packageRoot, join(root, "node_modules", "bot"), "dir");
+  await writeFile(join(root, "package.json"), '{"name":"outside","private":true,"type":"module"}\n');
   const file = join(root, "consumer.mjs");
   await writeFile(file, `
 import { readFile } from "node:fs/promises";

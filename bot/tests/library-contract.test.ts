@@ -16,10 +16,10 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { afterEach, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
 import { CLI_CONTRACTS, type NewOperation } from "../src/cli-contract.ts";
+import { builtPackage } from "./built-package.ts";
 import { currentRecord } from "./current-record.ts";
 
 const run = promisify(execFile);
@@ -32,7 +32,16 @@ const CAPTURE = `stages/${STAGE}/1/1/checks/gate.txt`;
 const REQUEST = "request.txt";
 const ASSEMBLY = "review";
 const TARGET = `${ASSEMBLY}/main`;
-const CLI = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+let packageRoot: string;
+let removePackage = async (): Promise<void> => {};
+let cli: string;
+
+beforeAll(async () => {
+  ({ packageRoot, remove: removePackage } = await builtPackage("bot-library-package-"));
+  cli = join(packageRoot, "dist", "cli.js");
+});
+
+afterAll(async () => { await removePackage(); });
 
 // Eighteen operations carry `mutates: false` (ticket "Current facts").
 // Sixteen of them are compared live below. `auth.list` and `model.list` need a Pi
@@ -240,7 +249,8 @@ async function fixture(consumer: string): Promise<{ home: string; file: string; 
   const plain = join(root, "plain");
   await mkdir(plain);
   await mkdir(join(root, "node_modules"));
-  await symlink(join(import.meta.dirname, ".."), join(root, "node_modules", "bot"), "dir");
+  await symlink(packageRoot, join(root, "node_modules", "bot"), "dir");
+  await writeFile(join(root, "package.json"), '{"name":"outside","private":true,"type":"module"}\n');
   const file = join(root, "consumer.mjs");
   await writeFile(file, consumer);
   return { home, file, plain, output: join(directory, ...OUTPUT.split("/")) };
@@ -248,7 +258,7 @@ async function fixture(consumer: string): Promise<{ home: string; file: string; 
 
 async function live(consumer: string): Promise<void> {
   const held = await fixture(consumer);
-  await run(process.execPath, [held.file, held.home, CLI, held.plain, held.output], { encoding: "utf8" });
+  await run(process.execPath, [held.file, held.home, cli, held.plain, held.output], { encoding: "utf8" });
 }
 
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

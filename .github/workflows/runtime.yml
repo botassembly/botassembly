@@ -28,6 +28,7 @@ jobs:
           node-version: "22.22.0"
           cache: npm
           cache-dependency-path: bot/npm-shrinkwrap.json
+      - run: npm install --global npm@10.9.8
       - run: git fetch --force --tags origin '+refs/heads/*:refs/remotes/origin/*'
       - run: sh sdlc/scripts/install
       - run: test "$(id -u)" -ne 0
