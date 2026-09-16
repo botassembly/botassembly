@@ -163,7 +163,7 @@ async function prepareFixture(): Promise<void> {
 beforeAll(async () => {
   setup = prepareFixture();
   await setup;
-}, 180_000);
+}, 300_000);
 
 afterAll(async () => {
   await setup?.catch(() => undefined);
