@@ -93,6 +93,13 @@ test("portable contracts state observables without Bot implementation choices", 
   });
 });
 
+test("home busy publishes its exact inclusive document bound", () => {
+  const busy = commandSection(read("elements/inspection.md"), "bot home busy <directory>");
+  expect(busy).toContain("64 UTF-8 bytes");
+  expect(busy).toContain("65, including the terminal newline");
+  expect(busy).toContain("inclusive 65-byte maximum");
+});
+
 test("the targeted publication states its version and compatibility policy", () => {
   const policy = section(read("README.md"), "Version and compatibility");
   expect(policy).toMatch(new RegExp(`\\b${PUBLICATION_VERSION.replaceAll(".", "\\.")}\\b`, "u"));

@@ -3,12 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxProvider, ModelsError, type AuthInteraction, type Credential, type Provider } from "@earendil-works/pi-ai";
 import { CredentialSynchronizationError, type ModelRuntime } from "@earendil-works/pi-coding-agent";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
-import { decodeDocument, structuredContract } from "../src/command-document.ts";
 import { mapping } from "../src/model.ts";
+import * as mutationCommandReading from "../src/mutation-command-reading.ts";
 import { inertText } from "../src/new-command-result.ts";
+import { authLoginDocument } from "../src/public-mutation-readings.ts";
 import { nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 interface Invocation { code: number; out: string; err: string }
@@ -19,7 +20,10 @@ const roots: string[] = [];
 const WARNING = "The retired Bot credential store is inactive; this command uses Pi's auth.json.\n";
 const SECRET = "credential-secret-must-never-print";
 
-afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
 
 function loginProvider(id: string, type: "api_key" | "oauth" | "ambient" = "api_key"): Provider {
   const base = fauxProvider({ provider: id }).provider;
@@ -259,7 +263,18 @@ test("an aborted post-mutation synchronization failure preserves the durable cre
   });
   held.value.authPath = authPath;
   held.value.signal = controller.signal;
-  const result = await invoke(["auth", "login", "settled", "--json"], held);
+  let readings = 0;
+  vi.spyOn(mutationCommandReading, "mutationReading").mockImplementation(async (args) => {
+    readings++;
+    expect(args).toEqual(["auth", "login", "settled", "--json"]);
+    const exit = await main(args, held.value);
+    return { exit, stdout: Buffer.concat(held.out), stderr: Buffer.concat(held.err) };
+  });
+  const readLine = held.value.readLine;
+  if (readLine === undefined) throw new Error("The login fixture lacks its line reader.");
+  const typed = await authLoginDocument("settled", { readLine, signal: controller.signal }, "/", {});
+  expect(readings).toBe(1);
+  const result = { code: typed.command.exit, out: typed.command.stdout.toString(), err: typed.command.stderr.toString() };
   expect(result.code).toBe(5);
   expect(result.out).toBe(success("settled", "api_key"));
   expect(object(result.err)).toEqual({ schemaVersion: 1, kind: "error", error: {
@@ -269,7 +284,6 @@ test("an aborted post-mutation synchronization failure preserves the durable cre
   } });
   expect(JSON.parse(await readFile(authPath, "utf8"))).toEqual({ settled: credential });
   expect(result.out + result.err).not.toContain(SECRET);
-  const typed = decodeDocument({ exit: result.code, stdout: Buffer.from(result.out), stderr: Buffer.from(result.err) }, structuredContract("auth.login"));
   expect(typed).toMatchObject({ kind: "error", exit: 5, error: { error: { cause: "synchronization-failed" } }, command: {
     stdout: Buffer.from(result.out), stderr: Buffer.from(result.err),
   } });

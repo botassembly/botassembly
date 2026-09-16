@@ -5,6 +5,7 @@ import { lockSync } from "proper-lockfile";
 import { afterEach, expect, test } from "vitest";
 import { isBusy } from "../src/busy.ts";
 import { main, type CliBoundary } from "../src/cli.ts";
+import { HOME_BUSY_DOCUMENT_BYTES } from "../src/cli-contract.ts";
 import { mapping } from "../src/model.ts";
 import { currentRecord } from "./current-record.ts";
 
@@ -58,12 +59,15 @@ test("home busy renders idle and conservative busy readings without changing eit
 
   expect(await invoke(["home", "busy", "relative", "--home", "missing-home"], root, ambient))
     .toEqual({ code: 0, out: "Busy: no\n", err: "" });
-  expect(await invoke(["home", "busy", "relative", "--home", "empty-home", "--json"], root, ambient))
-    .toEqual({ code: 0, out: '{"schemaVersion":1,"kind":"bot.home.busy","data":{"busy":false}}\n', err: "" });
+  const idleJson = await invoke(["home", "busy", "relative", "--home", "empty-home", "--json"], root, ambient);
+  expect(idleJson).toEqual({ code: 0, out: '{"schemaVersion":1,"kind":"bot.home.busy","data":{"busy":false}}\n', err: "" });
   expect(await invoke(["home", "busy", "relative", "--home", "selected-home"], root, ambient))
     .toEqual({ code: 0, out: "Busy: yes\n", err: "" });
-  expect(await invoke(["home", "busy", "relative", "--home", "selected-home", "--json"], root, ambient))
-    .toEqual({ code: 0, out: '{"schemaVersion":1,"kind":"bot.home.busy","data":{"busy":true}}\n', err: "" });
+  const busyJson = await invoke(["home", "busy", "relative", "--home", "selected-home", "--json"], root, ambient);
+  expect(busyJson).toEqual({ code: 0, out: '{"schemaVersion":1,"kind":"bot.home.busy","data":{"busy":true}}\n', err: "" });
+  expect(Buffer.byteLength(busyJson.out)).toBe(64);
+  expect(Buffer.byteLength(idleJson.out)).toBe(65);
+  expect(Math.max(Buffer.byteLength(busyJson.out), Buffer.byteLength(idleJson.out))).toBe(HOME_BUSY_DOCUMENT_BYTES);
   expect(await invoke(["home", "busy", "relative", "-j"], root, busyHome))
     .toEqual({ code: 0, out: '{"schemaVersion":1,"kind":"bot.home.busy","data":{"busy":true}}\n', err: "" });
   expect(await invoke(["home", "busy", "relative"], root, undefined, { XDG_DATA_HOME: platformBase }))
@@ -129,7 +133,7 @@ test("capabilities, help, and the specification publish home busy", async () => 
   const commands = document["data"]["commands"] as unknown[];
   const descriptor: unknown = commands.find((entry) => mapping(entry) && entry["operation"] === "home.busy");
   expect(descriptor).toMatchObject({ operation: "home.busy", command: ["home", "busy"], output: { kind: "bot.home.busy", schemaVersion: 1 },
-    modes: ["markdown", "json"], home: "reads", mutates: false, network: "never" });
+    modes: ["markdown", "json"], home: "reads", mutates: false, network: "never", limits: { documentBytes: 65 } });
   const help = await invoke(["home", "busy", "--help"], root, home);
   expect(help).toMatchObject({ code: 0, err: "" });
   expect(help.out).toContain("usage: bot home busy <directory>");
@@ -137,6 +141,7 @@ test("capabilities, help, and the specification publish home busy", async () => 
   const inspection = await readFile(new URL("../../specification/elements/inspection.md", import.meta.url), "utf8");
   expect(inspection).toContain("### `bot home busy <directory>`");
   expect(inspection).toContain("bot.home.busy");
+  expect(inspection).toContain("inclusive 65-byte maximum");
   const conformance = await readFile(new URL("../../specification/conformance.md", import.meta.url), "utf8");
   expect(conformance).toMatch(/Home-busy tests prove/iu);
   const changelog = await readFile(new URL("../../specification/CHANGELOG.md", import.meta.url), "utf8");

@@ -1,5 +1,5 @@
 import type { CliDescriptor, NewOperation } from "./cli-contract.ts";
-import { AUTH_LOGIN_CONTRACT, AUTH_LOGOUT_CONTRACT, NEW_COMMAND_ERROR_BYTES } from "./cli-contract.ts";
+import { AUTH_LOGIN_CONTRACT, CLI_CONTRACTS, NEW_COMMAND_ERROR_BYTES } from "./cli-contract.ts";
 import { RETIRED_CREDENTIAL_ADVISORY } from "./credential-advisory.ts";
 import { mapping } from "./model.ts";
 import type { CommandResult, ErrorDocument } from "./new-command-result.ts";
@@ -62,26 +62,42 @@ export interface RunResultDocument { schemaVersion: 1; kind: "bot.run.result"; d
 
 type FramingPolicy = "exclusive-json" | "authentication-interaction" | "authentication-advisory";
 export interface StructuredContract { operation: NewOperation; reading: string; typed: string; kind: string; schemaVersion: 1; resultBytes: number; exclusive: boolean; framing: FramingPolicy }
-const MiB = 1_048_576;
+type ResultLimit = "documentBytes" | "documentBytesExclusive" | "markdownPageBytesExclusive" | "recordBytes" | "resultBytes" | "resultBytesExclusive";
+interface StructuredSource { operation: NewOperation; limit?: ResultLimit; framing?: Exclude<FramingPolicy, "exclusive-json"> }
 const entries = [
-  ["assembly.check", "bot.assembly.check", MiB], ["assembly.install", "bot.assembly.install", 8_192], ["assembly.link", "bot.assembly.link", 8_192],
-  ["assembly.list", "bot.assembly.list", MiB], ["assembly.remove", "bot.assembly.remove", 8_192], ["assembly.update", "bot.assembly.update", 65_536],
-  ["auth.import", "bot.auth.import", 8_192], ["auth.login", "bot.auth.login", AUTH_LOGIN_CONTRACT.resultBytes, "authentication-interaction"],
-  ["auth.logout", "bot.auth.logout", AUTH_LOGOUT_CONTRACT.resultBytes, "authentication-advisory"], ["capabilities", "bot.capabilities", 65_536],
-  ["home.busy", "bot.home.busy", 65_536], ["home.show", "bot.home.show", 65_536], ["intelligence.list", "bot.intelligence.list", 65_536],
-  ["run.check", "bot.run.check", MiB], ["run.checklist", "bot.run.checklist", MiB], ["run.events", "bot.run.events", 2_097_152],
-  ["run.list", "bot.run.list", MiB], ["run.resume", "bot.run.result", 65_536], ["run.search", "bot.run.search", MiB],
-  ["run.show", "bot.run.show", MiB], ["run.start", "bot.run.result", 65_536],
-] as const;
+  { operation: "assembly.check", limit: "markdownPageBytesExclusive" }, { operation: "assembly.install", limit: "resultBytes" },
+  { operation: "assembly.link", limit: "resultBytes" }, { operation: "assembly.list", limit: "markdownPageBytesExclusive" },
+  { operation: "assembly.remove", limit: "resultBytes" }, { operation: "assembly.update", limit: "resultBytes" },
+  { operation: "auth.import", limit: "resultBytes" },
+  { operation: "auth.login", limit: "resultBytes", framing: "authentication-interaction" },
+  { operation: "auth.logout", limit: "resultBytes", framing: "authentication-advisory" },
+  { operation: "capabilities", limit: "documentBytes" },
+  { operation: "home.busy", limit: "documentBytes" },
+  { operation: "home.show", limit: "documentBytes" }, { operation: "intelligence.list", limit: "documentBytes" },
+  { operation: "run.check", limit: "recordBytes" }, { operation: "run.checklist", limit: "recordBytes" },
+  { operation: "run.events", limit: "resultBytesExclusive" }, { operation: "run.list", limit: "markdownPageBytesExclusive" },
+  { operation: "run.resume", limit: "resultBytes" }, { operation: "run.search", limit: "resultBytesExclusive" },
+  { operation: "run.show", limit: "documentBytesExclusive" }, { operation: "run.start", limit: "resultBytes" },
+] as const satisfies readonly StructuredSource[];
 function functionStem(operation: string): string {
   const words = operation.split(".");
   return `${words[0] ?? ""}${words.slice(1).map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`).join("")}`;
 }
-const exclusiveBounds: readonly NewOperation[] = ["assembly.check", "assembly.list", "auth.login", "auth.logout", "run.events", "run.list", "run.search", "run.show"];
-export const STRUCTURED_COMMANDS: readonly StructuredContract[] = entries.map(([operation, kind, resultBytes, framing]) => {
-  const stem = functionStem(operation);
-  return { operation, reading: operation === "run.list" ? "inspectRunList" : `${stem}Reading`, typed: `${stem}Document`,
-    kind, schemaVersion: 1, resultBytes, exclusive: exclusiveBounds.includes(operation), framing: framing ?? "exclusive-json" };
+function expectedContract(source: StructuredSource, descriptors: readonly CliDescriptor[]): StructuredContract | undefined {
+  const descriptor = descriptors.find((held) => held.operation === source.operation);
+  if (descriptor === undefined || !("schemaVersion" in descriptor.output)) return undefined;
+  const resultBytes = source.limit === undefined ? undefined : descriptor.limits[source.limit];
+  if (resultBytes === undefined) return undefined;
+  const stem = functionStem(source.operation), framing = source.framing ?? "exclusive-json";
+  return { operation: source.operation, reading: source.operation === "run.list" ? "inspectRunList" : `${stem}Reading`,
+    typed: `${stem}Document`, kind: descriptor.output.kind, schemaVersion: 1, resultBytes,
+    exclusive: source.limit?.endsWith("Exclusive") === true || framing !== "exclusive-json", framing };
+}
+
+export const STRUCTURED_COMMANDS: readonly StructuredContract[] = entries.map((source) => {
+  const contract = expectedContract(source, CLI_CONTRACTS);
+  if (contract === undefined) throw new Error("The structured command descriptor lacks its result contract.");
+  return contract;
 });
 
 export function structuredRegistryFault(registry: readonly StructuredContract[], descriptors: readonly CliDescriptor[]): string | undefined {
@@ -89,7 +105,9 @@ export function structuredRegistryFault(registry: readonly StructuredContract[],
   if (new Set(operations).size !== operations.length) return "duplicate structured operation";
   const fields = ["reading", "typed", "kind", "schemaVersion", "resultBytes", "exclusive", "framing"] as const;
   for (const entry of registry) {
-    const expected = STRUCTURED_COMMANDS.find((held) => held.operation === entry.operation);
+    const source = entries.find((held) => held.operation === entry.operation);
+    const expected = source === undefined ? undefined : expectedContract(source, descriptors);
+    if (source !== undefined && expected === undefined) return `${entry.operation} has the wrong resultBytes`;
     if (expected !== undefined) for (const field of fields) if (entry[field] !== expected[field]) return `${entry.operation} has the wrong ${field}`;
   }
   for (const descriptor of descriptors) {

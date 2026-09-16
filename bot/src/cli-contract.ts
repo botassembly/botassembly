@@ -40,6 +40,7 @@ export interface CliDescriptor {
 export const CAPABILITIES_DOCUMENT_BYTES = 65_536;
 export const CAPABILITIES_RESULT = { kind: "bot.capabilities", schemaVersion: 1 } as const;
 export const NEW_COMMAND_ERROR_BYTES = 2_048;
+export const HOME_BUSY_DOCUMENT_BYTES = 65;
 export const HOME_RESULT_BYTES = 65_536;
 export const INTELLIGENCE_LIST_CONTRACT = { documentBytes: 65_536, humanErrorBytes: NEW_COMMAND_ERROR_BYTES } as const;
 export const ASSEMBLY_CREATE_CONTRACT = { humanErrorBytes: NEW_COMMAND_ERROR_BYTES, resultBytes: 8_192 } as const;
@@ -256,7 +257,7 @@ const homeBusy: CliDescriptor = {
     { name: "--json", aliases: ["-j"], type: "boolean", repeatable: false },
     { name: "--quiet", aliases: [], type: "boolean", repeatable: false },
   ],
-  limits: { humanErrorBytes: NEW_COMMAND_ERROR_BYTES },
+  limits: { documentBytes: HOME_BUSY_DOCUMENT_BYTES, humanErrorBytes: NEW_COMMAND_ERROR_BYTES },
 };
 
 const intelligenceList: CliDescriptor = {

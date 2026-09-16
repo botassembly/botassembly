@@ -149,7 +149,7 @@ The command requires one explicit `--home DIR`; missing, empty, repeated, valuel
 
 `bot home busy DIRECTORY [--quiet|--json|-j] [--home DIR]` uses the shared liveness predicate. It resolves a relative directory against the caller's working directory. Home selection uses explicit `--home`, then `BOT_HOME`, then the platform default. A missing home or `runs` directory answers idle. An unreadable or malformed live run tree answers busy because Bot cannot prove that the directory is idle. The command reads no network resource and changes no file.
 
-Human output is exactly `Busy: yes` or `Busy: no` followed by a newline. JSON output is one newline-terminated version-1 `bot.home.busy` document with a boolean `data.busy` field. Both modes exit `0` for either answer. Quiet mode writes neither stream and exits `0` when busy or `1` when idle. Quiet and JSON modes conflict. Malformed requests fail with exit `2` before a reading. JSON requests receive the common structured error. Other requests receive the common bounded inert error.
+Human output is exactly `Busy: yes` or `Busy: no` followed by a newline. JSON output is one newline-terminated version-1 `bot.home.busy` document with a boolean `data.busy` field. The true document occupies 64 UTF-8 bytes and the false document occupies 65, including the terminal newline. Its published `documentBytes` limit is the inclusive 65-byte maximum. Both modes exit `0` for either answer. Quiet mode writes neither stream and exits `0` when busy or `1` when idle. Quiet and JSON modes conflict. Malformed requests fail with exit `2` before a reading. JSON requests receive the common structured error. Other requests receive the common bounded inert error.
 
 ### `bot intelligence list`
 

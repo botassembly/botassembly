@@ -91,17 +91,17 @@ The new `home.busy` capability field documents a limit already fixed by its clos
 
 ## Size decision
 
-- Starting production size: 20235 nonblank lines
+- Starting production size: 20246 nonblank lines
 - Accepted design baseline: 19,908 nonblank lines before the first implementation commit.
 - Production ceiling: 20270 nonblank lines.
 - Simpler approach tried: export one generic JSON value, accept a caller-supplied type parameter, or hand-write document types only in the wrappers.
 - Why insufficient alternatives were rejected: `unknown` is not a typed application surface; a caller-selected generic can lie without evidence; wrapper-only types can drift from the object the command encodes.
-- Production code deleted: none planned. The byte functions and their owners remain the execution boundary.
-- Accepted cost: one shared policy-aware decoder, 21 thin functions, and exact types checked at each owning constructor. Login and logout need separate narrow framing branches because only login admits provider interaction while both authentication mutations admit the exact advisory and their own synchronization result.
+- Production code deleted: no behavior was deleted. The mutation collector moved intact into one private module so real public wrappers can use an unexported test seam.
+- Accepted cost: 20 additional nonblank lines derive every registry bound from its descriptor, publish the exact `home.busy` maximum, and let the real authentication synchronization fixtures drive public wrappers once. The complete typed-document implementation remains 358 lines above the accepted design baseline and four below its ceiling.
 - Expected production change: at most 362 nonblank lines across the decoder, public doors, and document owners. Set the ratchet to the lower measured result after one duplication pass.
-- Measured production change: 11 nonblank lines in review remediation and 338 total from the accepted design baseline. `bot/src` is 20,246 lines and the ratchet equals that result, 24 lines below the accepted ceiling.
+- Measured production change: 20 nonblank lines in this review remediation and 358 total from the accepted design baseline. `bot/src` is 20,266 lines and the ratchet equals that result, four lines below the accepted ceiling.
 - Reopened `home.busy` bound allowance: at most 8 production lines for one shared constant, the descriptor field, and descriptor-derived registry ownership. This stays inside the accepted 20,270 ceiling. Update the measured and ending totals after implementation.
-- Ending production size: 20246 nonblank lines
+- Ending production size: 20266 nonblank lines
 
 ## Complexity
 
@@ -133,4 +133,7 @@ Re-score if implementation needs a new schema, changes a command result, validat
 - First code review: rejected at `0096dbd`. The registry oracle did not compare reading name, typed name, result bound, or inclusive/exclusive semantics; run result and run show declarations admitted values their owners never emit; and the proof used synthetic documents where real nonzero mutations and authentication synchronization layouts were required.
 - First review response: the registry oracle now compares every accepted field and rejects one hostile mutation per field and policy. Run result and run show use closed cause and state vocabularies plus correlated completion, output-content, and carried-identity unions, with actual-tarball negative checks. Real wrappers now cover successful mutations, wholly failed and partly published exit-2 assembly updates, and a started nonzero run; the real authentication synchronization fixtures pass their exact dual streams through the production decoder. Focused owner and decoder suites, the actual-tarball NodeNext and Bundler proof, static checks, install qualification, `make platformcheck`, and the complete `make check` gate pass. Updated hosted legs and independent re-review remain pending.
 - Design reopened after implementation at `6f6e1c5`: the registry gave `home.busy` an unproved 65,536-byte result cap even though its public descriptor owns no structured-result bound. The amended design publishes the exact 65-byte inclusive maximum, derives the registry row from that descriptor-owned limit, and requires drift mutations plus both real boolean encodings. Independent amendment review accepted commit `8e9668c97f64a5b17f2af60146019a2b54718d5f`; the reviewer confirmed that the descriptor owns the exact inclusive bound, the registry derives its value and strictness, and the red-first proof catches drift without changing command bytes or schema. Verdict: `ACCEPT` with no remaining findings.
+- Second code review: rejected at `6f6e1c5`. Registry bounds still compared against the production registry rather than their owning descriptors, and authentication synchronization fixtures called the decoder rather than the public typed wrappers.
+- Second review response: every registry identity and bound now derives from `CLI_CONTRACTS`, and hostile descriptor mutations cover representative bounds plus all 21 rows mechanically. `home.busy` publishes and enforces its exact inclusive 65-byte maximum. A private unexported reading seam lets the real login and logout synchronization fixtures drive each public wrapper and durable mutation once while retaining exact streams.
+- Second review qualification: focused command, typed-document, library, authentication, home-busy, and specification suites pass 110 tests. The actual packed artifact passes eight Node, NodeNext, and Bundler cases. Typecheck, lint, dead-code, cycle, diff, specification, public-tree, install, and platform checks pass. The complete gate passes 161 repository and documentation tests, all 143 conformance cases, and 1,920 runtime tests across 229 files. Hosted platform legs and independent code re-review remain pending.
 - Code re-review: pending.

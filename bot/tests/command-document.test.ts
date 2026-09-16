@@ -33,6 +33,43 @@ test("registry drift identifies omissions, duplicates, raw operations, identity 
   }
 });
 
+test("registry bounds and strictness come from their owning command descriptors", () => {
+  for (const [operation, limit] of [
+    ["run.show", "documentBytesExclusive"],
+    ["auth.login", "resultBytes"],
+    ["run.start", "resultBytes"],
+  ] as const) {
+    const changed = CLI_CONTRACTS.map((descriptor) => descriptor.operation === operation
+      ? { ...descriptor, limits: { ...descriptor.limits, [limit]: 17 } }
+      : descriptor);
+    expect(structuredRegistryFault(STRUCTURED_COMMANDS, changed), operation).toBe(`${operation} has the wrong resultBytes`);
+  }
+});
+
+test("home busy owns an inclusive 65-byte document bound in its descriptor", () => {
+  const contract = structuredContract("home.busy");
+  expect(contract).toMatchObject({ resultBytes: 65, exclusive: false });
+  const descriptor = CLI_CONTRACTS.find((held) => held.operation === "home.busy");
+  expect(descriptor?.limits).toMatchObject({ documentBytes: 65 });
+  for (const documentBytes of [undefined, 64, 66]) {
+    const changed = CLI_CONTRACTS.map((held) => held.operation === "home.busy"
+      ? { ...held, limits: documentBytes === undefined ? { humanErrorBytes: 2_048 } : { ...held.limits, documentBytes } }
+      : held);
+    expect(structuredRegistryFault(STRUCTURED_COMMANDS, changed), String(documentBytes)).toBe("home.busy has the wrong resultBytes");
+  }
+  const exclusive = STRUCTURED_COMMANDS.map((held) => held.operation === "home.busy" ? { ...held, exclusive: true } : held);
+  expect(structuredRegistryFault(exclusive, CLI_CONTRACTS)).toBe("home.busy has the wrong exclusive");
+});
+
+test("every structured registry bound has descriptor provenance", () => {
+  for (const entry of STRUCTURED_COMMANDS) {
+    const changed = CLI_CONTRACTS.map((descriptor) => descriptor.operation === entry.operation
+      ? { ...descriptor, limits: Object.fromEntries(Object.entries(descriptor.limits).map(([name, value]) => [name, value + 1])) }
+      : descriptor);
+    expect(structuredRegistryFault(STRUCTURED_COMMANDS, changed), entry.operation).toBe(`${entry.operation} has the wrong resultBytes`);
+  }
+});
+
 test("exclusive framing returns documents at any exit and command refusals at exits 1 through 5", () => {
   const contract = structuredContract("assembly.update"), document = success(contract.kind);
   const held = decodeDocument(result(2, document), contract);
@@ -49,6 +86,11 @@ test("the decoder preserves each command's inclusive or exclusive published byte
   expect(decodeDocument(result(0, bytes), inclusive)).toMatchObject({ kind: "document" });
   const exclusive = { ...inclusive, exclusive: true };
   expect(() => decodeDocument(result(0, bytes), exclusive)).toThrow("violated its structured document contract");
+  const busy = line({ schemaVersion: 1, kind: "bot.home.busy", data: { busy: false } });
+  expect(busy).toHaveLength(65);
+  expect(decodeDocument(result(0, busy), structuredContract("home.busy"))).toMatchObject({ kind: "document" });
+  expect(() => decodeDocument(result(0, Buffer.concat([busy.subarray(0, -1), Buffer.from(" \n")])), structuredContract("home.busy")))
+    .toThrow("violated its structured document contract");
 });
 
 test("exclusive framing rejects malformed, cross-operation, wrong-version, forbidden, and dual output", () => {

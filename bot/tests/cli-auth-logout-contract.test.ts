@@ -8,10 +8,11 @@ import { lock } from "proper-lockfile";
 import { afterEach, expect, test, vi } from "vitest";
 import { main, processBoundary, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
-import { decodeDocument, structuredContract } from "../src/command-document.ts";
 import { configuredAuthLogoutRuntime } from "../src/model-runtime.ts";
 import { mapping } from "../src/model.ts";
+import * as mutationCommandReading from "../src/mutation-command-reading.ts";
 import { inertText } from "../src/new-command-result.ts";
+import { authLogoutDocument } from "../src/public-mutation-readings.ts";
 import { isNativeModelRuntime, nativeModelRuntime } from "./support/native-model-runtime.ts";
 
 interface Invocation { code: number; out: string; err: string }
@@ -23,6 +24,7 @@ const SECRET = "logout-secret-must-never-print";
 const WARNING = "The retired Bot credential store is inactive; this command uses Pi's auth.json.\n";
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -292,7 +294,16 @@ test("a typed post-delete synchronization failure preserves the completion resul
     throw new CredentialSynchronizationError(selected.id, "logout", undefined, { cause: new Error(SECRET) });
   });
   held.value.authPath = authPath; held.value.signal = controller.signal;
-  const result = await invoke(["auth", "logout", selected.id, "--json"], held);
+  let readings = 0;
+  vi.spyOn(mutationCommandReading, "mutationReading").mockImplementation(async (args) => {
+    readings++;
+    expect(args).toEqual(["auth", "logout", selected.id, "--json"]);
+    const exit = await main(args, held.value);
+    return { exit, stdout: Buffer.concat(held.out), stderr: Buffer.concat(held.err) };
+  });
+  const typed = await authLogoutDocument(selected.id, { signal: controller.signal }, "/", {});
+  expect(readings).toBe(1);
+  const result = { code: typed.command.exit, out: typed.command.stdout.toString(), err: typed.command.stderr.toString() };
   expect(result.code).toBe(5);
   expect(result.out).toBe(success(selected.id));
   expect(object(result.err)).toEqual({ schemaVersion: 1, kind: "error", error: {
@@ -302,7 +313,6 @@ test("a typed post-delete synchronization failure preserves the completion resul
   } });
   expect(JSON.parse(await readFile(authPath, "utf8"))).toEqual({ other: { type: "api_key", key: "other-secret" } });
   expect(result.out + result.err).not.toContain(SECRET);
-  const typed = decodeDocument({ exit: result.code, stdout: Buffer.from(result.out), stderr: Buffer.from(result.err) }, structuredContract("auth.logout"));
   expect(typed).toMatchObject({ kind: "error", exit: 5, error: { error: { cause: "synchronization-failed" } }, command: {
     stdout: Buffer.from(result.out), stderr: Buffer.from(result.err),
   } });
