@@ -9,6 +9,7 @@ import { errorCode, mapping, plainly } from "./model.ts";
 import { inertText } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
 import type { CliFailure } from "./run-list-query.ts";
+import type { AuthImportDocument, ErrorDocument } from "./command-document.ts";
 import { jsonValue } from "./schema-check.ts";
 
 interface Boundary {
@@ -86,10 +87,11 @@ function stop(cause: Cause, path?: string): never { throw new ImportFailure(fail
 
 function emitFailure(boundary: Boundary, held: CliFailure, json: boolean): number {
   if (json) {
-    boundary.stderr(`${jsonObject({ schemaVersion: 1, kind: "error", error: {
+    const document = { schemaVersion: 1, kind: "error", error: {
       code: held.code, operation: "auth.import", cause: held.cause, message: held.message,
       retryable: held.retryable, details: held.details,
-    } })}\n`);
+    } } satisfies ErrorDocument;
+    boundary.stderr(`${jsonObject(document)}\n`);
   } else {
     const path = typeof held.details["path"] === "string" ? held.details["path"] : undefined;
     const message = path === undefined ? held.message : `${held.message} Path: ${path}.`;
@@ -498,8 +500,9 @@ async function settle(session: Session): Promise<void> {
 }
 
 function resultOutput(request: Request, count: number): Buffer {
+  const document = { schemaVersion: 1, kind: "bot.auth.import", data: { imported: count > 0, providerCount: count } } satisfies AuthImportDocument;
   const output = request.json
-    ? `${jsonObject({ schemaVersion: 1, kind: "bot.auth.import", data: { imported: count > 0, providerCount: count } })}\n`
+    ? `${jsonObject(document)}\n`
     : count > 0 ? `Imported ${String(count)} provider credentials into Pi authentication.\n`
       : "No provider credentials were present to import.\n";
   return Buffer.from(output);

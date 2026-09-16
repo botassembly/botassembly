@@ -257,7 +257,9 @@ Without `--live`, the command reads Pi's local catalog and does not contact a pr
 
 Every command with a `--json` or `-j` mode writes one newline-terminated error
 document to standard error and nothing to standard output when it fails. The
-document is:
+post-mutation `synchronization-failed` results under [logging in](auth.md#logging-in)
+and [logging out](auth.md#logging-out) are the two documented standard-output
+exceptions. The document is:
 
 ```json
 {

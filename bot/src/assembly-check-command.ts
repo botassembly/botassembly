@@ -8,6 +8,7 @@ import { inertText, newCommandFailure, type CommandResult } from "./new-command-
 import { jsonValue } from "./schema-check.ts";
 import { mapping } from "./model.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { AssemblyCheckDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -133,7 +134,7 @@ function cursor(target: string, after: number): string {
   return Buffer.from(jsonObject({ version: 1, target: hashBytes(Buffer.from(target)), after })).toString("base64url");
 }
 
-function resultDocument(target: string, hash: string | null, rows: readonly Record<string, unknown>[], offset: number, total: number, limit: number): Record<string, unknown> {
+function resultDocument(target: string, hash: string | null, rows: readonly Record<string, unknown>[], offset: number, total: number, limit: number): AssemblyCheckDocument {
   const end = Math.min(offset + limit, total), complete = end >= total;
   const next = complete ? null : cursor(target, end - 1);
   return { schemaVersion: 1, kind: "bot.assembly.check", data: { target, hash, stages: rows.slice(offset, end) },

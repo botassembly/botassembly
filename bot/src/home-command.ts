@@ -5,6 +5,7 @@ import { HomeInstallationError, readInstallation, type InstallationDependencies,
 import { homePaths, type HomePaths } from "./invocation.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { HomeShowDocument } from "./command-document.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 
@@ -56,8 +57,9 @@ export function renderHomeResult(
     const held = paths[key];
     return `- ${label}: ${inertText(held.path, 8_192).text} — ${held.exists ? "present" : "absent"}\n`;
   }).join("");
+  const document = { schemaVersion: 1, kind: "bot.home.show", data } satisfies HomeShowDocument;
   const output = json
-    ? `${jsonObject({ schemaVersion: 1, kind: "bot.home.show", data })}\n`
+    ? `${jsonObject(document)}\n`
     : `# Bot home\n\n- Home: ${inertText(home, 3_000).text}\n- Initialized: ${reading.initialized ? "yes" : "no"}\n${pathLines}${reading.initialized ? `- Installation ID: ${reading.installationId}\n` : ""}`;
   if (Buffer.byteLength(output) > HOME_RESULT_BYTES) return newCommandFailure("home.show", {
     code: "integrity-failed", cause: "result-oversized", message: "The Bot home result exceeds its output bound.",

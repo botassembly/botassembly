@@ -7,6 +7,7 @@ import { inertText, newCommandFailure, type CommandResult } from "./new-command-
 import { errorCode } from "./model.ts";
 import { heldRecord } from "./record-lines.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { RunChecklistDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -145,8 +146,9 @@ function markdown(marks: ChecklistMark[]): Buffer {
 }
 
 function rendered(run: string, marks: ChecklistMark[], json: boolean): CommandResult {
+  const document = { schemaVersion: 1, kind: "bot.run.checklist", data: { run, marks } } satisfies RunChecklistDocument;
   const stdout = json
-    ? Buffer.from(`${jsonObject({ schemaVersion: 1, kind: "bot.run.checklist", data: { run, marks } })}\n`)
+    ? Buffer.from(`${jsonObject(document)}\n`)
     : markdown(marks);
   return { exit: 0, stdout, stderr: Buffer.alloc(0) };
 }

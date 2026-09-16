@@ -5,6 +5,8 @@ import { boundedText, newCommandFailure, type CommandResult } from "./new-comman
 import type { StartedRunResult } from "./run.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { Refusal } from "./spine.ts";
+import type { RunResultDocument, RunResultOutput } from "./command-document.ts";
+import type { NewOperation } from "./cli-contract.ts";
 
 export type RunStartRequest = { args: string[]; json: boolean; correlation?: string };
 
@@ -116,7 +118,7 @@ function reasonDescriptor(reason: string): { text: string; bytes: number; trunca
   return { text: bytes.subarray(0, end).toString("utf8"), bytes: bytes.length, truncated: true };
 }
 
-function outputDescriptor(result: StartedRunResult, include: boolean): Record<string, unknown> | undefined {
+function outputDescriptor(result: StartedRunResult, include: boolean): RunResultOutput | undefined {
   const source = result.outputSource, bytes = result.output;
   if (source === undefined || bytes === undefined) return undefined;
   const utf8 = isUtf8(bytes);
@@ -130,7 +132,7 @@ function outputDescriptor(result: StartedRunResult, include: boolean): Record<st
   };
 }
 
-function resultData(result: StartedRunResult, content: boolean, identities: boolean): Record<string, unknown> {
+function resultData(result: StartedRunResult, content: boolean, identities: boolean): RunResultDocument["data"] {
   const output = outputDescriptor(result, content);
   const carried = result.carried === undefined ? undefined : {
     count: result.carried.length, identitiesIncluded: identities,
@@ -154,11 +156,12 @@ function resultData(result: StartedRunResult, content: boolean, identities: bool
 }
 
 function document(result: StartedRunResult, content: boolean, identities: boolean): Buffer {
-  return Buffer.from(`${jsonObject({ schemaVersion: 1, kind: RUN_START_CONTRACT.result.kind, data: resultData(result, content, identities) })}\n`);
+  const held = { schemaVersion: 1, kind: RUN_START_CONTRACT.result.kind, data: resultData(result, content, identities) } satisfies RunResultDocument;
+  return Buffer.from(`${jsonObject(held)}\n`);
 }
 
 export function renderRunStart(
-  result: StartedRunResult, operation = "run.start", label = "Run start",
+  result: StartedRunResult, operation: NewOperation = "run.start", label = "Run start",
 ): CommandResult<number> {
   const complete = document(result, true, true);
   const descriptor = complete.length <= RUN_START_CONTRACT.resultBytes ? complete : document(result, false, true);

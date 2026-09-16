@@ -10,6 +10,7 @@ import { inertText, newCommandFailure, type CommandResult } from "./new-command-
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { ErrorCode } from "./spine.ts";
 import type { DriverClock } from "./process.ts";
+import type { RunSearchDocument } from "./command-document.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void; signal?: AbortSignal; clock: DriverClock }
 interface Request { query: string; limit: number; after?: string; home: string; json: boolean }
@@ -322,7 +323,7 @@ function enriched(raw: RawHit): Hit {
 function render(requested: Request, tool: Tool, raw: RawHit[], count: number): CommandResult {
   const more = raw.length > requested.limit, shown = raw.slice(0, requested.limit), hits = shown.map(enriched), last = shown.at(-1);
   const next = more && last !== undefined ? encodeCursor(requested.home, requested.query, last) : null;
-  const document = { schemaVersion: 1, kind: "bot.run.search", data: { query: requested.query, tool, hits }, page: { limit: requested.limit, next, complete: !more }, summary: { candidateFiles: count, returned: hits.length } };
+  const document = { schemaVersion: 1, kind: "bot.run.search", data: { query: requested.query, tool, hits }, page: { limit: requested.limit, next, complete: !more }, summary: { candidateFiles: count, returned: hits.length } } satisfies RunSearchDocument;
   const heading = `# Run search\n\nTool: ${inertText(tool.name, 32).text} ${inertText(tool.version, 256).text}\n\n`;
   const table = "| Run | Stage | Repeat | Retry | File | Line | Text | Omitted bytes |\n| --- | --- | ---: | ---: | --- | ---: | --- | ---: |\n" + hits.map((hit) => `| ${inertText(hit.run).text} | ${hit.stage === null ? "-" : inertText(hit.stage).text} | ${String(hit.repeat ?? "-")} | ${String(hit.retry ?? "-")} | ${inertText(hit.file).text} | ${String(hit.line)} | ${inertText(hit.text).text} | ${String(hit.omittedBytes)} |`).join("\n") + "\n";
   const stdout = Buffer.from(requested.json ? `${jsonObject(document)}\n` : `${heading}${table}`);

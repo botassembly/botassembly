@@ -11,6 +11,7 @@ import { newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import { childReference, showRecord } from "./one-run.ts";
 import { heldRecord, type HeldRecord } from "./record-lines.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { RunEventsDocument } from "./command-document.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; resultBytesExclusive?: number; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 interface Query { run: string; child?: string; json: boolean }
@@ -120,8 +121,9 @@ async function selected(query: Query, home: string): Promise<Selected | CommandR
 }
 
 function render(query: Query, held: Selected, env: NodeJS.ProcessEnv, resultBytesExclusive: number): CommandResult {
+  const document = { schemaVersion: 1, kind: "bot.run.events", data: { run: held.name, child: held.child, events: held.record.events } } satisfies RunEventsDocument;
   const stdout = query.json
-    ? Buffer.from(`${jsonObject({ schemaVersion: 1, kind: "bot.run.events", data: { run: held.name, child: held.child, events: held.record.events } })}\n`)
+    ? Buffer.from(`${jsonObject(document)}\n`)
     : showRecord(held.home, held.directory, held.record, false, scratchRoot(env)).output;
   if (stdout.length >= resultBytesExclusive) {
     return newCommandFailure("run.events", failure("result-too-large", "The complete record reading exceeds the output limit.", 5), query.json);

@@ -5,6 +5,7 @@ import { jsonObject } from "./check.ts";
 import { AUTH_LOGIN_CONTRACT } from "./cli-contract.ts";
 import { inertText, newCommandFailure } from "./new-command-result.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { AuthLoginDocument } from "./command-document.ts";
 
 interface Boundary {
   stdinIsTTY: boolean;
@@ -131,9 +132,10 @@ function interaction(boundary: Boundary): AuthInteraction {
 }
 
 function document(provider: string, credentialType: Credential["type"]): Buffer {
-  return Buffer.from(`${jsonObject({ schemaVersion: 1, kind: "bot.auth.login", data: {
+  const held = { schemaVersion: 1, kind: "bot.auth.login", data: {
     provider, authenticated: true, credentialType,
-  } })}\n`);
+  } } satisfies AuthLoginDocument;
+  return Buffer.from(`${jsonObject(held)}\n`);
 }
 
 function success(boundary: Boundary, request: Request, provider: string, credentialType: Credential["type"]): void {

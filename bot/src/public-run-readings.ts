@@ -12,9 +12,13 @@ import { runEventsCommand } from "./run-events-command.ts";
 import { runOutputCommand, runRequestCommand } from "./run-output-command.ts";
 import { runSearchCommand } from "./run-search-command.ts";
 import { readRunShow, runShowFailure } from "./run-show.ts";
+import { inspectRunList } from "./run-list.ts";
+import { decodeDocument, structuredContract, type DocumentReading, type RunCheckDocument, type RunChecklistDocument, type RunEventsDocument, type RunListDocument, type RunSearchDocument, type RunShowDocument } from "./command-document.ts";
+import type { RunListQuery } from "./run-list-query.ts";
 
 export { inspectRunList, runListFailure, type RunListResult } from "./run-list.ts";
 export { parseRunList, type CliFailure, type RunListQuery } from "./run-list-query.ts";
+export type { CheckRecording, ChecklistMark, DocumentReading, DocumentWarning, ErrorDocument, Page, RunCheckDocument, RunChecklistDocument, RunEventsDocument, RunListDocument, RunListRow, RunSearchDocument, RunSearchHit, RunShowDocument, RunShowStage, RunShowSubflow, RunShowWarning, Summary } from "./command-document.ts";
 
 /** `bot run show RUN [--json]`, reproducing `run-show-command.ts`. The scratch root comes
  *  from the supplied environment, so the caller's environment decides the scratch paths. */
@@ -23,6 +27,10 @@ export function runShowReading(home: string, run: string, json: boolean, env: No
     (reading) => ({ exit: 0 as const, stdout: json ? reading.json : reading.human, stderr: Buffer.alloc(0) }),
     (reason: unknown) => newCommandFailure("run.show", runShowFailure(reason), json),
   );
+}
+
+export function runShowDocument(home: string, run: string, env: NodeJS.ProcessEnv): Promise<DocumentReading<RunShowDocument>> {
+  return runShowReading(home, run, true, env).then((result) => decodeDocument(result, structuredContract("run.show")));
 }
 
 /** `bot run record RUN --raw`, reproducing `run-record-command.ts`. The command streams the
@@ -50,6 +58,15 @@ export function runCheckReading(
   return commandReading(runCheckCommand, args, cwd, env);
 }
 
+export function runCheckDocument(
+  home: string, run: string, check: string,
+  options: { file?: string; stage?: string; retry?: number; repeat?: number },
+  cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<RunCheckDocument>> {
+  return runCheckReading(home, run, check, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("run.check")));
+}
+
 /** `bot run checklist RUN [--json] [--stage S --retry N] [--repeat N] --home HOME`. */
 export function runChecklistReading(
   home: string, run: string, options: { json?: boolean; stage?: string; retry?: number; repeat?: number },
@@ -62,6 +79,14 @@ export function runChecklistReading(
   return commandReading(runChecklistCommand, args, cwd, env);
 }
 
+export function runChecklistDocument(
+  home: string, run: string, options: { stage?: string; retry?: number; repeat?: number },
+  cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<RunChecklistDocument>> {
+  return runChecklistReading(home, run, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("run.checklist")));
+}
+
 /** `bot run events RUN [--json] [--child C] --home HOME`. */
 export function runEventsReading(
   home: string, run: string, options: { json?: boolean; child?: string },
@@ -69,6 +94,13 @@ export function runEventsReading(
 ): Promise<CommandResult<number>> {
   const args = [run, ...flag("--json", options.json), ...valued("--child", options.child), "--home", home];
   return commandReading(runEventsCommand, args, cwd, env);
+}
+
+export function runEventsDocument(
+  home: string, run: string, options: { child?: string }, cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<RunEventsDocument>> {
+  return runEventsReading(home, run, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("run.events")));
 }
 
 /** `bot run output RUN [STAGE] --raw --home HOME`. The command streams the sealed
@@ -98,4 +130,19 @@ export function runSearchReading(
     ...valued("--after", options.after), "--home", home, "--", query,
   ];
   return commandReading(runSearchCommand, args, cwd, env);
+}
+
+export function runSearchDocument(
+  home: string, query: string, options: { limit?: number; after?: string },
+  cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<RunSearchDocument>> {
+  return runSearchReading(home, query, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("run.search")));
+}
+
+export function runListDocument(
+  home: string, query: Omit<RunListQuery, "json">,
+): Promise<DocumentReading<RunListDocument>> {
+  return inspectRunList(home, { ...query, json: true })
+    .then((result) => decodeDocument(result, structuredContract("run.list")));
 }

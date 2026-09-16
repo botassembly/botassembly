@@ -8,6 +8,7 @@ import { processClock } from "./process-clock.ts";
 import { readByteStream } from "./stdin.ts";
 import { CLI_CONTRACTS } from "./cli-contract.ts";
 import { runtimeBoundary, settleCommand, type CliBoundary } from "./cli-boundary.ts";
+import { RETIRED_CREDENTIAL_ADVISORY } from "./credential-advisory.ts";
 
 export type { CliBoundary } from "./cli-boundary.ts";
 
@@ -64,7 +65,7 @@ async function admittedMain(argv: string[], base: CliBoundary): Promise<number> 
       warned = true;
       if (base.retiredCredentialPath !== undefined) {
         if (lstatSync(base.retiredCredentialPath, { throwIfNoEntry: false }) !== undefined) {
-          base.stderr("The retired Bot credential store is inactive; this command uses Pi's auth.json.\n");
+          base.stderr(RETIRED_CREDENTIAL_ADVISORY);
         }
       }
       base.beforeCredentialAccess?.();

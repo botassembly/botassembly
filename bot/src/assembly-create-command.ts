@@ -8,6 +8,7 @@ import { boundedText, newCommandFailure } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { Refusal } from "./spine.ts";
+import type { AssemblyInstallDocument, AssemblyLinkDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -54,7 +55,15 @@ function repeated(args: readonly string[], names: readonly string[]): boolean {
 }
 
 function creationDocument(operation: Operation, creation: AssemblyCreation): string {
-  return `${jsonObject({ schemaVersion: 1, kind: `bot.${operation}`, data: creation })}\n`;
+  if (operation === "assembly.install" && creation.kind === "installed") {
+    const document = { schemaVersion: 1, kind: "bot.assembly.install", data: { ...creation, kind: "installed" } } satisfies AssemblyInstallDocument;
+    return `${jsonObject(document)}\n`;
+  }
+  if (operation === "assembly.link" && creation.kind === "linked") {
+    const document = { schemaVersion: 1, kind: "bot.assembly.link", data: { ...creation, kind: "linked" } } satisfies AssemblyLinkDocument;
+    return `${jsonObject(document)}\n`;
+  }
+  throw new Error("The assembly creation result disagrees with its operation.");
 }
 
 function renderSuccess(operation: Operation, result: ManagementResult, json: boolean): Buffer | undefined {

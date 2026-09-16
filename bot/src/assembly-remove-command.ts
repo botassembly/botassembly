@@ -8,6 +8,7 @@ import { boundedText, newCommandFailure } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import type { Refusal } from "./spine.ts";
+import type { AssemblyRemoveDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -51,7 +52,8 @@ function emitRefusal(boundary: Boundary, faults: readonly Refusal[], json: boole
 }
 
 function document(removal: AssemblyRemoval): string {
-  return `${jsonObject({ schemaVersion: 1, kind: "bot.assembly.remove", data: removal })}\n`;
+  const held = { schemaVersion: 1, kind: "bot.assembly.remove", data: removal } satisfies AssemblyRemoveDocument;
+  return `${jsonObject(held)}\n`;
 }
 
 function parse(args: string[], boundary: Boundary): ParsedRemoval | number {

@@ -7,6 +7,7 @@ import { errorCode } from "./model.ts";
 import { boundedText, inertText, newCommandFailure } from "./new-command-result.ts";
 import type { DriverClock } from "./process.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { AssemblyUpdateDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -39,7 +40,8 @@ function dependency(reason: unknown): CliFailure {
 }
 
 function document(outcomes: readonly AssemblyUpdateOutcome[]): string {
-  return `${jsonObject({ schemaVersion: 1, kind: "bot.assembly.update", data: { outcomes } })}\n`;
+  const held = { schemaVersion: 1, kind: "bot.assembly.update", data: { outcomes: [...outcomes] } } satisfies AssemblyUpdateDocument;
+  return `${jsonObject(held)}\n`;
 }
 
 function worstCase(names: readonly string[]): number {

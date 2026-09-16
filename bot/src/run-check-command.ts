@@ -10,6 +10,7 @@ import { errorCode } from "./model.ts";
 import { heldRecord } from "./record-lines.ts";
 import { boundedHeldRunFile } from "./run-files.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { RunCheckDocument } from "./command-document.ts";
 
 const RUN_CHECK_CAPTURE_BYTES = 16_777_216;
 
@@ -154,8 +155,9 @@ function markdown(recordings: Recording[]): Buffer {
 }
 
 function rendered(run: string, name: string, recordings: Recording[], json: boolean): CommandResult {
+  const document = { schemaVersion: 1, kind: "bot.run.check", data: { run, check: name, recordings } } satisfies RunCheckDocument;
   const stdout = json
-    ? Buffer.from(`${jsonObject({ schemaVersion: 1, kind: "bot.run.check", data: { run, check: name, recordings } })}\n`)
+    ? Buffer.from(`${jsonObject(document)}\n`)
     : markdown(recordings);
   return { exit: 0, stdout, stderr: Buffer.alloc(0) };
 }

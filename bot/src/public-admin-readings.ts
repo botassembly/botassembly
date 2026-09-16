@@ -11,6 +11,9 @@ import { homeBusyCommand } from "./home-busy-command.ts";
 import { homeCommand } from "./home-command.ts";
 import { intelligenceListCommand } from "./intelligence-list-command.ts";
 import type { CommandResult } from "./new-command-result.ts";
+import { decodeDocument, structuredContract, type AssemblyCheckDocument, type AssemblyListDocument, type CapabilitiesDocument, type DocumentReading, type HomeBusyDocument, type HomeShowDocument, type IntelligenceListDocument } from "./command-document.ts";
+
+export type { AssemblyCheckDocument, AssemblyListDocument, AssemblyListRow, CapabilitiesDocument, DocumentReading, ErrorDocument, HomeBusyDocument, HomePathReading, HomeShowDocument, IntelligenceListDocument, IntelligenceRow, Page, Summary } from "./command-document.ts";
 
 /** `bot capabilities [--json]`. The handler receives two arguments, so its own
  *  default source-identity resolver applies, exactly as the command's does. The
@@ -19,10 +22,18 @@ export function capabilitiesReading(json: boolean): Promise<CommandResult<number
   return commandReading(capabilitiesCommand, flag("--json", json), "", {});
 }
 
+export function capabilitiesDocument(): Promise<DocumentReading<CapabilitiesDocument>> {
+  return capabilitiesReading(true).then((result) => decodeDocument(result, structuredContract("capabilities")));
+}
+
 /** `bot home show --home HOME [--json]`. The handler resolves the home against
  *  the supplied working directory, so a relative home follows the caller. */
 export function homeShowReading(home: string, json: boolean, cwd: string, env: NodeJS.ProcessEnv): Promise<CommandResult<number>> {
   return commandReading(homeCommand, ["--home", home, ...flag("--json", json)], cwd, env);
+}
+
+export function homeShowDocument(home: string, cwd: string, env: NodeJS.ProcessEnv): Promise<DocumentReading<HomeShowDocument>> {
+  return homeShowReading(home, true, cwd, env).then((result) => decodeDocument(result, structuredContract("home.show")));
 }
 
 /** `bot home busy DIR --home HOME [--json|--quiet]`. Quiet mode writes no bytes
@@ -33,6 +44,13 @@ export function homeBusyReading(
 ): Promise<CommandResult<number>> {
   const args = [directory, "--home", home, ...flag("--json", options.json), ...flag("--quiet", options.quiet)];
   return commandReading(homeBusyCommand, args, cwd, env);
+}
+
+export function homeBusyDocument(
+  home: string, directory: string, cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<HomeBusyDocument>> {
+  return homeBusyReading(home, directory, { json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("home.busy")));
 }
 
 /** `bot assembly check TARGET [REQUEST] --home HOME [options]`. Each slot is
@@ -57,6 +75,18 @@ export function assemblyCheckReading(
   return commandReading(assemblyCheckCommand, args, cwd, env);
 }
 
+export function assemblyCheckDocument(
+  home: string, target: string, request: string | undefined,
+  options: {
+    limit?: number; after?: string; in?: string; intelligence?: string;
+    localContext?: "ignore" | "announce" | "use"; retries?: number; timeout?: number;
+    slots?: Readonly<Record<string, string>>;
+  }, cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<AssemblyCheckDocument>> {
+  return assemblyCheckReading(home, target, request, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("assembly.check")));
+}
+
 /** `bot assembly list --home HOME [options]`. `--fields` is one comma-separated
  *  value, the spelling the contract declares. */
 export function assemblyListReading(
@@ -72,10 +102,25 @@ export function assemblyListReading(
   return commandReading(assemblyListCommand, args, cwd, env);
 }
 
+export function assemblyListDocument(
+  home: string, options: { count?: boolean; fields?: readonly AssemblyListField[]; limit?: number; after?: string },
+  cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<AssemblyListDocument>> {
+  return assemblyListReading(home, { ...options, json: true }, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("assembly.list")));
+}
+
 /** `bot intelligence list --home HOME [--json]`. The handler reads the home's
  *  `config.yaml` alone, so the reading loads no model runtime. */
 export function intelligenceListReading(
   home: string, json: boolean, cwd: string, env: NodeJS.ProcessEnv,
 ): Promise<CommandResult<number>> {
   return commandReading(intelligenceListCommand, [...flag("--json", json), "--home", home], cwd, env);
+}
+
+export function intelligenceListDocument(
+  home: string, cwd: string, env: NodeJS.ProcessEnv,
+): Promise<DocumentReading<IntelligenceListDocument>> {
+  return intelligenceListReading(home, true, cwd, env)
+    .then((result) => decodeDocument(result, structuredContract("intelligence.list")));
 }

@@ -12,6 +12,7 @@ import { bytewise, errorCode, mapping } from "./model.ts";
 import { jsonValue } from "./schema-check.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { provenance } from "./management.ts";
+import type { AssemblyListDocument, AssemblyListRow } from "./command-document.ts";
 
 interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 interface AssemblyRow { name: string; kind: "installed" | "linked"; source: string | null; updated: string | null; target: string | null; broken: boolean; hash: string | null; at: string }
@@ -132,7 +133,7 @@ function cursorAfter(raw: string, home: string, names: readonly string[]): numbe
   return index < 0 ? undefined : index + 1;
 }
 
-function projected(rowValue: AssemblyRow, fields: readonly AssemblyListField[]): Record<string, unknown> {
+function projected(rowValue: AssemblyRow, fields: readonly AssemblyListField[]): Partial<AssemblyListRow> {
   return Object.fromEntries(fields.map((field) => [field, rowValue[field]]));
 }
 
@@ -156,7 +157,10 @@ function emitFailure(boundary: Boundary, held: CliFailure, json: boolean): numbe
 
 function countOutput(boundary: Boundary, json: boolean, count: number): number {
   if (!json) boundary.stdout(`${String(count)} assemblies match.\n`);
-  else boundary.stdout(`${jsonObject({ schemaVersion: 1, kind: "bot.assembly.list", data: [], page: { limit: 0, next: null, through: null, complete: true }, summary: { returned: 0, matched: count, warningCount: 0, warningsOmitted: 0 }, warnings: [] })}\n`);
+  else {
+    const document = { schemaVersion: 1, kind: "bot.assembly.list", data: [], page: { limit: 0, next: null, through: null, complete: true }, summary: { returned: 0, matched: count, warningCount: 0, warningsOmitted: 0 }, warnings: [] } satisfies AssemblyListDocument;
+    boundary.stdout(`${jsonObject(document)}\n`);
+  }
   return 0;
 }
 
@@ -181,7 +185,7 @@ async function emitRows(path: string, parsed: Request, boundary: Boundary, rows:
   const selected = await hashed(rows.slice(offset, offset + parsed.limit), parsed.fields), complete = offset + selected.length >= rows.length;
   const next = complete || selected.length === 0 ? null : cursor(path, selected.at(-1)?.name ?? "");
   const document = { schemaVersion: 1, kind: "bot.assembly.list", data: selected.map((one) => projected(one, parsed.fields)),
-    page: { limit: parsed.limit, next, through: names.at(-1) ?? null, complete }, summary: { returned: selected.length, matched: rows.length, warningCount: 0, warningsOmitted: 0 }, warnings: [] };
+    page: { limit: parsed.limit, next, through: names.at(-1) ?? null, complete }, summary: { returned: selected.length, matched: rows.length, warningCount: 0, warningsOmitted: 0 }, warnings: [] } satisfies AssemblyListDocument;
   const output = parsed.json ? Buffer.from(`${jsonObject(document)}\n`) : markdown(selected, parsed.fields);
   if (output.length >= ASSEMBLY_READ_CONTRACT.output.pageBytesExclusive) return emitFailure(boundary, failure("result-oversized", "The assembly list result exceeds its output bound.", {}, 5), parsed.json);
   boundary.stdout(output);

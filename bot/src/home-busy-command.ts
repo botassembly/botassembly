@@ -4,6 +4,7 @@ import { jsonObject } from "./check.ts";
 import { takeHome } from "./flags.ts";
 import { newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { HomeBusyDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -50,8 +51,9 @@ function parse(args: readonly string[], boundary: Pick<Boundary, "cwd" | "env">)
 }
 
 function render(busy: boolean, json: boolean): CommandResult<0> {
+  const document = { schemaVersion: 1, kind: "bot.home.busy", data: { busy } } satisfies HomeBusyDocument;
   const output = json
-    ? `${jsonObject({ schemaVersion: 1, kind: "bot.home.busy", data: { busy } })}\n`
+    ? `${jsonObject(document)}\n`
     : `Busy: ${busy ? "yes" : "no"}\n`;
   return { exit: 0, stdout: Buffer.from(output), stderr: Buffer.alloc(0) };
 }

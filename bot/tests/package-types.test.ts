@@ -219,6 +219,15 @@ for (const path of ["src/cli.ts", "dist/cli.js", "types/session.d.ts", "missing"
     (reason) => { if (reason?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw reason; },
   );
 }
+const admin = await import("bot/admin-readings");
+const run = await import("bot/run-readings");
+const mutation = await import("bot/mutation-readings");
+const representative = [
+  await admin.capabilitiesDocument(),
+  await run.runShowDocument("missing-home", "missing-run", {}),
+  await mutation.assemblyRemoveDocument("missing-home", "missing", process.cwd(), {}),
+];
+if (representative.some((reading) => reading.exit !== reading.command.exit)) throw new Error("a typed command lost its exact result");
 `);
   await expect(run(process.execPath, [script], { cwd: consumer, encoding: "utf8" })).resolves.toBeDefined();
 });
@@ -227,17 +236,18 @@ test("strict NodeNext and Bundler consumers resolve every value, named type, and
   expect(await stat(join(consumer, "node_modules", "@types", "node")).then(() => true, () => false)).toBe(false);
   expect(await stat(join(installed, "node_modules", "@types", "node", "index.d.ts")).then(() => true, () => false)).toBe(true);
   await writeFile(join(consumer, "consumer.ts"), `
-import { capabilitiesReading, homeShowReading } from "bot/admin-readings";
+import { assemblyCheckDocument, assemblyListDocument, capabilitiesDocument, capabilitiesReading, homeBusyDocument, homeShowDocument, homeShowReading, intelligenceListDocument } from "bot/admin-readings";
+import type { AssemblyCheckDocument, AssemblyListDocument, CapabilitiesDocument, DocumentReading, ErrorDocument, HomeBusyDocument, HomeShowDocument, IntelligenceListDocument } from "bot/admin-readings";
 import { inspectStatus, promptConstruction } from "bot/inspection";
 import type { InspectionResult } from "bot/inspection";
-import { assemblyInstallReading, MUTATION_FINAL_SETTLEMENT_MS } from "bot/mutation-readings";
-import type { RunResumeReadingOptions, RunStartReadingOptions } from "bot/mutation-readings";
+import { assemblyInstallDocument, assemblyInstallReading, assemblyLinkDocument, assemblyRemoveDocument, assemblyUpdateDocument, authImportDocument, authLoginDocument, authLogoutDocument, MUTATION_FINAL_SETTLEMENT_MS, runResumeDocument, runStartDocument } from "bot/mutation-readings";
+import type { AssemblyInstallDocument, AssemblyLinkDocument, AssemblyRemoveDocument, AssemblyUpdateDocument, AuthImportDocument, AuthLoginDocument, AuthLogoutDocument, RunResultDocument, RunResumeReadingOptions, RunStartReadingOptions } from "bot/mutation-readings";
 import { inspectSession, openRunDirectory } from "bot/one-run";
 import type { LogsQuery, SelectedOutput } from "bot/one-run";
 import { field, heldRecord } from "bot/record-lines";
 import type { HeldRecord } from "bot/record-lines";
-import { inspectRunList, parseRunList, runShowReading } from "bot/run-readings";
-import type { CliFailure, RunListQuery, RunListResult } from "bot/run-readings";
+import { inspectRunList, parseRunList, runCheckDocument, runChecklistDocument, runEventsDocument, runListDocument, runSearchDocument, runShowDocument, runShowReading } from "bot/run-readings";
+import type { CliFailure, RunCheckDocument, RunChecklistDocument, RunEventsDocument, RunListDocument, RunListQuery, RunListResult, RunSearchDocument, RunShowDocument } from "bot/run-readings";
 import { renderSession, settledSessionTools } from "bot/session";
 import type { SettledTool } from "bot/session";
 const env: NodeJS.ProcessEnv = {};
@@ -245,11 +255,41 @@ const bytes: Buffer = Buffer.from("proof");
 const result: Awaited<ReturnType<typeof homeShowReading>> | undefined = undefined;
 void [capabilitiesReading, inspectStatus, promptConstruction, assemblyInstallReading, MUTATION_FINAL_SETTLEMENT_MS,
   inspectSession, openRunDirectory, field, heldRecord, inspectRunList, parseRunList, runShowReading, renderSession,
-  settledSessionTools, env, bytes, result];
+  settledSessionTools, env, bytes, result, assemblyCheckDocument, assemblyListDocument, capabilitiesDocument,
+  homeBusyDocument, homeShowDocument, intelligenceListDocument, runCheckDocument, runChecklistDocument,
+  runEventsDocument, runListDocument, runSearchDocument, runShowDocument, assemblyInstallDocument,
+  assemblyLinkDocument, assemblyRemoveDocument, assemblyUpdateDocument, authImportDocument, authLoginDocument,
+  authLogoutDocument, runResumeDocument, runStartDocument];
 type Named = InspectionResult | RunResumeReadingOptions | RunStartReadingOptions | LogsQuery | SelectedOutput |
-  HeldRecord | CliFailure | RunListQuery | RunListResult | SettledTool;
+  HeldRecord | CliFailure | RunListQuery | RunListResult | SettledTool | ErrorDocument |
+  AssemblyCheckDocument | AssemblyListDocument | CapabilitiesDocument | HomeBusyDocument | HomeShowDocument |
+  IntelligenceListDocument | RunCheckDocument | RunChecklistDocument | RunEventsDocument | RunListDocument |
+  RunSearchDocument | RunShowDocument | AssemblyInstallDocument | AssemblyLinkDocument | AssemblyRemoveDocument |
+  AssemblyUpdateDocument | AuthImportDocument | AuthLoginDocument | AuthLogoutDocument | RunResultDocument;
 const named: Named | undefined = undefined;
 void named;
+async function narrow(): Promise<string> {
+  const reading: DocumentReading<CapabilitiesDocument> = await capabilitiesDocument();
+  if (reading.kind === "error") return reading.error.error.code + reading.command.stderr.toString();
+  return reading.document.data.commands[0]?.operation ?? reading.command.stdout.toString();
+}
+void narrow;
+// @ts-expect-error document kinds stay literal
+const wrongKind: CapabilitiesDocument["kind"] = "bot.run.show";
+void wrongKind;
+async function wrongField(): Promise<void> {
+  const reading = await capabilitiesDocument();
+  if (reading.kind === "document") {
+    // @ts-expect-error one command document does not gain another command's fields
+    void reading.document.data.stages;
+  }
+}
+void wrongField;
+// @ts-expect-error raw operations have no typed document function
+const { runOutputDocument } = await import("bot/run-readings");
+void runOutputDocument;
+// @ts-expect-error the private decoder is not a package path
+await import("bot/command-document");
 // @ts-expect-error undeclared source subpaths stay unavailable
 await import("bot/src/cli.ts");
 // @ts-expect-error private values stay unavailable

@@ -8,6 +8,7 @@ import { attemptKey, scratchAttempt, scratchOfRun } from "./invocation.ts";
 import { heldRecord } from "./record-lines.ts";
 import { CAUSES, type ErrorCause } from "./spine.ts";
 import type { CliFailure } from "./run-list-query.ts";
+import type { RunShowDocument } from "./command-document.ts";
 
 const RUN_SHOW_DOCUMENT_BYTES = 1_048_576;
 const RUN_SHOW_ROW_LIMIT = 1_000;
@@ -169,13 +170,13 @@ function warningRows(rows: OrderedRow[], root: RootModel): Warning[] {
   return warnings;
 }
 
-function summary(all: OrderedRow[], kept: OrderedRow[], warningCount: number): Record<string, number> {
+function summary(all: OrderedRow[], kept: OrderedRow[], warningCount: number): RunShowDocument["summary"] {
   const stageCount = all.filter((row) => row.type === "stage").length, stagesIncluded = kept.filter((row) => row.type === "stage").length;
   const subflowCount = all.length - stageCount, subflowsIncluded = kept.length - stagesIncluded;
   return { stageCount, stagesIncluded, stagesOmitted: stageCount - stagesIncluded, subflowCount, subflowsIncluded, subflowsOmitted: subflowCount - subflowsIncluded, warningCount, warningsOmitted: Math.max(0, warningCount - WARNING_LIMIT) };
 }
 
-function document(root: RootData, all: OrderedRow[], kept: OrderedRow[], warnings: Warning[]): Record<string, unknown> {
+function document(root: RootData, all: OrderedRow[], kept: OrderedRow[], warnings: Warning[]): RunShowDocument {
   return { schemaVersion: 1, kind: "bot.run.show", data: { ...root, stages: kept.flatMap((held) => held.type === "stage" ? [held.row] : []), subflows: kept.flatMap((held) => held.type === "subflow" ? [held.row] : []) }, summary: summary(all, kept, warnings.length), warnings: warnings.slice(0, WARNING_LIMIT) };
 }
 

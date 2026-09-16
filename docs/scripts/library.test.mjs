@@ -51,4 +51,7 @@ test('the library table matches package exports and command schemas', async () =
 	}
 	assert.equal(body.includes('auth.list'), false);
 	assert.equal(body.includes('model.list'), false);
+	assert.match(body, /function ending in `Reading` returns the command's exact exit/u);
+	assert.match(body, /function ending in `Document` runs that byte reading once in JSON mode/u);
+	assert.match(body, /four raw operations have byte readings only/u);
 });

@@ -10,6 +10,7 @@ import { isRunListState, RUN_LIST_CONTRACT, type CliFailure, type RunListField, 
 import { CAUSES, type ErrorCause } from "./spine.ts";
 import { compactMagnitude } from "./table.ts";
 import { boundedText as bounded, inertText as inert, newCommandFailure, type CommandResult } from "./new-command-result.ts";
+import type { RunListDocument, RunListRow } from "./command-document.ts";
 
 interface RunSummary {
   id: string; assembly: string | null; flow: string | null; startedAt: string | null; endedAt: string | null; duration: number | null;
@@ -184,7 +185,7 @@ function matches(summary: RunSummary, query: RunListQuery): boolean {
     && oneOf(query.causes, summary.cause) && withinTime(summary, query);
 }
 
-function project(summary: RunSummary, fields: readonly RunListField[]): Record<string, unknown> {
+function project(summary: RunSummary, fields: readonly RunListField[]): Partial<RunListRow> {
   return Object.fromEntries(fields.map((name) => [name, summary[name]]));
 }
 
@@ -258,7 +259,7 @@ async function scan(home: string, query: RunListQuery, names: readonly string[])
   return { rows, warnings, matched, warningCount, ...(examined === undefined ? {} : { examined }) };
 }
 
-function summary(returned: number, matched: number | null, scanned: Scan): Record<string, unknown> {
+function summary(returned: number, matched: number | null, scanned: Scan): RunListDocument["summary"] {
   return { returned, matched, warningCount: scanned.warningCount, warningsOmitted: scanned.warningCount - scanned.warnings.length };
 }
 
@@ -266,7 +267,7 @@ function countResult(query: RunListQuery, selection: Selection, scanned: Scan): 
   if (!query.json) return { exit: 0, stdout: Buffer.from(`${String(scanned.matched)} runs match.\n`), stderr: warningOutput(scanned) };
   const document = { schemaVersion: RUN_LIST_CONTRACT.result.schemaVersion, kind: RUN_LIST_CONTRACT.result.kind, data: [],
     page: { limit: 0, next: null, through: selection.through, complete: true },
-    summary: summary(0, scanned.matched, scanned), warnings: scanned.warnings };
+    summary: summary(0, scanned.matched, scanned), warnings: scanned.warnings } satisfies RunListDocument;
   return { exit: 0, stdout: Buffer.from(`${jsonObject(document)}\n`), stderr: Buffer.alloc(0) };
 }
 
@@ -280,7 +281,7 @@ function pageResult(home: string, query: RunListQuery, selection: Selection, sca
   const document = { schemaVersion: RUN_LIST_CONTRACT.result.schemaVersion, kind: RUN_LIST_CONTRACT.result.kind,
     data: scanned.rows.map((row) => project(row, query.fields)),
     page: { limit: query.limit, next, through: selection.through, complete },
-    summary: summary(scanned.rows.length, null, scanned), warnings: scanned.warnings };
+    summary: summary(scanned.rows.length, null, scanned), warnings: scanned.warnings } satisfies RunListDocument;
   const notice = next === null ? [] : [`More runs remain. Continue with --after ${next}.`];
   if (query.json) return { exit: 0, stdout: Buffer.from(`${jsonObject(document)}\n`), stderr: Buffer.alloc(0) };
   const warningLines = warningOutput(scanned).toString("utf8").trimEnd().split("\n").filter((line) => line.length > 0);

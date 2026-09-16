@@ -5,6 +5,7 @@ import { bytewise } from "./model.ts";
 import { RUNTIME_VERSION } from "./record-events.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 import { resolveRuntimeSourceIdentity, type RuntimeSourceIdentity, type RuntimeSourceIdentityResolution } from "./runtime-provenance.ts";
+import type { CapabilitiesDocument } from "./command-document.ts";
 
 interface Boundary {
   stdout(bytes: string | Uint8Array): void;
@@ -59,9 +60,10 @@ function markdown(descriptors: readonly CliDescriptor[], identity: RuntimeSource
 }
 
 function document(descriptors: readonly CliDescriptor[], identity: RuntimeSourceIdentity): string {
-  return `${jsonObject({ schemaVersion: CAPABILITIES_RESULT.schemaVersion, kind: CAPABILITIES_RESULT.kind, data: {
+  const held = { schemaVersion: CAPABILITIES_RESULT.schemaVersion, kind: CAPABILITIES_RESULT.kind, data: {
     runtime: RUNTIME_VERSION, ...identity, commands: descriptors,
-  } })}\n`;
+  } } satisfies CapabilitiesDocument;
+  return `${jsonObject(held)}\n`;
 }
 
 export function capabilitiesResult(descriptors: readonly CliDescriptor[], json: boolean, identity: RuntimeSourceIdentity): CommandResult {

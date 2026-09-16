@@ -2,9 +2,12 @@ import { jsonObject } from "./check.ts";
 import { NEW_COMMAND_ERROR_BYTES } from "./cli-contract.ts";
 import { plainly } from "./model.ts";
 import type { CliFailure } from "./run-list-query.ts";
+import type { NewOperation } from "./cli-contract.ts";
+import type { ErrorCause, ErrorCode } from "./spine.ts";
 
 export interface CommandResult<Exit extends number = 0 | 1 | 2 | 3 | 4 | 5> { exit: Exit; stdout: Buffer; stderr: Buffer }
 export interface InertText { text: string; omitted: number }
+export interface ErrorDocument { schemaVersion: 1; kind: "error"; error: { code: ErrorCode; operation: NewOperation; cause: ErrorCause; message: string; retryable: boolean; details: Record<string, unknown> } }
 
 export function boundedText(value: string, bytes = 2_048): string {
   const raw = Buffer.from(value);
@@ -38,10 +41,11 @@ export function inertText(value: string, maximum = 480): InertText {
   return raw.length <= maximum ? { text: safe, omitted: 0 } : clipping(raw, maximum, raw.length - maximum);
 }
 
-export function newCommandFailure(operation: string, held: CliFailure, json: boolean): CommandResult {
+export function newCommandFailure(operation: NewOperation, held: CliFailure, json: boolean): CommandResult {
   const message = boundedText(held.message);
-  const rendered = json ? jsonObject({ schemaVersion: 1, kind: "error", error: {
+  const document = { schemaVersion: 1, kind: "error", error: {
     code: held.code, operation, cause: held.cause, message, retryable: held.retryable, details: held.details,
-  } }) : message;
+  } } satisfies ErrorDocument;
+  const rendered = json ? jsonObject(document) : message;
   return { exit: held.exit, stdout: Buffer.alloc(0), stderr: Buffer.from(`${json ? rendered : inertText(rendered, NEW_COMMAND_ERROR_BYTES).text}\n`) };
 }

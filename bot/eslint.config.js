@@ -286,6 +286,18 @@ export default tseslint.config(
     },
   },
   {
+    // Ticket 0302's decoder validates the shared top-level identity and then
+    // assigns the command-owned exact document type. Nested runtime validation
+    // is deliberately outside the public contract; the cast marks that one
+    // trusted command-output boundary. The same file's closed inventory
+    // validator checks every descriptor and both exceptional framing owners.
+    files: ["src/command-document.ts"],
+    rules: {
+      ...restrictedSyntax(NO_PI_PATHS, NO_AMBIENT_CLOCK, NO_CATCH, NO_STRINGIFY),
+      complexity: ["error", 20],
+    },
+  },
+  {
     // Serialization points (rule 5): record.ts is the record's one writer;
     // check.ts serializes check-output lines, which are not the record.
     files: ["src/record.ts", "src/check.ts"],

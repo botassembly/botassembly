@@ -4,6 +4,7 @@ import { jsonObject } from "./check.ts";
 import { AUTH_LOGOUT_CONTRACT } from "./cli-contract.ts";
 import { inertText, newCommandFailure } from "./new-command-result.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { AuthLogoutDocument } from "./command-document.ts";
 
 interface Boundary {
   stdout(bytes: string | Uint8Array): void;
@@ -48,8 +49,9 @@ function parse(args: readonly string[]): Request | CliFailure {
 }
 
 function success(boundary: Boundary, request: Request, provider: string): void {
+  const document = { schemaVersion: 1, kind: "bot.auth.logout", data: { provider, result: "completed" } } satisfies AuthLogoutDocument;
   const output = request.json
-    ? Buffer.from(`${jsonObject({ schemaVersion: 1, kind: "bot.auth.logout", data: { provider, result: "completed" } })}\n`)
+    ? Buffer.from(`${jsonObject(document)}\n`)
     : Buffer.from(`Logout completed for ${inertText(provider, AUTH_LOGOUT_CONTRACT.identityBytes).text}.\n`);
   if (output.length >= AUTH_LOGOUT_CONTRACT.resultBytes) throw new Error("The auth logout result exceeds its bound.");
   boundary.stdout(output);

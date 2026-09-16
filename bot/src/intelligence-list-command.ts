@@ -12,6 +12,7 @@ import { bytewise, type IntelligenceTable } from "./model.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import type { Refusal } from "./spine.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
+import type { IntelligenceListDocument } from "./command-document.ts";
 
 interface Boundary {
   cwd: string;
@@ -77,7 +78,8 @@ function markdown(held: readonly Row[]): string {
 }
 
 function render(held: readonly Row[], json: boolean): CommandResult {
-  const output = json ? `${jsonObject({ schemaVersion: 1, kind: "bot.intelligence.list", data: held })}\n` : markdown(held);
+  const document = { schemaVersion: 1, kind: "bot.intelligence.list", data: [...held] } satisfies IntelligenceListDocument;
+  const output = json ? `${jsonObject(document)}\n` : markdown(held);
   if (Buffer.byteLength(output) > INTELLIGENCE_LIST_CONTRACT.documentBytes) {
     return newCommandFailure("intelligence.list", oversized(), json);
   }
