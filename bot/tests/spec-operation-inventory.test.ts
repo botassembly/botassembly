@@ -41,9 +41,9 @@ test("the chapter names no operation CLI_CONTRACTS does not hold", () => {
   expect(chapter.filter((operation) => !operations.has(operation))).toEqual([]);
 });
 
-test("the inventory sentence holds 26 names with no duplicate", () => {
+test("the inventory sentence holds 27 names with no duplicate", () => {
   const chapter = chapterOperations();
-  expect(chapter.length).toBe(26);
+  expect(chapter.length).toBe(27);
   expect(new Set(chapter).size).toBe(chapter.length);
 });
 

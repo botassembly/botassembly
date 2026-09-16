@@ -79,6 +79,7 @@ test("capabilities reports only the compiled implemented command surfaces", asyn
   expect(Buffer.byteLength(human.out)).toBeLessThanOrEqual(65_536);
   expect(human.out).toContain("| capabilities |");
   expect(human.out).toContain("| run.list |");
+  expect(human.out).toContain("| run.search |");
   for (const absent of ["| runs |", "| show |"]) expect(human.out).not.toContain(absent);
   const document = object(json.out);
   expect(document).toMatchObject({ schemaVersion: 1, kind: "bot.capabilities" });

@@ -132,11 +132,14 @@ Focused tests then prove:
 
 ## Size decision
 
-- Starting production size: 19258 nonblank lines.
-- Production ceiling: at most 19708 nonblank lines. The implementer records the measured ending value and lowers this ceiling when the implementation uses fewer than 450 added lines.
+- Starting production size: 19258 nonblank lines
+- Ending production size: 19677 nonblank lines
+- Production ceiling: 19677 nonblank lines. The implementation stayed below the accepted 19708-line maximum, so the ratchet uses the measured total.
 - Simpler approach tried: recursively invoke each tool on `runs/` and return its text.
-- Why rejected: recursive tool defaults admit different files, path links and user configuration can change the answer, grep output is not the public document, and raw lines leave the result, child output, and continuation unbounded.
-- Accepted cost: one process-protocol owner, a live keyset cursor, and an external executable selected from `PATH`. No second matcher or durable index is added.
+- Why insufficient alternatives were rejected: recursive tool defaults admit different files, path links and user configuration can change the answer, grep output is not the public document, and raw lines leave the result, child output, and continuation unbounded.
+- Accepted cost: one process-protocol owner, an injected process-group observer, a live keyset cursor, and an external executable selected from `PATH`. No second matcher or durable index is added.
+- Mechanical exception: the one process-protocol owner joins the exact catch budget with twelve named platform or parser conversions and raises only that file's complexity ceiling to 22 for the bounded option and stream state machines. The CLI and public reading inject the monotonic clock through a dedicated process-clock boundary. Ambient clocks, casts, and serialization remain banned in the owner.
+- Production code deleted: the CLI's private 18-line real-clock constructor moved to the dedicated process-clock boundary; no behavior was deleted.
 
 ## Complexity
 

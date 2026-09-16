@@ -10,6 +10,7 @@ import { runCheckCommand } from "./run-check-command.ts";
 import { runChecklistCommand } from "./run-checklist-command.ts";
 import { runEventsCommand } from "./run-events-command.ts";
 import { runOutputCommand, runRequestCommand } from "./run-output-command.ts";
+import { runSearchCommand } from "./run-search-command.ts";
 import { readRunShow, runShowFailure } from "./run-show.ts";
 
 export { inspectRunList, runListFailure, type RunListResult } from "./run-list.ts";
@@ -85,4 +86,16 @@ export function runRequestReading(
   home: string, run: string, cwd: string, env: NodeJS.ProcessEnv,
 ): Promise<CommandResult<number>> {
   return commandReading(runRequestCommand, [run, "--raw", "--home", home], cwd, env);
+}
+
+/** `bot run search [--limit N] [--after CURSOR] [--json] --home HOME -- QUERY`. */
+export function runSearchReading(
+  home: string, query: string, options: { json?: boolean; limit?: number; after?: string },
+  cwd: string, env: NodeJS.ProcessEnv,
+): Promise<CommandResult<number>> {
+  const args = [
+    ...flag("--json", options.json), ...valued("--limit", options.limit),
+    ...valued("--after", options.after), "--home", home, "--", query,
+  ];
+  return commandReading(runSearchCommand, args, cwd, env);
 }

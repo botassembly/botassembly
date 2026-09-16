@@ -9,6 +9,7 @@ import { runCheckCommand } from "./run-check-command.ts";
 import { runChecklistCommand } from "./run-checklist-command.ts";
 import { runEventsCommand } from "./run-events-command.ts";
 import { runSessionCommand } from "./run-session-command.ts";
+import { runSearchCommand } from "./run-search-command.ts";
 import { homeBusyCommand } from "./home-busy-command.ts";
 import { homeCommand } from "./home-command.ts";
 import { intelligenceListCommand } from "./intelligence-list-command.ts";
@@ -90,6 +91,7 @@ const piFreeHandlers: Record<PiFreeOperation, Handler> = {
   "run.output": runOutputCommand,
   "run.record": runRecordCommand,
   "run.request": runRequestCommand,
+  "run.search": runSearchCommand,
   "run.session": runSessionCommand,
   "run.show": runShowCommand,
 };

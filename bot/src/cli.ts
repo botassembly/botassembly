@@ -8,7 +8,7 @@ import { credentialPath } from "./invocation.ts";
 import { exitFlushed, ordinaryProcessOutput, processRawStdout } from "./process-output.ts";
 import { dispatchNewCommand } from "./new-command-dispatch.ts";
 import type { RunCommandBoundary } from "./run-command.ts";
-import type { DriverClock } from "./process.ts";
+import { processClock } from "./process-clock.ts";
 import { readByteStream } from "./stdin.ts";
 import type { AuthListRuntime, AuthLogoutRuntime, ModelRuntime } from "./model-runtime.ts";
 import { CLI_CONTRACTS } from "./cli-contract.ts";
@@ -42,26 +42,6 @@ export interface CliBoundary extends RunCommandBoundary {
   beforeAuthImportRename?: (input: { temporary: string }) => void | Promise<void>;
   afterAuthImportResultPreflight?: (input: { maximumBytes: number }) => void | Promise<void>;
   afterAuthImportResultPrepared?: (input: { output: Buffer }) => void | Promise<void>;
-}
-
-interface Clearable { clear(): void }
-
-function clearable(value: unknown): value is Clearable {
-  return typeof value === "object" && value !== null && "clear" in value && typeof value.clear === "function";
-}
-
-function processClock(): DriverClock {
-  return {
-    milliseconds: () => performance.now(),
-    timestamp: () => new Date().toISOString(),
-    setTimeout(callback, milliseconds) {
-      const timer = setTimeout(callback, milliseconds);
-      return { clear: () => { clearTimeout(timer); } };
-    },
-    clearTimeout(handle) {
-      if (clearable(handle)) handle.clear();
-    },
-  };
 }
 
 async function processStdin(): Promise<Buffer> {

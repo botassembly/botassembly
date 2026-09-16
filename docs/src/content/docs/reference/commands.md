@@ -3,7 +3,7 @@ title: "Command reference"
 description: "Every bot command in one table, with the arguments it takes, what it answers, and how it exits."
 ---
 
-`bot` has twenty-six commands. Each one appears once below.
+`bot` has twenty-seven commands. Each one appears once below.
 
 `bot <command> --help` describes one command. `bot capabilities` reports the structured command surface this build implements.
 
@@ -34,6 +34,7 @@ description: "Every bot command in one table, with the arguments it takes, what 
 | `bot run record <run>` | the retained root record |
 | `bot run request <run>` | the request the run retained |
 | `bot run resume <run>` | starts a new run from an old one |
+| `bot run search <query>` | literal matches in retained event and session lines |
 | `bot run session <run> <stage>` | one stage's transcript |
 | `bot run show <run>` | one bounded structured reading of a run |
 | `bot run start <target>` | starts a run |
@@ -76,8 +77,8 @@ The grammar is [the three ways to give a request](/specification/running/#the-th
 | `--local-context MODE` | `run start`, `assembly check` | `ignore`, `announce`, or `use` |
 | `--id-file PATH` | `run start`, `run resume` | writes the new run's name to a file |
 | `--correlation TEXT` | `run start`, `run resume` | bounded opaque metadata carried into the record |
-| `--limit N` | `assembly check`, `run list`, `run session`, `auth list`, `model list` | how many rows or messages one page returns |
-| `--after CURSOR` | `assembly check`, `run list`, `run session` | the next page, from a cursor a previous page printed |
+| `--limit N` | `assembly check`, `run list`, `run search`, `run session`, `auth list`, `model list` | how many rows or messages one page returns |
+| `--after CURSOR` | `assembly check`, `run list`, `run search`, `run session` | the next page, from a cursor a previous page printed |
 | `--offset N` | `auth list`, `model list` | the zero-based row this page starts at |
 | `--json` or `-j` | most commands | one structured document instead of human output |
 
@@ -87,11 +88,14 @@ Every listing pages, and none of them truncates silently.
 | --- | --- | --- |
 | `bot assembly check` | 20 rows | 200 |
 | `bot run list` | 20 rows | 200 |
+| `bot run search` | 20 matches | 200 |
 | `bot run session` | 100 messages | 500 |
 | `bot auth list` | 50 rows | 200 |
 | `bot model list` | 50 rows | 200 |
 
-When `bot assembly check` has more to show, it writes `More assembly stages remain. Continue with --after <cursor>.` to standard error. The rows go to standard output, so the notice can appear before them on a terminal and is absent from a redirected file. Its JSON `page.next` carries the same cursor, and `page.complete` is `false`. `--raw` on `bot run session` returns the exact retained bytes and does not combine with pagination.
+When `bot assembly check` has more to show, it writes `More assembly stages remain. Continue with --after <cursor>.` to standard error. `bot run search` uses the same pattern for more matches. The rows go to standard output, so the notice can appear before them on a terminal and is absent from a redirected file. JSON `page.next` carries the cursor, and `page.complete` is `false`. `--raw` on `bot run session` returns the exact retained bytes and does not combine with pagination.
+
+`bot run search [--] QUERY` searches the physical lines of retained `record.jsonl` and `session.jsonl` files as literal text. It does not search requests, outputs, captures, prompts, or assemblies. Put `--` before a query that begins with a hyphen. Results name the run, optional stage attempt facts, relative file, line, bounded text, and omitted bytes. The command prefers `rg`, falls back to `grep`, loads no model runtime, changes no file, and reaches no network.
 
 `bot auth list`, `bot model list`, and `bot capabilities` refuse `--home`. Credentials and the models they reach belong to the machine, and capabilities describe the installed program.
 

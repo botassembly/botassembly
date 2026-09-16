@@ -84,6 +84,20 @@ export const NO_CATCH = [
 // NO_CATCH without declaring here what it is exempted for.
 /** @type {Record<string, string[]>} */
 export const CATCH_BUDGET = {
+  "src/run-search-command.ts": [
+    "A prepared result write can throw synchronously at the command boundary; emit converts it to output-error without retrying or changing the prepared bytes.",
+    "Directory enumeration can fail after the runs root is accepted; the recursive walk converts that platform failure to a bounded dependency failure.",
+    "A retained entry can disappear or become unreadable after enumeration; the walk converts the lstat race to a bounded filesystem failure.",
+    "Home and runs inspection can fail unexpectedly; candidate enumeration converts the platform detail to the documented filesystem failure.",
+    "Cursor decoding and JSON parsing can throw on caller bytes; the decoder converts them to cursor-malformed.",
+    "Process-group signaling can race natural exit; groupSignal distinguishes ESRCH completion from a signaling failure.",
+    "Child spawn can throw synchronously; execute rejects its process outcome for the command boundary to classify.",
+    "A version probe can fail to spawn; tool selection falls back only for ENOENT and classifies every other probe failure.",
+    "Matched record metadata can contain invalid JSON; enrichment retains the text hit with null metadata.",
+    "A cursor file can disappear during live traversal; the command converts that race to cursor-position.",
+    "External-tool protocol parsing can throw on malformed untrusted bytes; the streaming parser marks the protocol failed.",
+    "The search child can fail to spawn or settle; the command converts that process-boundary rejection to the documented dependency failure.",
+  ],
   "src/auth-import-command.ts": [
     "lstat throws when a named credential path cannot be inspected; named converts absence-shaped errors to an absent result and preserves every other error.",
     "proper-lockfile throws while acquiring Pi's destination identity; destinationLock retries only ELOCKED within the fixed deadline and converts every terminal lock failure to import-busy.",
@@ -257,6 +271,16 @@ export default tseslint.config(
     rules: restrictedSyntax(NO_PI_PATHS, NO_AMBIENT_CLOCK, NO_CAST, NO_STRINGIFY),
   },
   {
+    // Ticket 0299's single process-protocol owner validates JSON from two
+    // external tools, serializes its opaque cursor, and owns the deliberately
+    // bounded option and stream state machines.
+    files: ["src/run-search-command.ts"],
+    rules: {
+      ...restrictedSyntax(NO_PI_PATHS, NO_AMBIENT_CLOCK, NO_CAST, NO_STRINGIFY),
+      complexity: ["error", 22],
+    },
+  },
+  {
     // Serialization points (rule 5): record.ts is the record's one writer;
     // check.ts serializes check-output lines, which are not the record.
     files: ["src/record.ts", "src/check.ts"],
@@ -274,9 +298,9 @@ export default tseslint.config(
   },
   {
     // CLI composition root/process boundary: cli.ts legitimately reads argv,
-    // stdio, cwd, and BOT_HOME/XDG_DATA_HOME from process.env, and constructs
-    // the one injected wall/monotonic clock handed to the runtime.
-    files: ["src/cli.ts"],
+    // stdio, cwd, and BOT_HOME/XDG_DATA_HOME from process.env. process-clock.ts
+    // constructs the injected wall/monotonic clock handed to runtime owners.
+    files: ["src/cli.ts", "src/process-clock.ts"],
     rules: {
       ...restrictedSyntax(NO_PI_PATHS, NO_CATCH, NO_CAST, NO_STRINGIFY),
       "no-restricted-properties": "off",

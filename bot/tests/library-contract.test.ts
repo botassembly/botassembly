@@ -1,7 +1,7 @@
 // Ticket 0289 opened this suite with one operation, `run.session`, compared
 // live against its importable counterpart. Ticket 0291 added `run.list`,
 // `run.show`, and `run.record`. Ticket 0295 added the remaining ten read-only
-// operations. Every other operation sits in exactly one of two checked in
+// operations. Ticket 0299 adds `run.search`. Every other operation sits in exactly one of two checked in
 // allowlists until the export tickets shrink them.
 //
 // The map is the trigger for both allowlist directions (`bot/package.json`'s
@@ -34,8 +34,8 @@ const ASSEMBLY = "review";
 const TARGET = `${ASSEMBLY}/main`;
 const CLI = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
-// Seventeen operations carry `mutates: false` (ticket "Current facts").
-// Fifteen of them are compared live below. `auth.list` and `model.list` need a Pi
+// Eighteen operations carry `mutates: false` (ticket "Current facts").
+// Sixteen of them are compared live below. `auth.list` and `model.list` need a Pi
 // runtime on the boundary and have no importable counterpart yet.
 const PENDING_EXPORT: readonly NewOperation[] = ["auth.list", "model.list"];
 
@@ -72,6 +72,7 @@ const COUNTERPARTS: Readonly<Partial<Record<NewOperation, string>>> = {
   "run.events": "runEventsReading (bot/run-readings)",
   "run.output": "runOutputReading (bot/run-readings)",
   "run.request": "runRequestReading (bot/run-readings)",
+  "run.search": "runSearchReading (bot/run-readings)",
 };
 
 function operationFault(
@@ -107,7 +108,7 @@ test("an operation added to CLI_CONTRACTS with no export or allowlist entry fail
 for (const operation of [
   "run.list", "run.show", "run.record", "assembly.check", "assembly.list", "capabilities",
   "home.busy", "home.show", "intelligence.list", "run.check", "run.checklist", "run.events",
-  "run.output", "run.request",
+  "run.output", "run.request", "run.search",
 ]) {
   test(`${operation} dropped from the counterpart map with no allowlist entry fails naming it`, () => {
     const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
@@ -152,9 +153,9 @@ const [home, cli, plain, output] = process.argv.slice(2);
 const cwd = process.cwd();
 const env = { ...process.env };
 
-async function commandResult(args) {
+async function commandResult(args, childEnv = env) {
   const settled = await runChild(process.execPath, [cli, ...args],
-    { env, encoding: "buffer", maxBuffer: 16 * 1024 * 1024 }).then(
+    { env: childEnv, encoding: "buffer", maxBuffer: 16 * 1024 * 1024 }).then(
     (done) => ({ exit: 0, stdout: done.stdout, stderr: done.stderr }),
     (reason) => ({ exit: reason.code, stdout: reason.stdout, stderr: reason.stderr }));
   return { exit: settled.exit, stdout: Buffer.from(settled.stdout ?? ""), stderr: Buffer.from(settled.stderr ?? "") };
@@ -265,6 +266,26 @@ const parsed = parseRunList(["--json"]);
 if (!("query" in parsed)) throw new Error("the run list parse refused --json");
 const imported = await inspectRunList(home, parsed.query);
 agree("run.list", imported, await commandResult(["run", "list", "--json", "--home", home]), "${RUN}", "stdout");
+`);
+});
+
+test("run.search compared live: command and runSearchReading agree byte for byte", async () => {
+  await live(`${PREAMBLE}
+import { runSearchReading } from "bot/run-readings";
+
+const imported = await runSearchReading(home, "live contract reader", { json: true }, cwd, env);
+agree("run.search", imported, await commandResult(["run", "search", "--json", "--home", home, "--", "live contract reader"]), "bot.run.search", "stdout");
+const first = await runSearchReading(home, "live contract reader", { json: true, limit: 1 }, cwd, env);
+agree("run.search continuation", first, await commandResult(["run", "search", "--json", "--limit", "1", "--home", home, "--", "live contract reader"]), "bot.run.search", "stdout");
+const noHits = await runSearchReading(home, "never retained", { json: true }, cwd, env);
+agree("run.search no hits", noHits, await commandResult(["run", "search", "--json", "--home", home, "--", "never retained"]), "bot.run.search", "stdout");
+const malformed = await runSearchReading(home, "bad\\nquery", { json: true }, cwd, env);
+agree("run.search malformed", malformed, await commandResult(["run", "search", "--json", "--home", home, "--", "bad\\nquery"]), "request-invalid", "stderr");
+const missing = await runSearchReading(plain + "/absent", "needle", { json: true }, cwd, env);
+agree("run.search missing home", missing, await commandResult(["run", "search", "--json", "--home", plain + "/absent", "--", "needle"]), "home-not-found", "stderr");
+const noToolsEnv = { ...env, PATH: plain };
+const noTools = await runSearchReading(home, "needle", { json: true }, cwd, noToolsEnv);
+agree("run.search missing tools", noTools, await commandResult(["run", "search", "--json", "--home", home, "--", "needle"], noToolsEnv), "dependency-failed", "stderr");
 `);
 });
 

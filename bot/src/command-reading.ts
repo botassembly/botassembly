@@ -4,6 +4,8 @@
 // command's bytes without copying a private rule into a second place.
 import { Writable } from "node:stream";
 import type { CommandResult } from "./new-command-result.ts";
+import type { DriverClock } from "./process.ts";
+import { processClock } from "./process-clock.ts";
 
 interface ReadingBoundary {
   cwd: string;
@@ -11,6 +13,7 @@ interface ReadingBoundary {
   stdout(bytes: string | Uint8Array): void;
   rawStdout(): Writable;
   stderr(bytes: string | Uint8Array): void;
+  clock: DriverClock;
 }
 
 type ReadingHandler = (args: string[], boundary: ReadingBoundary) => number | Promise<number>;
@@ -38,7 +41,7 @@ export async function commandReading(
   const stdout: Buffer[] = [];
   const stderr: Buffer[] = [];
   const exit = await handler(args, {
-    cwd, env,
+    cwd, env, clock: processClock(),
     stdout: (bytes) => { stdout.push(held(bytes)); },
     rawStdout: () => new Writable({
       write: (bytes: Buffer, _encoding, done) => { stdout.push(Buffer.from(bytes)); done(); },

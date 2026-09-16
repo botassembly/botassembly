@@ -125,6 +125,7 @@ describe("lazy Pi command boundary", () => {
       { operation: "run.output", args: ["run", "output", "absent", "--raw", "--home", home], exit: 1, channel: "stderr", contains: "No run's name starts with absent." },
       { operation: "run.record", args: ["run", "record", "absent", "--raw", "--home", home], exit: 1, channel: "stderr", contains: "No run's name starts with absent." },
       { operation: "run.request", args: ["run", "request", "absent", "--raw", "--home", home], exit: 1, channel: "stderr", contains: "No run's name starts with absent." },
+      { operation: "run.search", args: ["run", "search", "--home", home, "--json", "absent"], exit: 0 },
       { operation: "run.session", args: ["run", "session", "absent", "stage", "--home", home], exit: 1, channel: "stderr", contains: "No run's name starts with absent." },
       { operation: "run.show", args: ["run", "show", "absent", "--home", home, "--json"], exit: 1 },
       { operation: "help", args: ["--help"], exit: 0 },

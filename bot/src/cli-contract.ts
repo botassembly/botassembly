@@ -6,7 +6,7 @@ type CapabilityHome = "never" | "reads" | "writes";
 type CapabilityNetwork = "never" | "conditional" | "requested";
 type CapabilityMode = "markdown" | "json" | "raw";
 type CapabilityOptionType = "boolean" | "string" | "integer" | "timestamp" | "path" | "csv";
-const NEW_OPERATIONS = ["assembly.check", "assembly.install", "assembly.link", "assembly.list", "assembly.remove", "assembly.update", "auth.import", "auth.list", "auth.login", "auth.logout", "capabilities", "home.busy", "home.show", "intelligence.list", "model.list", "run.check", "run.checklist", "run.events", "run.list", "run.output", "run.record", "run.request", "run.resume", "run.session", "run.show", "run.start"] as const;
+const NEW_OPERATIONS = ["assembly.check", "assembly.install", "assembly.link", "assembly.list", "assembly.remove", "assembly.update", "auth.import", "auth.list", "auth.login", "auth.logout", "capabilities", "home.busy", "home.show", "intelligence.list", "model.list", "run.check", "run.checklist", "run.events", "run.list", "run.output", "run.record", "run.request", "run.resume", "run.search", "run.session", "run.show", "run.start"] as const;
 export type NewOperation = (typeof NEW_OPERATIONS)[number];
 
 type CapabilityOutput = { kind: string; schemaVersion: number } | { kind: "raw" };
@@ -405,6 +405,27 @@ const runSession: CliDescriptor = {
   limits: RUN_SESSION_CONTRACT,
 };
 
+export const RUN_SEARCH_CONTRACT = {
+  argumentBytes: 131_072, candidates: 4_096, cleanupMilliseconds: 1_000,
+  cursorDecodedBytes: 6_144, cursorEncodedBytes: 8_192, graceMilliseconds: 250,
+  humanErrorBytes: NEW_COMMAND_ERROR_BYTES, markdownCellBytes: 480,
+  operationMilliseconds: 10_000, probeBytes: 4_096, protocolLineBytes: 1_048_576,
+  queryBytes: 4_096, resultBytesExclusive: 1_048_576, streamBytes: 16_777_216,
+  pageDefault: 20, pageMaximum: 200,
+} as const;
+
+const runSearch: CliDescriptor = {
+  operation: "run.search", command: ["run", "search"], output: { kind: "bot.run.search", schemaVersion: 1 },
+  modes: ["markdown", "json"], home: "reads", mutates: false, network: "never",
+  options: [
+    { name: "--after", aliases: [], type: "string", repeatable: false, bytes: RUN_SEARCH_CONTRACT.cursorEncodedBytes },
+    { name: "--home", aliases: [], type: "path", repeatable: false, default: "BOT_HOME, then platform default" },
+    { name: "--json", aliases: ["-j"], type: "boolean", repeatable: false },
+    { name: "--limit", aliases: [], type: "integer", repeatable: false, default: RUN_SEARCH_CONTRACT.pageDefault, minimum: 1, maximum: RUN_SEARCH_CONTRACT.pageMaximum },
+  ],
+  limits: RUN_SEARCH_CONTRACT,
+};
+
 const runShow: CliDescriptor = {
   operation: "run.show", command: ["run", "show"], output: { kind: "bot.run.show", schemaVersion: 1 },
   modes: ["markdown", "json"], home: "reads", mutates: false, network: "never",
@@ -456,7 +477,7 @@ const runResume: CliDescriptor = {
   },
 };
 
-export const CLI_CONTRACTS: readonly CliDescriptor[] = [assemblyCheck, assemblyInstall, assemblyLink, assemblyList, assemblyRemove, assemblyUpdate, authImport, authList, authLogin, authLogout, capability, homeBusy, homeShow, intelligenceList, modelList, runCheck, runChecklist, runEvents, runList, runOutput, runRecord, runRequest, runResume, runSession, runShow, runStart];
+export const CLI_CONTRACTS: readonly CliDescriptor[] = [assemblyCheck, assemblyInstall, assemblyLink, assemblyList, assemblyRemove, assemblyUpdate, authImport, authList, authLogin, authLogout, capability, homeBusy, homeShow, intelligenceList, modelList, runCheck, runChecklist, runEvents, runList, runOutput, runRecord, runRequest, runResume, runSearch, runSession, runShow, runStart];
 
 function repeated(values: readonly string[]): boolean {
   return new Set(values).size !== values.length;

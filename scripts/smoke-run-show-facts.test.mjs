@@ -108,7 +108,7 @@ function scanSources(files) {
 }
 
 const retiredRoots = ["resume", "check", "runs", "show", "output", "draft", "rejected", "request", "capture", "logs", "session", "explain", "find", "status", "busy", "prune", "config", "models"];
-const currentRunActions = ["start", "resume", "list", "show", "events", "check", "checklist", "record", "request", "output", "session"];
+const currentRunActions = ["start", "resume", "list", "show", "events", "check", "checklist", "record", "request", "output", "search", "session"];
 
 function scanSupportedLegacySources(files) {
 	const roots = retiredRoots.join("|"), actions = currentRunActions.join("|");
@@ -230,7 +230,7 @@ function scanMaintainedCallerInventory(files) {
 		scanSupportedLegacySources(fencedShell);
 		const legacyPatterns = documentation ? [
 			["retired root", new RegExp("`bot (?:" + retiredRoots.join("|") + ")(?:\\s|`)", "u")],
-			["bot run TARGET", /`bot run (?!(?:start|resume|list|show|check|checklist|events|output|request|record|session)(?=\s|`))[^`\n]+`/u],
+			["bot run TARGET", /`bot run (?!(?:start|resume|list|show|check|checklist|events|output|request|record|search|session)(?=\s|`))[^`\n]+`/u],
 			["bot run TARGET", /(?:^|[ \t])bot run\s+(?=(?:\.{0,2}\/|[A-Za-z0-9_.-]+\/))[^\s`]+/mu],
 			["bare group", /`bot (?:assembly|auth)`/u],
 		] : [];
@@ -281,6 +281,7 @@ test("the supported-command guard covers every executable legacy form", () => {
 	assert.doesNotThrow(() => scanSupportedLegacySources([
 		["fixture", 'run(launcher, ["assembly", "check", target])'],
 		["current", 'bot("run", "session", run, stage, "--raw")'],
+		["search", 'commandResult(["run", "search", "--json", "needle"])'],
 		["comment", '// bot("session", "--raw", run, stage)'],
 	]));
 });

@@ -40,7 +40,7 @@ Selected implementation remains in items 23, 24, and 29, followed by the typed l
 26. **Completed in ticket 0294:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
 27. **Completed in ticket 0298:** report the resolved configuration, runs, assemblies, installation, cache, and Pi authentication paths with their point-in-time existence in `bot home show`.
 28. **Completed in ticket 0297:** `bot intelligence list` reports the home's intelligence table.
-29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
+29. **Completed in ticket 0299:** add bounded literal `bot run search` over retained event and session files, preferring ripgrep and falling back to grep.
 30. **Completed in ticket 0296:** `bot run resume` inherits the donor's recorded command-rung intelligence.
 31. **Completed in ticket 0295:** export `run.output` and `run.request` through the `run-readings` door ticket 0291 opened, by driving their handlers with a collecting boundary, so `copySelected` stays module-private and the exported reading returns the command's own bytes.
 

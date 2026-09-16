@@ -57,6 +57,7 @@ beside the runs it did not touch.
 | `bot run start <target> [request]` | start a run and return its bounded result       |
 | `bot run resume <run>`     | resume a retained run and return its bounded result |
 | `bot run list`              | which runs match a structured bounded query    |
+| `bot run search <query>`    | literal matches in retained event and session lines |
 | `bot run check <run> <name>` | every recording for one named check, or one exact capture |
 | `bot run checklist <run>`   | the checklist marks retained by one root run       |
 | `bot run events <run>`      | the complete root or authorized child event sequence |
@@ -138,7 +139,7 @@ page of 20 rows and a maximum page of 200 rows.
 
 The command inventory contains only implemented commands from the new noun-based surface. Every command descriptor names its operation, command words, output contract, modes, home behavior, mutation behavior, network behavior, accepted options, and enforced limits. Structured output contracts name their schema version. Raw output has no envelope or schema version. Commands sort by operation. Options sort by long name. The complete result is at most 65,536 UTF-8 bytes.
 
-The inventory contains `assembly.check`, `assembly.install`, `assembly.link`, `assembly.list`, `assembly.remove`, `assembly.update`, `auth.import`, `auth.list`, `auth.login`, `auth.logout`, `capabilities`, `home.busy`, `home.show`, `intelligence.list`, `model.list`, `run.check`, `run.checklist`, `run.events`, `run.list`, `run.output`, `run.record`, `run.request`, `run.resume`, `run.session`, `run.show`, and `run.start`. The `home.show` option descriptor marks `--home` as required. Optional options omit that property. It omits planned commands, deleted commands, and legacy spellings. Unknown arguments, `--home`, and repeated or combined JSON flags are malformed capability requests. JSON failures use the common structured error with operation `capabilities`. Human failures use one bounded inert line. Request failures occur before source identity work.
+The inventory contains `assembly.check`, `assembly.install`, `assembly.link`, `assembly.list`, `assembly.remove`, `assembly.update`, `auth.import`, `auth.list`, `auth.login`, `auth.logout`, `capabilities`, `home.busy`, `home.show`, `intelligence.list`, `model.list`, `run.check`, `run.checklist`, `run.events`, `run.list`, `run.output`, `run.record`, `run.request`, `run.resume`, `run.search`, `run.session`, `run.show`, and `run.start`. The `home.show` option descriptor marks `--home` as required. Optional options omit that property. It omits planned commands, deleted commands, and legacy spellings. Unknown arguments, `--home`, and repeated or combined JSON flags are malformed capability requests. JSON failures use the common structured error with operation `capabilities`. Human failures use one bounded inert line. Request failures occur before source identity work.
 
 ### `bot home show`
 
@@ -179,6 +180,20 @@ The command uses the shared raw record reader. It safely opens one regular file,
 `bot run events RUN [--child REFERENCE] [--json|-j] [--home DIR]` reads the complete semantic event sequence from one root record or one child that the parent record authorizes. Human mode preserves the established full-record reading. JSON returns one newline-terminated `bot.run.events` schema-version-1 document. Its data contains the selected root run identity, a nullable child reference, and the parsed events. `bot run record --raw` remains the exact-byte root-record command.
 
 The semantic source stays at most 1,048,576 bytes and 10,000 segments. Each complete human or JSON result stays below 2,097,152 UTF-8 bytes. Parsing finishes before home access. Missing values, unknown or repeated options, duplicate home selection, duplicate JSON mode, and unsafe child syntax exit 2. Missing or ambiguous runs and absent or unrecorded children exit 1. Invalid, corrupt, unsupported, oversized, linked-component, disagreeing child, or over-limit results exit 5. Unexpected filesystem and synchronous output failures exit 4. Failures publish no partial result. JSON errors use the common structured error document. Human errors stay bounded. The command changes nothing and contacts no provider.
+
+### `bot run search`
+
+`bot run search [--limit N] [--after CURSOR] [--json|-j] [--home DIR] [--] QUERY` searches literal text in every retained regular file named `record.jsonl` or `session.jsonl` below a direct, non-linked run directory. It does not search requests, outputs, captures, prompts, or sealed assemblies. Query text contains 1 through 4,096 UTF-8 bytes and cannot contain NUL, CR, or LF. `--` permits a query that begins with a hyphen.
+
+Bot enumerates candidates once in bytewise relative-path order, excluding links when it examines each entry. Enumeration is not a filesystem snapshot. A later replacement can change what the tool observes. More than 4,096 candidates or 131,072 candidate-argument bytes refuses before spawn. Candidate path components must round-trip through UTF-8 and contain no CR or LF.
+
+Bot prefers `rg` and falls back to `grep` only when the `rg` executable is absent. It passes an explicit candidate list and literal query to the selected executable without a shell. The child receives only `PATH`, `LANG=C`, and `LC_ALL=C`. Ripgrep runs with one thread and structured JSON output. Grep uses a NUL filename delimiter. Bot rejects unknown files and regressing or repeated rows. The executable comes from the caller's `PATH` and runs with the caller's authority. Bot does not authenticate or contain it.
+
+The version-1 `bot.run.search` document carries the query, selected tool and version, ordered hits, page, and candidate-file summary. One physical matching line produces one hit. A hit carries the root run name, optional stage, repeat, and retry facts, relative file, one-based line, a UTF-8 replacement-decoded excerpt, and omitted byte count. Event metadata comes only from the matched line. Invalid JSON remains a hit with null metadata. Markdown makes every cell inert.
+
+Pages default to 20 hits and accept 1 through 200. Bot reads through the first extra complete hit, returns no more than the requested limit, and supplies a home-bound and query-bound opaque cursor when another page remains. Stable continuation excludes the cursor row and everything before it. The cursor names a live position rather than a snapshot. Markdown writes its continuation instruction to standard error. JSON writes no continuation diagnostic. Empty searches succeed with no hits.
+
+The version probe and search share a 10-second monotonic deadline. Probe streams stay within 4,096 bytes. Search streams share a 16 MiB bound and each protocol line stays within 1 MiB. Deliberate page stops, timeout, abort, stream faults, and protocol faults terminate the detached process group, allow 250 milliseconds, then force termination and drain for at most one further second. Each rendered result remains below 1 MiB. Failures write no standard output and use the common bounded human or structured JSON error.
 
 ### `bot run session`
 
