@@ -7,16 +7,25 @@ import { expect, test } from "vitest";
 
 const run = promisify(execFile);
 const BOT = join(import.meta.dirname, "..");
-const executablePath = join("node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "esbuild", "bin", "esbuild");
+const pi = join("node_modules", "@earendil-works", "pi-coding-agent");
 
-test("prepare preserves the bundled esbuild launcher while breaking a package-crossing hardlink", async () => {
+test.each(["nested", "hoisted"])("prepare discovers and preserves a %s bundled esbuild launcher while breaking its hardlink", async (topology) => {
   const root = await mkdtemp(join(tmpdir(), "bot-prepare-package-"));
   try {
-    const scripts = join(root, "scripts"), executable = join(root, executablePath), source = join(root, "platform-esbuild");
+    const scripts = join(root, "scripts"), packageBase = topology === "nested" ? pi : "";
+    const chord = join(root, packageBase, "node_modules", "@earendil-works", "chord");
+    const esbuild = join(root, packageBase, "node_modules", "esbuild");
+    const executable = join(esbuild, "bin", "esbuild"), source = join(root, "platform-esbuild");
     await mkdir(scripts, { recursive: true });
     await mkdir(dirname(executable), { recursive: true });
+    await mkdir(join(root, pi), { recursive: true });
+    await mkdir(chord, { recursive: true });
     await cp(join(BOT, "scripts", "prepare-package.mjs"), join(scripts, "prepare-package.mjs"));
     await writeFile(join(scripts, "build-package.mjs"), "export {};\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ bundleDependencies: ["@earendil-works/pi-coding-agent"] }));
+    await writeFile(join(root, pi, "package.json"), JSON.stringify({ name: "@earendil-works/pi-coding-agent", dependencies: { "@earendil-works/chord": "1.0.0" } }));
+    await writeFile(join(chord, "package.json"), JSON.stringify({ name: "@earendil-works/chord", dependencies: { esbuild: "1.0.0" } }));
+    await writeFile(join(esbuild, "package.json"), JSON.stringify({ name: "esbuild", version: "1.0.0" }));
     const bytes = Buffer.from("fixture esbuild executable\n");
     await writeFile(source, bytes);
     await chmod(source, 0o751);
