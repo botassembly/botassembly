@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, cp, link, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -23,6 +23,7 @@ const targets = {
 type Manifest = { exports: Record<string, { types?: string; default?: string }> };
 let root = "", packageRoot = "", consumer = "", consumerCache = "", installed = "", tarball = "";
 let packedFiles: string[] = [], bundledPackages: string[] = [];
+const bundledEsbuild = "node_modules/@earendil-works/pi-coding-agent/node_modules/esbuild/bin/esbuild";
 
 function exportFault(manifest: Manifest): string | undefined {
   for (const [path, [types, runtime]] of Object.entries(targets)) {
@@ -140,9 +141,29 @@ beforeAll(async () => {
   await run("npm", ["ci", "--ignore-scripts", "--offline"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as { dependencies: Record<string, string> };
   bundledPackages = await bundleClosure(packageRoot, Object.keys(manifest.dependencies));
+  const esbuildManifest = JSON.parse(await readFile(join(packageRoot, dirname(bundledEsbuild), "..", "package.json"), "utf8")) as {
+    optionalDependencies: Record<string, string>;
+  };
+  let platformPackage: string | undefined;
+  for (const name of Object.keys(esbuildManifest.optionalDependencies)) {
+    platformPackage = await installedPackage(packageRoot, dirname(dirname(bundledEsbuild)), name);
+    if (platformPackage !== undefined) break;
+  }
+  if (platformPackage === undefined) throw new Error("installed esbuild platform package is missing");
+  const platformExecutable = join(packageRoot, platformPackage, "bin", "esbuild");
+  const executable = join(packageRoot, bundledEsbuild);
+  const platformBytes = await readFile(platformExecutable);
+  const platformMode = (await stat(platformExecutable)).mode;
+  await rm(executable);
+  await link(platformExecutable, executable);
+  expect((await stat(executable)).nlink).toBeGreaterThan(1);
   const packed = JSON.parse((await run("npm", ["pack", "--json"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).stdout) as Array<{ filename: string; files: Array<{ path: string }> }>;
+  expect(await readFile(executable)).toEqual(platformBytes);
+  expect((await stat(executable)).mode).toBe(platformMode);
+  expect((await stat(executable)).nlink).toBe(1);
   tarball = join(packageRoot, packed[0]?.filename ?? "");
   packedFiles = (packed[0]?.files ?? []).map(({ path }) => path).sort();
+  expect(packedFiles).toContain(bundledEsbuild);
   consumer = join(root, "consumer");
   await mkdir(consumer);
   consumerCache = join(root, "consumer-cache");
@@ -330,6 +351,7 @@ test("the installed bin starts and resumes a scripted run with artifact provenan
   const cli = join(consumer, "node_modules", ".bin", "bot");
   const environment = { ...process.env, OPENAI_API_KEY: "package-proof-not-a-credential", BOT_HOME: home, HOME: root, XDG_CACHE_HOME: join(root, "cache"), PI_CODING_AGENT_DIR: join(root, "pi-agent") };
   await mkdir(environment.PI_CODING_AGENT_DIR, { recursive: true });
+  await chmod(environment.PI_CODING_AGENT_DIR, 0o700);
   const invoke = (args: string[]) => run(cli, args, { cwd: root, env: environment, encoding: "utf8" })
     .catch((reason: unknown) => { throw commandError(reason); });
   await invoke(["run", "start", `${assembly}/main`, "request", "--json", "--script", script, "--id-file", firstId]);
