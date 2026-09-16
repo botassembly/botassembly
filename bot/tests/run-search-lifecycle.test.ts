@@ -136,6 +136,15 @@ test("preserves clean timeout and abort outcomes after bounded settlement", asyn
   expect(await aborted.promise).toBe(4); expect(JSON.parse(Buffer.concat(aborted.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
 });
 
+test("ignores termination-time stream bytes after page stop while settling direct close", async () => {
+  const run = await harness((child) => {
+    child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2));
+    child.stderr.write("termination diagnostic after page stop\n"); child.directClose(null, "SIGTERM");
+  });
+  await started(run); run.clock.advance(250);
+  expect(await result(run.promise, "page/direct close")).toBe(0); expect(run.signals).toEqual(["SIGTERM", 0]);
+});
+
 test("maps synchronous spawn failure without falling through to search", async () => {
   const held = await home(), stderr: Buffer[] = [], clock = new FakeClock();
   const spawnChild = (() => { const problem = new Error("missing") as NodeJS.ErrnoException; problem.code = "EACCES"; throw problem; }) as unknown as typeof spawn;

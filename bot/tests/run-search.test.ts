@@ -59,9 +59,11 @@ test("real grep fallback uses the same candidates and handles colons", async () 
 test("paging returns a bound cursor with no duplicate stable hits", async () => {
   const held = await fixture();
   const first = await runSearchReading(held.home, "a+b", { json: true, limit: 1 }, held.root, { PATH: process.env["PATH"] });
+  expect(first.exit, first.stderr.toString()).toBe(0); expect(first.stderr.toString()).toBe("");
   const one = JSON.parse(first.stdout.toString()) as { data: { hits: Array<{ file: string }> }; page: { next: string; complete: boolean } };
   expect(one.page.complete).toBe(false); expect(one.data.hits).toHaveLength(1);
   const second = await runSearchReading(held.home, "a+b", { json: true, limit: 1, after: one.page.next }, held.root, { PATH: process.env["PATH"] });
+  expect(second.exit, second.stderr.toString()).toBe(0); expect(second.stderr.toString()).toBe("");
   const two = JSON.parse(second.stdout.toString()) as { data: { hits: Array<{ file: string }> } };
   expect(two.data.hits[0]?.file).not.toBe(one.data.hits[0]?.file);
 });

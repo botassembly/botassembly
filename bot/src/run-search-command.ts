@@ -219,7 +219,7 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
     const aborted = () => { terminate("abort"); }; abort?.addEventListener("abort", aborted, { once: true });
     if (abort?.aborted === true) aborted();
     const take = (target: Buffer[], chunk: Buffer, parse: boolean) => {
-      total += chunk.length;
+      if (reason !== undefined) return; total += chunk.length;
       if (total > maximumBytes) { terminate("stream"); return; }
       target.push(chunk);
       if (parse && onChunk?.(chunk) === true) terminate("page");
