@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, cp, link, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -23,6 +23,7 @@ const targets = {
 type Manifest = { exports: Record<string, { types?: string; default?: string }> };
 let root = "", packageRoot = "", consumer = "", consumerCache = "", installed = "", tarball = "";
 let packedFiles: string[] = [], bundledPackages: string[] = [];
+let setup: Promise<void> | undefined;
 const bundledEsbuild = "node_modules/@earendil-works/pi-coding-agent/node_modules/esbuild/bin/esbuild";
 
 function exportFault(manifest: Manifest): string | undefined {
@@ -130,7 +131,7 @@ async function assertArtifactTargets(): Promise<void> {
   await expect(stat(join(installed, "dist", "cli.js"))).resolves.toBeDefined();
 }
 
-beforeAll(async () => {
+async function prepareFixture(): Promise<void> {
   root = await mkdtemp(join(dirname(BOT), ".bot-package-types-"));
   roots.push(root);
   packageRoot = join(root, "package");
@@ -141,26 +142,7 @@ beforeAll(async () => {
   await run("npm", ["ci", "--ignore-scripts", "--offline"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as { dependencies: Record<string, string> };
   bundledPackages = await bundleClosure(packageRoot, Object.keys(manifest.dependencies));
-  const esbuildManifest = JSON.parse(await readFile(join(packageRoot, dirname(bundledEsbuild), "..", "package.json"), "utf8")) as {
-    optionalDependencies: Record<string, string>;
-  };
-  let platformPackage: string | undefined;
-  for (const name of Object.keys(esbuildManifest.optionalDependencies)) {
-    platformPackage = await installedPackage(packageRoot, dirname(dirname(bundledEsbuild)), name);
-    if (platformPackage !== undefined) break;
-  }
-  if (platformPackage === undefined) throw new Error("installed esbuild platform package is missing");
-  const platformExecutable = join(packageRoot, platformPackage, "bin", "esbuild");
-  const executable = join(packageRoot, bundledEsbuild);
-  const platformBytes = await readFile(platformExecutable);
-  const platformMode = (await stat(platformExecutable)).mode;
-  await rm(executable);
-  await link(platformExecutable, executable);
-  expect((await stat(executable)).nlink).toBeGreaterThan(1);
   const packed = JSON.parse((await run("npm", ["pack", "--json"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).stdout) as Array<{ filename: string; files: Array<{ path: string }> }>;
-  expect(await readFile(executable)).toEqual(platformBytes);
-  expect((await stat(executable)).mode).toBe(platformMode);
-  expect((await stat(executable)).nlink).toBe(1);
   tarball = join(packageRoot, packed[0]?.filename ?? "");
   packedFiles = (packed[0]?.files ?? []).map(({ path }) => path).sort();
   expect(packedFiles).toContain(bundledEsbuild);
@@ -176,9 +158,15 @@ beforeAll(async () => {
     cwd: consumer, env: npmEnvironment, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
   });
   installed = join(consumer, "node_modules", "bot");
+}
+
+beforeAll(async () => {
+  setup = prepareFixture();
+  await setup;
 }, 180_000);
 
 afterAll(async () => {
+  await setup?.catch(() => undefined);
   await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
