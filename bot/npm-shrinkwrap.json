@@ -11,7 +11,10 @@
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-ai",
         "@earendil-works/pi-coding-agent",
-        "@types/node"
+        "@types/node",
+        "ajv",
+        "proper-lockfile",
+        "yaml"
       ],
       "license": "MIT",
       "dependencies": {

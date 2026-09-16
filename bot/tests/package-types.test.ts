@@ -21,8 +21,8 @@ const targets = {
   "./session": ["./types/session.d.ts", "./dist/session.js"],
 } as const;
 type Manifest = { exports: Record<string, { types?: string; default?: string }> };
-let root = "", consumer = "", installed = "", tarball = "";
-let packedFiles: string[] = [];
+let root = "", packageRoot = "", consumer = "", consumerCache = "", installed = "", tarball = "";
+let packedFiles: string[] = [], bundledPackages: string[] = [];
 
 function exportFault(manifest: Manifest): string | undefined {
   for (const [path, [types, runtime]] of Object.entries(targets)) {
@@ -48,6 +48,40 @@ async function digest(directory: string): Promise<string> {
   return hash.digest("hex");
 }
 
+async function installedPackage(root: string, owner: string, name: string): Promise<string | undefined> {
+  let directory = join(root, owner);
+  while (directory.startsWith(root)) {
+    const candidate = join(directory, "node_modules", name);
+    if (await stat(join(candidate, "package.json")).then(() => true, () => false)) return relative(root, candidate);
+    if (directory === root) break;
+    directory = dirname(directory);
+  }
+  return undefined;
+}
+
+async function bundleClosure(root: string, direct: string[]): Promise<string[]> {
+  const found = new Set<string>(), pending = direct.map((name) => ({ owner: "", name, optional: false }));
+  while (pending.length > 0) {
+    const next = pending.shift();
+    if (next === undefined) break;
+    const path = await installedPackage(root, next.owner, next.name);
+    if (path === undefined) {
+      if (next.optional) continue;
+      throw new Error(`missing installed dependency ${next.name} from ${next.owner || "package root"}`);
+    }
+    if (found.has(path)) continue;
+    found.add(path);
+    const manifest = JSON.parse(await readFile(join(root, path, "package.json"), "utf8")) as {
+      dependencies?: Record<string, string>; optionalDependencies?: Record<string, string>;
+    };
+    const optional = new Set(Object.keys(manifest.optionalDependencies ?? {}));
+    for (const name of new Set([...Object.keys(manifest.dependencies ?? {}), ...optional])) {
+      pending.push({ owner: path, name, optional: optional.has(name) });
+    }
+  }
+  return [...found].sort();
+}
+
 function declarationValues(source: string): string[] {
   const direct = [...source.matchAll(/^export declare (?:class|const|function) ([A-Za-z_$][\w$]*)/gmu)].map((match) => match[1] ?? "");
   const listed = [...source.matchAll(/^export \{ ([^}]+) \}/gmu)].flatMap((match) => (match[1] ?? "").split(", "))
@@ -62,27 +96,73 @@ function commandError(reason: unknown): Error {
   return new Error(`${stdout}\n${stderr}`);
 }
 
+function allowedArtifact(path: string): boolean {
+  return path === "package.json" || path === "npm-shrinkwrap.json" || path === "README.md" || path === "LICENSE"
+    || path.startsWith("dist/") || path.startsWith("types/") || path.startsWith("node_modules/");
+}
+
+function assertArtifactInventory(): void {
+  expect(packedFiles).toContain("package.json");
+  expect(packedFiles).toContain("npm-shrinkwrap.json");
+  expect(packedFiles.some((path) => path.startsWith("dist/") && path.endsWith(".js"))).toBe(true);
+  expect(packedFiles.some((path) => path.startsWith("types/") && path.endsWith(".d.ts"))).toBe(true);
+  for (const refused of ["package-lock.json", "src/", ".map", "tests/", "scripts/", "tsconfig", "eslint.config", "vitest.config"]) {
+    expect(packedFiles.some((path) => path === refused || path.startsWith(refused)), refused).toBe(false);
+  }
+  expect(packedFiles.some((path) => !path.startsWith("node_modules/") && path.endsWith(".map"))).toBe(false);
+  for (const path of packedFiles) expect(allowedArtifact(path), path).toBe(true);
+}
+
+function assertBundleClosure(): void {
+  for (const packagePath of bundledPackages) expect(packedFiles).toContain(`${packagePath}/package.json`);
+  for (const path of packedFiles.filter((held) => held.startsWith("node_modules/"))) {
+    expect(bundledPackages.some((packagePath) => path === packagePath || path.startsWith(`${packagePath}/`)), path).toBe(true);
+  }
+}
+
+async function assertArtifactTargets(): Promise<void> {
+  expect(await readFile(join(installed, "npm-shrinkwrap.json"))).toEqual(await readFile(join(BOT, "npm-shrinkwrap.json")));
+  for (const [types, runtime] of Object.values(targets)) {
+    await expect(stat(join(installed, types))).resolves.toBeDefined();
+    await expect(stat(join(installed, runtime))).resolves.toBeDefined();
+  }
+  await expect(stat(join(installed, "dist", "cli.js"))).resolves.toBeDefined();
+}
+
 beforeAll(async () => {
   root = await mkdtemp(join(dirname(BOT), ".bot-package-types-"));
   roots.push(root);
-  const packed = JSON.parse((await run("npm", ["pack", "--json"], { cwd: BOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).stdout) as Array<{ filename: string; files: Array<{ path: string }> }>;
-  tarball = join(BOT, packed[0]?.filename ?? "");
+  packageRoot = join(root, "package");
+  await mkdir(packageRoot);
+  for (const name of ["src", "scripts", "package.json", "npm-shrinkwrap.json", "tsconfig.json", "tsconfig.package.json"]) {
+    await cp(join(BOT, name), join(packageRoot, name), { recursive: true });
+  }
+  await run("npm", ["ci", "--ignore-scripts", "--offline"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as { dependencies: Record<string, string> };
+  bundledPackages = await bundleClosure(packageRoot, Object.keys(manifest.dependencies));
+  const packed = JSON.parse((await run("npm", ["pack", "--json"], { cwd: packageRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).stdout) as Array<{ filename: string; files: Array<{ path: string }> }>;
+  tarball = join(packageRoot, packed[0]?.filename ?? "");
   packedFiles = (packed[0]?.files ?? []).map(({ path }) => path).sort();
   consumer = join(root, "consumer");
   await mkdir(consumer);
+  consumerCache = join(root, "consumer-cache");
+  await mkdir(consumerCache);
+  expect(await readdir(consumerCache)).toEqual([]);
   await writeFile(join(consumer, "package.json"), '{"name":"outside","private":true,"type":"module"}\n');
-  await run("npm", ["install", "--ignore-scripts", "--offline", "--package-lock=false", tarball], { cwd: consumer, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const npmEnvironment = { ...process.env, npm_config_cache: consumerCache };
+  expect((await run("npm", ["--version"], { env: npmEnvironment, encoding: "utf8" })).stdout.trim()).toBe("10.9.8");
+  await run("npm", ["install", "--ignore-scripts", "--offline", "--package-lock=false", tarball], {
+    cwd: consumer, env: npmEnvironment, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+  });
   installed = join(consumer, "node_modules", "bot");
 }, 180_000);
 
 afterAll(async () => {
   await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
-  if (tarball !== "") await rm(tarball, { force: true });
-  await Promise.all([rm(join(BOT, "dist"), { recursive: true, force: true }), rm(join(BOT, "types"), { recursive: true, force: true })]);
 });
 
 test("all public paths select generated declarations before the source runtime", async () => {
-  const manifest = JSON.parse(await readFile(join(BOT, "package.json"), "utf8")) as Manifest;
+  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as Manifest;
   expect(exportFault(manifest)).toBeUndefined();
   for (const [path, [types, runtime]] of Object.entries(targets)) {
     expect(Object.keys(manifest.exports[path] ?? {}), path).toEqual(["types", "default"]);
@@ -96,29 +176,18 @@ test("all public paths select generated declarations before the source runtime",
     if (sourceRuntime.exports[path]) sourceRuntime.exports[path].default = runtime.replace("./dist/", "./src/").replace(/\.js$/u, ".ts");
     expect(exportFault(sourceRuntime)).toBe(`${path} does not name ${types} before ${runtime}`);
   }
-  const packageJson = JSON.parse(await readFile(join(BOT, "package.json"), "utf8")) as { bin: { bot: string } };
+  const packageJson = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as { bin: { bot: string } };
   expect(packageJson.bin.bot).toBe("dist/cli.js");
 });
 
 test("the packed artifact contains only the declared package surface and bundled dependencies", async () => {
-  expect(packedFiles).toContain("package.json");
-  expect(packedFiles).toContain("npm-shrinkwrap.json");
-  expect(packedFiles.some((path) => path.startsWith("dist/") && path.endsWith(".js"))).toBe(true);
-  expect(packedFiles.some((path) => path.startsWith("types/") && path.endsWith(".d.ts"))).toBe(true);
-  for (const refused of ["package-lock.json", "src/", ".map", "tests/", "scripts/", "tsconfig", "eslint.config", "vitest.config"]) {
-    expect(packedFiles.some((path) => path === refused || path.startsWith(refused)), refused).toBe(false);
-  }
-  expect(packedFiles.some((path) => !path.startsWith("node_modules/") && path.endsWith(".map"))).toBe(false);
-  for (const path of packedFiles) {
-    expect(path === "package.json" || path === "npm-shrinkwrap.json" || path === "README.md" || path === "LICENSE"
-      || path.startsWith("dist/") || path.startsWith("types/") || path.startsWith("node_modules/"), path).toBe(true);
-  }
-  expect(await readFile(join(installed, "npm-shrinkwrap.json"))).toEqual(await readFile(join(BOT, "npm-shrinkwrap.json")));
-  for (const [types, runtime] of Object.values(targets)) {
-    await expect(stat(join(installed, types))).resolves.toBeDefined();
-    await expect(stat(join(installed, runtime))).resolves.toBeDefined();
-  }
-  await expect(stat(join(installed, "dist", "cli.js"))).resolves.toBeDefined();
+  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8")) as {
+    dependencies: Record<string, string>; bundleDependencies: string[];
+  };
+  expect(manifest.bundleDependencies).toEqual(Object.keys(manifest.dependencies));
+  assertArtifactInventory();
+  assertBundleClosure();
+  await assertArtifactTargets();
 });
 
 test("plain Node imports every path and runtime values match declaration values", async () => {
@@ -192,25 +261,25 @@ void lockRun;
 }, 60_000);
 
 test("package builds are clean, complete, portable, and byte-identical", async () => {
-  await Promise.all([rm(join(BOT, "dist"), { recursive: true, force: true }), rm(join(BOT, "types"), { recursive: true, force: true })]);
-  await run("npm", ["--prefix", BOT, "run", "build"]);
-  const first = [await digest(join(BOT, "dist")), await digest(join(BOT, "types"))];
+  await Promise.all([rm(join(packageRoot, "dist"), { recursive: true, force: true }), rm(join(packageRoot, "types"), { recursive: true, force: true })]);
+  await run("npm", ["--prefix", packageRoot, "run", "build"]);
+  const first = [await digest(join(packageRoot, "dist")), await digest(join(packageRoot, "types"))];
   for (const [declaration] of Object.values(targets)) {
-    const source = await readFile(join(BOT, declaration), "utf8");
+    const source = await readFile(join(packageRoot, declaration), "utf8");
     expect(source.startsWith('/// <reference path="../node_modules/@types/node/index.d.ts" />\n')).toBe(true);
     expect(source.slice(source.indexOf("\n") + 1)).not.toMatch(/["']\.\.?\/[^"']*\.ts["']/u);
   }
-  for (const path of (await files(join(BOT, "dist"))).filter((held) => held.endsWith(".js"))) {
+  for (const path of (await files(join(packageRoot, "dist"))).filter((held) => held.endsWith(".js"))) {
     const source = (await readFile(path, "utf8")).replace('"./cli.ts"', '"./cli.js"');
-    expect(source, relative(BOT, path)).not.toMatch(/["']\.\.?\/[^"']*\.ts["']/u);
+    expect(source, relative(packageRoot, path)).not.toMatch(/["']\.\.?\/[^"']*\.ts["']/u);
   }
-  expect(await readFile(join(BOT, "src", "mutation-child.ts"), "utf8")).toContain('import.meta.url.endsWith(".ts") ? "./cli.ts" : "./cli.js"');
-  expect(await readFile(join(BOT, "dist", "mutation-child.js"), "utf8")).toContain('? "./cli.ts" : "./cli.js"');
-  expect((await files(join(BOT, "dist"))).some((path) => path.endsWith(".map"))).toBe(false);
-  await run("npm", ["--prefix", BOT, "run", "build"]);
-  expect([await digest(join(BOT, "dist")), await digest(join(BOT, "types"))]).toEqual(first);
+  expect(await readFile(join(packageRoot, "src", "mutation-child.ts"), "utf8")).toContain('import.meta.url.endsWith(".ts") ? "./cli.ts" : "./cli.js"');
+  expect(await readFile(join(packageRoot, "dist", "mutation-child.js"), "utf8")).toContain('? "./cli.ts" : "./cli.js"');
+  expect((await files(join(packageRoot, "dist"))).some((path) => path.endsWith(".map"))).toBe(false);
+  await run("npm", ["--prefix", packageRoot, "run", "build"]);
+  expect([await digest(join(packageRoot, "dist")), await digest(join(packageRoot, "types"))]).toEqual(first);
   const selfReference = `await Promise.all(${JSON.stringify(Object.keys(targets))}.map((path) => import("bot/" + path.slice(2))));`;
-  await expect(run(process.execPath, ["--input-type=module", "--eval", selfReference], { cwd: BOT })).resolves.toBeDefined();
+  await expect(run(process.execPath, ["--input-type=module", "--eval", selfReference], { cwd: packageRoot })).resolves.toBeDefined();
 });
 
 test("a clean make install builds declarations after npm ci", async () => {

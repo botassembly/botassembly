@@ -46,7 +46,10 @@
     "@earendil-works/pi-agent-core",
     "@earendil-works/pi-ai",
     "@earendil-works/pi-coding-agent",
-    "@types/node"
+    "@types/node",
+    "ajv",
+    "proper-lockfile",
+    "yaml"
   ],
   "devDependencies": {
     "@types/proper-lockfile": "4.1.4",
