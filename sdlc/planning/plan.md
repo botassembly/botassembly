@@ -10,7 +10,7 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Selected implementation now moves to the typed layer recorded in the admin-surface requirements note. The release rule does not apply yet. Tickets 0270 and 0272 through 0285 completed the fifteen outcomes this plan first selected. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair, and Ian pulled the documentation review forward the same day and widened it into a full rewrite for first-time readers. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count was a forecast, not a quota. Shape one reviewed ready ticket when a new outcome is selected. Keep no draft or calendar-hold queue.
+The selected implementation queue is complete through the typed layer recorded in the admin-surface requirements note. The release rule now governs the next ticket. Tickets 0270 and 0272 through 0285 completed the fifteen outcomes this plan first selected. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair, and Ian pulled the documentation review forward the same day and widened it into a full rewrite for first-time readers. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count was a forecast, not a quota. Shape one reviewed ready ticket when a new outcome is selected. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
@@ -43,6 +43,7 @@ Selected implementation now moves to the typed layer recorded in the admin-surfa
 29. **Completed in ticket 0299:** add bounded literal `bot run search` over retained event and session files, preferring ripgrep and falling back to grep.
 30. **Completed in ticket 0296:** `bot run resume` inherits the donor's recorded command-rung intelligence.
 31. **Completed in ticket 0295:** export `run.output` and `run.request` through the `run-readings` door ticket 0291 opened, by driving their handlers with a collecting boundary, so `copySelected` stays module-private and the exported reading returns the command's own bytes.
+32. **Completed in ticket 0302:** add typed `*Document` functions for all 21 structured public counterparts over the unchanged byte readings, retain exact command bytes and command refusals, enforce operation-owned bounds and framing, and publish exact generated types through the existing package paths.
 
 Each ticket receives independent design review, red-green implementation where behavior changes, independent code review, focused verification, and the appropriate complete gate. Commit and push each complete ticket before closing it. A split requires a newly observed independent defect and becomes a ready ticket, never a draft.
 

@@ -4,11 +4,11 @@ Ian stopped the session for budget. This note says where the sequence from the [
 
 ## Landed on main
 
-Tickets 0287 through 0301 are complete, recorded, and archived. Ticket 0300 exported nine mutating operations. Seven assembly and authentication mutations use the shared in-process command boundary; `run.start` and `run.resume` use direct children with bounded failure cleanup. Ticket 0301 made all seven export paths installable from the packed artifact with emitted ESM JavaScript and generated declarations. The operation inventory is 27. Twenty-five operations now have public counterparts. `auth.list` and `model.list` stay pending export because they need the Pi runtime.
+Tickets 0287 through 0302 are complete, recorded, and archived. Ticket 0300 exported nine mutating byte readings. Ticket 0301 made all seven package paths installable with emitted ESM JavaScript and generated declarations. Ticket 0302 added typed document functions for all 21 structured public counterparts while preserving exact byte readings. The four raw counterparts remain byte readings. `auth.list` and `model.list` stay outside the public counterpart set because they require the Pi runtime.
 
-## Next implementation: typed readings
+## Next outcome: release qualification
 
-Add the typed layer over the byte readings. Shape and independently review that ticket before implementation.
+The selected implementation queue is exhausted. The active-ticket, issue, and draft directories contain no work after the 0302 completion record. Shape the single release qualification ticket only after this record commit's main runtime and documentation workflows pass and main still matches origin. The release rule in `sdlc/planning/plan.md` defines its proof. Publishing `v0.1.0` still requires Ian's final authorization.
 
 ## Housekeeping
 
