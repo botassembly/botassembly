@@ -186,6 +186,7 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
     let exitCode: number | null = null, exitSignal: NodeJS.Signals | null = null, closeCode: number | null = null, closeSignal: NodeJS.Signals | null = null;
     const remaining = Math.max(0, deadline - clock.milliseconds());
     let killer: unknown, cleanup: unknown;
+    const signalFailure = (problem: Error) => { const raw = errorCode(problem) ?? "UNKNOWN", code = /^[A-Z0-9_]{1,32}$/u.test(raw) ? raw : "UNKNOWN"; return new Error(["signal-failed", code, exited, closed, stdoutEof, stderrEof, stdoutClosed, stderrClosed, reason ?? "none"].join("|")); };
     const fail = (problem: Error) => {
       if (settled) return; settled = true; clock.clearTimeout(timer); if (killer !== undefined) clock.clearTimeout(killer); if (cleanup !== undefined) clock.clearTimeout(cleanup); abort?.removeEventListener("abort", aborted);
       child.stdout?.destroy(); child.stderr?.destroy(); reject(problem);
@@ -202,13 +203,9 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
       if (reason !== undefined) return; reason = why;
       if (child.pid !== undefined && signalGroup(child.pid, "SIGTERM").error !== undefined) reason = "signal";
       killer = clock.setTimeout(() => {
-        const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL");
-        if (killed.error !== undefined) { fail(new Error("signal-failed")); return; }
-        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = true;
-        complete(); if (settled) return;
-        cleanup = clock.setTimeout(() => {
-          complete(); if (!settled) fail(new Error("close-failed"));
-        }, RUN_SEARCH_CONTRACT.cleanupMilliseconds);
+        const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL"); if (killed.error !== undefined) { fail(signalFailure(killed.error)); return; }
+        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = true; complete(); if (settled) return;
+        cleanup = clock.setTimeout(() => { complete(); if (!settled) fail(new Error("close-failed")); }, RUN_SEARCH_CONTRACT.cleanupMilliseconds);
       }, RUN_SEARCH_CONTRACT.graceMilliseconds);
     };
     const timer = clock.setTimeout(() => { terminate("timeout"); }, remaining);
@@ -249,7 +246,7 @@ async function selectTool(runs: string, deadline: number, env: NodeJS.ProcessEnv
       return { name, version: Buffer.from(version).subarray(0, 256).toString("utf8") };
     } catch (reason) {
       if (errorCode(reason) === "ENOENT") continue;
-      return fault("dependency-failed", settlementCause(reason), `${name} version probing failed.`, 4);
+      return fault("dependency-failed", settlementCause(reason), `${name} version probing failed.`, 4, settlementDetails(reason));
     }
   }
   return fault("dependency-failed", "dependency-failed", "Run search requires rg or grep on PATH.", 4);
@@ -333,8 +330,10 @@ function searchFailure(result: { reason?: StopReason; err: Buffer; code: number 
   const cause = result.reason === "timeout" ? "timeout" : result.reason === "stream" || protocolFailure === "size" ? "result-too-large" : result.reason === "signal" ? "close-failed" : "dependency-failed", message = result.reason === "timeout" ? "Run search timed out." : result.reason === "signal" ? "The search tool process group could not be signaled." : "The search tool returned an invalid result.";
   return fault("dependency-failed", cause, message, 4);
 }
-function settlementCause(reason: unknown): ErrorCause { return reason instanceof Error && ["close-failed", "signal-failed"].includes(reason.message) ? "close-failed" : "dependency-failed"; }
-function settlementMessage(reason: unknown): string { return reason instanceof Error && reason.message === "signal-failed" ? "The search tool process group could not be signaled." : "The search tool could not settle safely."; }
+function settlementSignal(reason: unknown): RegExpExecArray | null { return reason instanceof Error ? /^signal-failed\|([A-Z0-9_]{1,32})\|(true|false)\|(true|false)\|(true|false)\|(true|false)\|(true|false)\|(true|false)\|(page|timeout|abort|stream|pipe|signal)$/u.exec(reason.message) : null; }
+function settlementCause(reason: unknown): ErrorCause { return reason instanceof Error && (reason.message === "close-failed" || settlementSignal(reason) !== null) ? "close-failed" : "dependency-failed"; }
+function settlementMessage(reason: unknown): string { return settlementSignal(reason) !== null ? "The search tool process group could not be signaled." : "The search tool could not settle safely."; }
+function settlementDetails(reason: unknown): Record<string, unknown> { const held = settlementSignal(reason); return held === null ? {} : { signal: { code: held[1], exited: held[2] === "true", closed: held[3] === "true", stdoutEof: held[4] === "true", stderrEof: held[5] === "true", stdoutClosed: held[6] === "true", stderrClosed: held[7] === "true", stopReason: held[8] } }; }
 
 export async function runSearchCommand(args: string[], boundary: Boundary, dependencies: RunSearchDependencies = {}): Promise<number> {
   const parsed = parse(args, boundary.cwd, boundary.env), json = args.includes("--json") || args.includes("-j");
@@ -380,7 +379,7 @@ export async function runSearchCommand(args: string[], boundary: Boundary, depen
     : ["--null", "-a", "-H", "-n", "-F", "--", parsed.query, ...selected];
   let result;
   try { result = await execute(tool.name, invocation, runs, deadline, RUN_SEARCH_CONTRACT.streamBytes, boundary.env, boundary.clock, spawnChild, signalGroup, boundary.signal, consume); }
-  catch (reason) { return emit(boundary, newCommandFailure("run.search", fault("dependency-failed", settlementCause(reason), settlementMessage(reason), 4), parsed.json), parsed.json); }
+  catch (reason) { return emit(boundary, newCommandFailure("run.search", fault("dependency-failed", settlementCause(reason), settlementMessage(reason), 4, settlementDetails(reason)), parsed.json), parsed.json); }
   if (pending.length > 0 && result.reason !== "page") protocolFailure = "protocol";
   const failed = searchFailure(result, protocolFailure, hits.length);
   if (failed !== undefined) return emit(boundary, newCommandFailure("run.search", failed, parsed.json), parsed.json);

@@ -159,12 +159,13 @@ test("settles a page stop with exactly one kill and no signal-zero probe", async
 });
 
 test("reports the one process-group kill error without signaling again", async () => {
+  const problem = Object.assign(new Error("signal failure"), { code: "EPERM" });
   const run = await harness((child) => {
     child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.directClose(null, "SIGTERM");
-  }, (signal) => signal === "SIGKILL" ? { exists: true, error: new Error("signal failure") } : { exists: true });
+  }, (signal) => signal === "SIGKILL" ? { exists: true, error: problem } : { exists: true });
   await started(run); run.clock.advance(250); await flush(); run.clock.advance(1_000);
   expect(await result(run.promise, "signal failure")).toBe(4);
-  expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled." } });
+  expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { code: "EPERM", stopReason: "page", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
   expect(run.signals).toEqual(["SIGTERM", "SIGKILL"]);
 });
 
@@ -234,11 +235,12 @@ test("maps probe grace signal failure and cleanup timeout without a second kill"
     const spawnChild = (() => new FakeChild() as unknown as ChildProcess) as unknown as typeof spawn;
     const promise = runSearchCommand(["--json", "--home", held, "--", "needle"], { cwd: held, env: { PATH: "/tools" }, stdout: () => undefined, stderr: (bytes) => { stderr.push(Buffer.from(bytes)); }, signal: abort.signal, clock }, {
       spawn: spawnChild,
-      signalGroup: (_pid, signal) => { signals.push(signal); return signal === "SIGKILL" && killFails ? { exists: true, error: new Error("EPERM") } : { exists: true }; },
+      signalGroup: (_pid, signal) => { signals.push(signal); return signal === "SIGKILL" && killFails ? { exists: true, error: Object.assign(new Error("denied"), { code: "EPERM" }) } : { exists: true }; },
     });
     while (signals.length === 0) await flush(); clock.advance(250); await flush(); if (!killFails) clock.advance(1_000);
     expect(await result(promise, `probe/${killFails ? "signal" : "cleanup"}`)).toBe(4);
-    expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "rg version probing failed." } });
+    const expected = killFails ? { signal: { code: "EPERM", stopReason: "abort", exited: false, closed: false, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } : {};
+    expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "rg version probing failed.", details: expected } });
     expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
   }
 });
