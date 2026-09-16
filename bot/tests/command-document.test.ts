@@ -81,6 +81,14 @@ test("exclusive framing returns documents at any exit and command refusals at ex
   }
 });
 
+test("all 21 common refusals use their error contract rather than their success bound", () => {
+  for (const contract of STRUCTURED_COMMANDS) {
+    const bytes = refusal(contract.operation);
+    expect(decodeDocument(result(2, Buffer.alloc(0), bytes), contract), contract.operation)
+      .toMatchObject({ kind: "error", exit: 2, command: { stderr: bytes } });
+  }
+});
+
 test("the decoder preserves each command's inclusive or exclusive published byte bound", () => {
   const bytes = success("bot.capabilities"), inclusive = { ...structuredContract("capabilities"), resultBytes: bytes.length };
   expect(decodeDocument(result(0, bytes), inclusive)).toMatchObject({ kind: "document" });

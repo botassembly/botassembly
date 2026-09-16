@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { assemblyCheckDocument, assemblyListDocument, capabilitiesDocument, homeBusyDocument, homeShowDocument, intelligenceListDocument } from "../src/public-admin-readings.ts";
+import { assemblyCheckDocument, assemblyListDocument, capabilitiesDocument, homeBusyDocument, homeBusyReading, homeShowDocument, intelligenceListDocument } from "../src/public-admin-readings.ts";
 import { runCheckDocument, runChecklistDocument, runEventsDocument, runListDocument, runSearchDocument, runShowDocument } from "../src/public-run-readings.ts";
 import { assemblyInstallDocument, assemblyLinkDocument, assemblyRemoveDocument, assemblyUpdateDocument, authImportDocument, authLoginDocument, authLogoutDocument, runResumeDocument, runStartDocument } from "../src/public-mutation-readings.ts";
 import { builtPackage } from "./built-package.ts";
@@ -44,4 +44,15 @@ test("all 21 typed functions settle once through hermetic command boundaries", a
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("the public home busy document returns its longer common refusal unchanged", async () => {
+  const root = tmpdir();
+  const command = await homeBusyReading(root, "-bad", { json: true }, root, {});
+  expect(command).toMatchObject({ exit: 2, stdout: Buffer.alloc(0) });
+  expect(command.stderr.length).toBeGreaterThan(65);
+  const typed = await homeBusyDocument(root, "-bad", root, {});
+  expect(typed).toMatchObject({ kind: "error", exit: 2, command });
+  if (typed.kind !== "error") throw new Error("Expected the home busy refusal.");
+  expect(Buffer.from(`${JSON.stringify(typed.error)}\n`)).toEqual(command.stderr);
 });

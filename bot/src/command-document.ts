@@ -128,8 +128,8 @@ export function structuredContract(operation: NewOperation): StructuredContract 
 }
 
 function invariant(): never { throw new Error("The command result violated its structured document contract."); }
-function oneLine(bytes: Buffer, contract: StructuredContract): unknown {
-  const overBound = contract.exclusive ? bytes.length >= contract.resultBytes : bytes.length > contract.resultBytes;
+function oneLine(bytes: Buffer, contract?: StructuredContract): unknown {
+  const overBound = contract !== undefined && (contract.exclusive ? bytes.length >= contract.resultBytes : bytes.length > contract.resultBytes);
   if (bytes.length === 0 || overBound || bytes.at(-1) !== 0x0a || bytes.subarray(0, -1).includes(0x0a) || bytes.subarray(0, -1).includes(0x0d)) invariant();
   const parsed = jsonValue(bytes.subarray(0, -1));
   return "error" in parsed ? invariant() : parsed.value;
@@ -140,7 +140,7 @@ function heldDocument(bytes: Buffer, contract: StructuredContract): unknown {
   return parsed;
 }
 function heldError(bytes: Buffer, contract: StructuredContract): ErrorDocument {
-  const parsed = oneLine(bytes, contract);
+  const parsed = oneLine(bytes, contract.framing === "exclusive-json" ? undefined : contract);
   if (!mapping(parsed) || parsed["schemaVersion"] !== 1 || parsed["kind"] !== "error" || !mapping(parsed["error"])) invariant();
   const held = parsed["error"];
   if (held["operation"] !== contract.operation || !ERROR_CODES.includes(held["code"] as ErrorCode)
