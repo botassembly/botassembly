@@ -159,14 +159,14 @@ describe("lazy Pi command boundary", () => {
     expect(JSON.parse(result.stdout)).toMatchObject({ kind: "bot.model.list", schemaVersion: 1 });
   }, 30_000);
 
-  test("authentication import resolves Pi's agent directory before refusing a missing source", async () => {
+  test("authentication import resolves Pi's agent directory locally before refusing a missing source", async () => {
     const root = await mkdtemp(join(tmpdir(), "bot-lazy-auth-import-"));
     const agentDir = join(root, "agent");
     await mkdir(agentDir, { mode: 0o700 });
     const missing = join(root, "missing.json");
     const result = await invoke(["auth", "import", missing, "--json"], root, agentDir);
     expect(result.exit).toBe(2);
-    expect(result.loaded.some((specifier) => specifier.includes("/@earendil-works/pi-coding-agent/"))).toBe(true);
+    expect(result.loaded.some((specifier) => specifier.includes("/@earendil-works/pi-coding-agent/"))).toBe(false);
     expect(JSON.parse(result.stderr)).toMatchObject({ kind: "error", error: { cause: "source-missing" } });
   }, 30_000);
 });

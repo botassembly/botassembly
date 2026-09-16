@@ -4,7 +4,9 @@
 // admits it only through the ownership and mode checks recorded in ADR 0030.
 import { constants, type Stats } from "node:fs";
 import { lstat, open } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { CreateModelRuntimeOptions, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
 import { errorCode } from "./model.ts";
@@ -145,8 +147,26 @@ async function validateCredentialBoundary(input: ConfiguredModelRuntimeInput): P
 }
 
 /** Resolve Pi's default once at the process boundary, never in runtime work. */
-export async function piAgentDirectory(): Promise<string> {
-  return (await piModelRuntime()).getAgentDir();
+function normalizePiWindowsPath(input: string): string {
+  if (process.platform !== "win32" || !input.startsWith("/") || input.startsWith("//") || input.includes("\\")) return input;
+  const match = input.match(/^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/iu);
+  return match?.[1] === undefined ? input : `${match[1].toUpperCase()}:\\${match[2]?.replaceAll("/", "\\") ?? ""}`;
+}
+
+function expandPiTilde(input: string): string {
+  if (input === "~") return homedir();
+  const prefixed = input.startsWith("~/") || (process.platform === "win32" && input.startsWith("~\\"));
+  return prefixed ? join(homedir(), input.slice(2)) : input;
+}
+
+function normalizePiPath(input: string): string {
+  const normalized = expandPiTilde(normalizePiWindowsPath(input));
+  return /^file:\/\//u.test(normalized) ? fileURLToPath(normalized) : normalized;
+}
+
+export function piAgentDirectory(env: NodeJS.ProcessEnv): string {
+  const configured = env["PI_CODING_AGENT_DIR"];
+  return configured ? normalizePiPath(configured) : join(homedir(), ".pi", "agent");
 }
 
 /** Load provider identity without touching Pi's authentication store. */

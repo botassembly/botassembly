@@ -2,10 +2,11 @@ import { resolve } from "node:path";
 import { jsonObject } from "./check.ts";
 import { HOME_RESULT_BYTES } from "./cli-contract.ts";
 import { HomeInstallationError, readInstallation, type InstallationDependencies, type InstallationReading } from "./home-installation.ts";
+import { homePaths, type HomePaths } from "./invocation.ts";
 import { inertText, newCommandFailure, type CommandResult } from "./new-command-result.ts";
 import type { CliFailure, ErrorCause } from "./run-list-query.ts";
 
-interface Boundary { cwd: string; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
+interface Boundary { cwd: string; env: NodeJS.ProcessEnv; stdout(bytes: string | Uint8Array): void; stderr(bytes: string | Uint8Array): void }
 
 function invalid(cause: ErrorCause, message: string): CliFailure {
   return { code: "request-invalid", cause, message, retryable: false, details: {}, exit: 2 };
@@ -37,11 +38,27 @@ function failed(reason: unknown): CliFailure {
     retryable: false, details: {}, exit: 5 };
 }
 
-export function renderHomeResult(home: string, reading: InstallationReading, json: boolean): CommandResult {
-  const data = { home, initialized: reading.initialized, ...(reading.initialized ? { installationId: reading.installationId } : {}) };
+const PATH_LABELS: ReadonlyArray<readonly [keyof HomePaths, string]> = [
+  ["config", "Configuration file"],
+  ["runs", "Runs directory"],
+  ["assemblies", "Assemblies directory"],
+  ["installation", "Installation file"],
+  ["cache", "Cache directory"],
+  ["piAuth", "Pi authentication file"],
+];
+
+export function renderHomeResult(
+  home: string, reading: InstallationReading, json: boolean, env: NodeJS.ProcessEnv,
+): CommandResult {
+  const paths = homePaths(home, env);
+  const data = { home, initialized: reading.initialized, ...(reading.initialized ? { installationId: reading.installationId } : {}), paths };
+  const pathLines = PATH_LABELS.map(([key, label]) => {
+    const held = paths[key];
+    return `- ${label}: ${inertText(held.path, 8_192).text} — ${held.exists ? "present" : "absent"}\n`;
+  }).join("");
   const output = json
     ? `${jsonObject({ schemaVersion: 1, kind: "bot.home.show", data })}\n`
-    : `# Bot home\n\n- Home: ${inertText(home, 3_000).text}\n- Initialized: ${reading.initialized ? "yes" : "no"}\n${reading.initialized ? `- Installation ID: ${reading.installationId}\n` : ""}`;
+    : `# Bot home\n\n- Home: ${inertText(home, 3_000).text}\n- Initialized: ${reading.initialized ? "yes" : "no"}\n${pathLines}${reading.initialized ? `- Installation ID: ${reading.installationId}\n` : ""}`;
   if (Buffer.byteLength(output) > HOME_RESULT_BYTES) return newCommandFailure("home.show", {
     code: "integrity-failed", cause: "result-oversized", message: "The Bot home result exceeds its output bound.",
     retryable: false, details: {}, exit: 5,
@@ -49,9 +66,9 @@ export function renderHomeResult(home: string, reading: InstallationReading, jso
   return { exit: 0, stdout: Buffer.from(output), stderr: Buffer.alloc(0) };
 }
 
-function requireInitializedResults(home: string, installationId: string): void {
+function requireInitializedResults(home: string, installationId: string, env: NodeJS.ProcessEnv): void {
   const reading = { initialized: true as const, installationId };
-  const results = [false, true].map((json) => renderHomeResult(home, reading, json));
+  const results = [false, true].map((json) => renderHomeResult(home, reading, json, env));
   if (results.some(({ exit }) => exit !== 0)) throw new HomeInstallationError("The Bot home result exceeds its output bound.", "result-oversized"); }
 
 export function homeCommand(
@@ -64,8 +81,8 @@ export function homeCommand(
     boundary.stderr(result.stderr); return Promise.resolve(result.exit);
   }
   const home = resolve(boundary.cwd, parsed.home);
-  const storage = { ...dependencies, requireFeasible: (id: string) => { requireInitializedResults(home, id); } };
+  const storage = { ...dependencies, requireFeasible: (id: string) => { requireInitializedResults(home, id, boundary.env); } };
   return readInstallation(home, storage)
-    .then((reading) => renderHomeResult(home, reading, parsed.json), (reason: unknown) => newCommandFailure("home.show", failed(reason), parsed.json))
+    .then((reading) => renderHomeResult(home, reading, parsed.json, boundary.env), (reason: unknown) => newCommandFailure("home.show", failed(reason), parsed.json))
     .then((result) => { if (result.stdout.length > 0) boundary.stdout(result.stdout); if (result.stderr.length > 0) boundary.stderr(result.stderr); return result.exit; });
 }

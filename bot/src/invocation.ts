@@ -7,6 +7,7 @@ import { readYamlOptions } from "./home-config.ts";
 import { LOCAL_CONTEXTS, OPTION_NAMES, errorCode, fault, type AuthoredOptions, type HomeConfig, type Invocation, type Target } from "./model.ts";
 import { hashBytes } from "./record.ts";
 import { REQUEST_MAX_BYTES, REQUEST_TOO_LARGE_SENTENCE } from "./request-limit.ts";
+import { piAgentDirectory } from "./model-runtime.ts";
 import type { Refusal } from "./spine.ts";
 
 function words(source: string): string[] {
@@ -85,6 +86,32 @@ export function credentialPath(env: NodeJS.ProcessEnv): string {
 // opacity rule begins BELOW the run, and `bot show` prints that name already.
 export function scratchHome(root: string, home: string): string {
   return join(root, hashBytes(`${root}:${home}`).slice(0, 16));
+}
+
+interface HomePathReading { path: string; exists: boolean }
+export interface HomePaths {
+  config: HomePathReading;
+  runs: HomePathReading;
+  assemblies: HomePathReading;
+  installation: HomePathReading;
+  cache: HomePathReading;
+  piAuth: HomePathReading;
+}
+
+function pathReading(path: string): HomePathReading {
+  return { path, exists: lstatExists(path) };
+}
+
+/** Every local path `home.show` reports, resolved from one caller environment. */
+export function homePaths(home: string, env: NodeJS.ProcessEnv): HomePaths {
+  return {
+    config: pathReading(join(home, "config.yaml")),
+    runs: pathReading(join(home, "runs")),
+    assemblies: pathReading(join(home, "assemblies")),
+    installation: pathReading(join(home, "installation.json")),
+    cache: pathReading(scratchHome(scratchRoot(env), home)),
+    piAuth: pathReading(join(piAgentDirectory(env), "auth.json")),
+  };
 }
 
 export function scratchOfRun(root: string, home: string, run: string): string {

@@ -415,8 +415,7 @@ export function validateSlimSchema(filename: string, path: string, faults: Refus
 
 export function lstatExists(path: string): boolean {
   try {
-    lstatSync(path);
-    return true;
+    return lstatSync(path, { throwIfNoEntry: false }) !== undefined;
   } catch {
     // Unreachable counts as absent: the reader refuses on absence, not crash.
     return false;

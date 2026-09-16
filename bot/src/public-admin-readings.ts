@@ -21,8 +21,8 @@ export function capabilitiesReading(json: boolean): Promise<CommandResult<number
 
 /** `bot home show --home HOME [--json]`. The handler resolves the home against
  *  the supplied working directory, so a relative home follows the caller. */
-export function homeShowReading(home: string, json: boolean, cwd: string): Promise<CommandResult<number>> {
-  return commandReading(homeCommand, ["--home", home, ...flag("--json", json)], cwd, {});
+export function homeShowReading(home: string, json: boolean, cwd: string, env: NodeJS.ProcessEnv): Promise<CommandResult<number>> {
+  return commandReading(homeCommand, ["--home", home, ...flag("--json", json)], cwd, env);
 }
 
 /** `bot home busy DIR --home HOME [--json|--quiet]`. Quiet mode writes no bytes

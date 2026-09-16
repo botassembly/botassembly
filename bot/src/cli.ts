@@ -82,7 +82,7 @@ export function processBoundary(): CliBoundary {
   const clock = processClock();
   let modelBoundary: Promise<{ agentDir: string; module: typeof import("./model-runtime.ts") }> | undefined;
   const resolveModelBoundary = () => {
-    modelBoundary ??= import("./model-runtime.ts").then(async (module) => ({ module, agentDir: await module.piAgentDirectory() }));
+    modelBoundary ??= import("./model-runtime.ts").then((module) => ({ module, agentDir: module.piAgentDirectory(env) }));
     return modelBoundary;
   };
   let runtime: Promise<ModelRuntime> | undefined;

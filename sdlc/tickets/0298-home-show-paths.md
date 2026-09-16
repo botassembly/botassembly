@@ -57,10 +57,10 @@ Bot copies Pi's agent-directory rule, caught only by the drift test. Existence i
 ## Size decision
 
 - Starting production size: 19202 nonblank lines
-- Ending production size: 19257 nonblank lines
+- Ending production size: 19258 nonblank lines
 - Simpler approach tried: bare path strings, no existence flag, unchanged bound.
 - Why insufficient alternatives were rejected: a bare path answers where a file would be, not whether it is there, and A2 asks both. A bound of 4,096, or of 16,384, still refuses homes that work today. Asking Pi for its directory reds `cli-lazy-model-runtime.test.ts:119`, and JSON-only paths leave a paths command silent to a human.
-- Production code added: 55 nonblank lines in `home-command.ts`, `invocation.ts`, `model-runtime.ts`, `public-admin-readings.ts`, and `cli-contract.ts`.
+- Production code added: 56 nonblank lines in `home-command.ts`, `invocation.ts`, `model-runtime.ts`, `public-admin-readings.ts`, `cli-contract.ts`, `cli.ts`, and `documents.ts`.
 - Production code deleted: none.
 - Accepted cost: a copy of Pi's directory rule held by a test, and six stat calls.
 

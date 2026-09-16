@@ -1,21 +1,24 @@
 import { chmod, cp, link as hardLink, lstat, mkdir, readFile, readdir, rename, stat, symlink, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
+import { HOME_RESULT_BYTES } from "../src/cli-contract.ts";
 import { renderHomeResult } from "../src/home-command.ts";
 import { initializeInstallation, readInstallation, type InstallationDependencies } from "../src/home-installation.ts";
+import { scratchHome, scratchRoot } from "../src/invocation.ts";
 import { tempRoots } from "./cli-boundary.ts";
 
 const roots = tempRoots();
 afterEach(() => roots.cleanup());
 
-function boundary(root: string, ambient: string): { held: CliBoundary; out: Buffer[]; err: Buffer[] } {
+function boundary(root: string, ambient: string, environment: NodeJS.ProcessEnv = {}): { held: CliBoundary; out: Buffer[]; err: Buffer[] } {
   const out: Buffer[] = [], err: Buffer[] = [];
   return {
     out, err,
     held: {
-      cwd: root, env: { BOT_HOME: ambient }, stdinIsTTY: true, stderrIsTTY: false,
+      cwd: root, env: { ...environment, BOT_HOME: ambient }, stdinIsTTY: true, stderrIsTTY: false,
       readStdin: () => Promise.resolve(Buffer.alloc(0)), stdout: (bytes) => { out.push(Buffer.from(bytes)); },
       stderr: (bytes) => { err.push(Buffer.from(bytes)); },
       clock: { milliseconds: () => 0, timestamp: () => "2026-09-06T12:00:00.000Z",
@@ -25,40 +28,67 @@ function boundary(root: string, ambient: string): { held: CliBoundary; out: Buff
   };
 }
 
-async function invoke(root: string, ambient: string, args: string[]) {
-  const capture = boundary(root, ambient);
+async function invoke(root: string, ambient: string, args: string[], environment: NodeJS.ProcessEnv = {}) {
+  const capture = boundary(root, ambient, environment);
   const code = await main(args, capture.held);
   return { code, out: Buffer.concat(capture.out).toString(), err: Buffer.concat(capture.err).toString() };
-}
-
-async function deepHome(root: string, target: number, escaped = false): Promise<string> {
-  let path = join(root, escaped ? 'q"\\q' : "home");
-  while (target - Buffer.byteLength(path) > 201) path = join(path, "d".repeat(200));
-  path = join(path, "d".repeat(target - Buffer.byteLength(path) - 1));
-  expect(Buffer.byteLength(path)).toBe(target);
-  await mkdir(path, { recursive: true });
-  await chmod(path, 0o700);
-  return path;
 }
 
 test("home show is explicit, read-only, and its JSON aliases agree", async () => {
   const { root } = await roots.scratch("bot-home-show-");
   const ambient = join(root, "ambient"), home = join(root, "selected");
+  const environment = { HOME: join(root, "operator") };
   const before = await readdir(root);
-  const absent = await invoke(root, ambient, ["home", "show", "--home", "selected", "-j"]);
+  const absent = await invoke(root, ambient, ["home", "show", "--home", "selected", "-j"], environment);
   expect(absent).toMatchObject({ code: 0, err: "" });
   expect(JSON.parse(absent.out)).toEqual({ schemaVersion: 1, kind: "bot.home.show",
-    data: { home, initialized: false } });
+    data: { home, initialized: false, paths: {
+      config: { path: join(home, "config.yaml"), exists: false },
+      runs: { path: join(home, "runs"), exists: false },
+      assemblies: { path: join(home, "assemblies"), exists: false },
+      installation: { path: join(home, "installation.json"), exists: false },
+      cache: { path: scratchHome(scratchRoot(environment), home), exists: false },
+      piAuth: { path: join(homedir(), ".pi", "agent", "auth.json"), exists: false },
+    } } });
   expect(await readdir(root)).toEqual(before);
   expect(await invoke(root, ambient, ["home", "show", "--home", "missing/selected", "-j"]))
     .toMatchObject({ code: 0, err: "" });
   expect(await readdir(root)).toEqual(before);
-  expect(await invoke(root, ambient, ["home", "show", "--home", "selected", "--json"])).toEqual(absent);
+  expect(await invoke(root, ambient, ["home", "show", "--home", "selected", "--json"], environment)).toEqual(absent);
   for (const args of [[], ["--home"], ["--home", ""], ["--home", "a", "--home", "b"]]) {
     expect((await invoke(root, ambient, ["home", "show", ...args])).code).toBe(2);
   }
   expect((await invoke(root, home, ["home", "show", "-j"])).code).toBe(2);
   await expect(lstat(ambient)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+test("home show reports path existence and environment-selected cache and Pi authentication paths", async () => {
+  const { root } = await roots.scratch("bot-home-paths-");
+  const home = join(root, "selected"), cacheRoot = join(root, "cache"), agent = join(root, "pi-agent");
+  await mkdir(join(home, "runs"), { recursive: true, mode: 0o700 });
+  await mkdir(join(home, "assemblies"), { mode: 0o700 });
+  await writeFile(join(home, "config.yaml"), "intelligences: {}\n");
+  await chmod(home, 0o700);
+  const environment = { HOME: join(root, "operator"), XDG_CACHE_HOME: cacheRoot, PI_CODING_AGENT_DIR: agent };
+  const result = await invoke(root, "", ["home", "show", "--home", home, "--json"], environment);
+  expect(result).toMatchObject({ code: 0, err: "" });
+  const document = JSON.parse(result.out) as { data: { paths: Record<string, unknown> } };
+  expect(document.data.paths).toEqual({
+    config: { path: join(home, "config.yaml"), exists: true },
+    runs: { path: join(home, "runs"), exists: true },
+    assemblies: { path: join(home, "assemblies"), exists: true },
+    installation: { path: join(home, "installation.json"), exists: false },
+    cache: { path: scratchHome(join(cacheRoot, "bot", "tmp"), home), exists: false },
+    piAuth: { path: join(agent, "auth.json"), exists: false },
+  });
+  const markdown = await invoke(root, "", ["home", "show", "--home", home], environment);
+  expect(markdown).toMatchObject({ code: 0, err: "" });
+  expect(markdown.out).toContain(`- Configuration file: ${join(home, "config.yaml")} — present\n`);
+  expect(markdown.out).toContain(`- Runs directory: ${join(home, "runs")} — present\n`);
+  expect(markdown.out).toContain(`- Assemblies directory: ${join(home, "assemblies")} — present\n`);
+  expect(markdown.out).toContain(`- Installation file: ${join(home, "installation.json")} — absent\n`);
+  expect(markdown.out).toContain(`- Cache directory: ${scratchHome(join(cacheRoot, "bot", "tmp"), home)} — absent\n`);
+  expect(markdown.out).toContain(`- Pi authentication file: ${join(agent, "auth.json")} — absent\n`);
 });
 
 test("home init follows ordinary unsupported-command behavior", async () => {
@@ -85,28 +115,17 @@ test("the initializer creates private canonical bytes and repeats without touchi
   expect({ size: after.size, mtimeMs: after.mtimeMs, ctimeMs: after.ctimeMs }).toEqual({ size: before.size, mtimeMs: before.mtimeMs, ctimeMs: before.ctimeMs });
 });
 
-test("the longest admitted escaped path fits every initialized result", async () => {
-  const { root } = await roots.scratch("bot-home-result-edge-");
+test("the longest admitted escaped path fits every initialized result", () => {
   const id = "018f2f4a-52f8-4c81-9b35-6ad2acdb70d8";
-  const fits = (path: string): boolean => [false, true]
-    .every((json) => renderHomeResult(path, { initialized: true, installationId: id }, json).exit === 0);
-  let target = 4_025;
-  while (!fits(`${"x".repeat(target - 4)}q"\\q`)) target -= 1;
-  const home = await deepHome(root, target, true);
-  expect(fits(home)).toBe(true);
-  expect(fits(`${home}x`)).toBe(false);
-  const identity = (await initializeInstallation(home)).installationId;
-  for (const args of [["home", "show", "--home", home], ["home", "show", "--home", home, "-j"]]) {
-    const result = await invoke(root, "", args);
-    expect(result).toMatchObject({ code: 0, err: "" });
-    expect(result.out).toContain(identity);
-  }
+  const home = `${"x".repeat(4_091)}q"\\q`;
+  const environment = { HOME: "/operator", XDG_CACHE_HOME: "/cache", PI_CODING_AGENT_DIR: "/agent" };
   for (const json of [false, true]) {
-    const result = renderHomeResult(home, { initialized: true, installationId: identity }, json);
+    const result = renderHomeResult(home, { initialized: true, installationId: id }, json, environment);
     expect(result.exit).toBe(0);
-    expect(result.stdout.length).toBeLessThanOrEqual(4_096);
+    expect(result.stdout.length).toBeLessThanOrEqual(HOME_RESULT_BYTES);
     if (json) expect(JSON.parse(result.stdout.toString())).toMatchObject({ data: { home } });
   }
+  expect(HOME_RESULT_BYTES).toBe(65_536);
 });
 
 test("an identity-less valid home repeats the held-parent synchronization prerequisite", async () => {
@@ -253,8 +272,11 @@ test("capabilities advertise only the read-only explicit-home contract", async (
   expect(result.code).toBe(0);
   const commands = (JSON.parse(result.out) as { data: { commands: Record<string, unknown>[] } }).data.commands;
   expect(commands.find((held) => held["operation"] === "home.init")).toBeUndefined();
-  const descriptor = commands.find((held) => held["operation"] === "home.show") as { options: Record<string, unknown>[] };
+  const descriptor = commands.find((held) => held["operation"] === "home.show") as {
+    limits: Record<string, unknown>; options: Record<string, unknown>[];
+  };
   expect(descriptor).toBeDefined();
+  expect(descriptor.limits["documentBytes"]).toBe(65_536);
   expect(descriptor.options.find((option) => option["name"] === "--home")).toMatchObject({ required: true, repeatable: false, type: "path" });
 });
 

@@ -142,7 +142,7 @@ The inventory contains `assembly.check`, `assembly.install`, `assembly.link`, `a
 
 ### `bot home show`
 
-The command requires one explicit `--home DIR`; missing, empty, repeated, valueless, flag-valued, and ambient-only selection fails before filesystem work. It returns `bot.home.show`. Its Markdown and version-1 JSON results occupy at most 4,096 UTF-8 bytes. A valid absent reading exits zero with `initialized: false` and creates nothing. Other failures use the common bounded error contract. `bot home init` is unsupported.
+The command requires one explicit `--home DIR`; missing, empty, repeated, valueless, flag-valued, and ambient-only selection fails before filesystem work. It returns a version-1 `bot.home.show` document. The existing `home`, `initialized`, and conditional `installationId` fields stand. `data.paths` contains `config`, `runs`, `assemblies`, `installation`, `cache`, and `piAuth`. Each entry carries the absolute path the runtime resolved and whether it exists at the time of the reading. The Pi session directory is not reported because Bot does not resolve it. Markdown prints one `- LABEL: PATH — present` or `absent` line per entry after `Initialized`. Markdown and JSON results occupy at most 65,536 UTF-8 bytes. A valid absent reading exits zero with `initialized: false` and creates nothing. Other failures use the common bounded error contract. `bot home init` is unsupported.
 
 ### `bot home busy <directory>`
 

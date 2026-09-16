@@ -109,6 +109,18 @@ test("the targeted publication states its version and compatibility policy", () 
   expect(levels).toMatch(new RegExp(`\\b${PUBLICATION_VERSION.replaceAll(".", "\\.")}\\b`, "u"));
 });
 
+test("the home-show contract publishes every resolved path and its bound", () => {
+  const inspection = commandSection(read("elements/inspection.md"), "bot home show");
+  const home = read("elements/home.md");
+  for (const text of [inspection, home]) {
+    expect(text).toMatch(/version-1 `bot\.home\.show`/u);
+    expect(text).toMatch(/65,536 UTF-8 bytes/u);
+    expect(text).toMatch(/`config`, `runs`, `assemblies`, `installation`, `cache`, and `piAuth`/u);
+    expect(text).toMatch(/absolute path[\s\S]*whether it exists/iu);
+    expect(text).toMatch(/Pi session directory[\s\S]*not reported/iu);
+  }
+});
+
 test("active conformance protects one publication version", () => {
   const conformance = read("conformance.md");
   expect(conformance).toContain(`publication ${PUBLICATION_VERSION}`);

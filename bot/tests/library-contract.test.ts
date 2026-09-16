@@ -299,7 +299,7 @@ test("home.show compared live: `bot home show --json` and homeShowReading agree 
   await live(`${PREAMBLE}
 import { homeShowReading } from "bot/admin-readings";
 
-const imported = await homeShowReading(home, true, cwd);
+const imported = await homeShowReading(home, true, cwd, env);
 agree("home.show", imported, await commandResult(["home", "show", "--home", home, "--json"]), home, "stdout");
 `);
 });
