@@ -119,8 +119,9 @@ test("maps timeout, page stop, stream error, signal error, and cleanup timeout e
   const pipe = await harness((child) => { child.stdout.emit("error", new Error("pipe")); child.directClose(null, "SIGTERM"); });
   await started(pipe); pipe.clock.advance(250); expect(await result(pipe.promise, "pipe")).toBe(4); expect(JSON.parse(Buffer.concat(pipe.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
 
-  const signal = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, (value) => value === "SIGTERM" ? { exists: true, error: new Error("EPERM") } : { exists: false });
-  await started(signal); signal.clock.advance(250); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled." } });
+  const termProblem = Object.assign(new Error("operation not permitted"), { code: "EPERM" });
+  const signal = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, (value) => value === "SIGTERM" ? { exists: true, error: termProblem } : { exists: false });
+  await started(signal); signal.clock.advance(250); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { phase: "term", code: "EPERM", stopReason: "signal", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
 
   const stuck = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, () => ({ exists: true }));
   await started(stuck); stuck.clock.advance(1_250); expect(await result(stuck.promise, "stuck")).toBe(4); expect(JSON.parse(Buffer.concat(stuck.stderr).toString())).toMatchObject({ error: { cause: "close-failed" } }); expect(stuck.signals).toEqual(["SIGTERM", "SIGKILL"]);
@@ -165,7 +166,7 @@ test("reports the one process-group kill error without signaling again", async (
   }, (signal) => signal === "SIGKILL" ? { exists: true, error: problem } : { exists: true });
   await started(run); run.clock.advance(250); await flush(); run.clock.advance(1_000);
   expect(await result(run.promise, "signal failure")).toBe(4);
-  expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { code: "EPERM", stopReason: "page", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
+  expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { phase: "kill", code: "EPERM", stopReason: "page", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
   expect(run.signals).toEqual(["SIGTERM", "SIGKILL"]);
 });
 
@@ -239,7 +240,7 @@ test("maps probe grace signal failure and cleanup timeout without a second kill"
     });
     while (signals.length === 0) await flush(); clock.advance(250); await flush(); if (!killFails) clock.advance(1_000);
     expect(await result(promise, `probe/${killFails ? "signal" : "cleanup"}`)).toBe(4);
-    const expected = killFails ? { signal: { code: "EPERM", stopReason: "abort", exited: false, closed: false, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } : {};
+    const expected = killFails ? { signal: { phase: "kill", code: "EPERM", stopReason: "abort", exited: false, closed: false, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } : {};
     expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "rg version probing failed.", details: expected } });
     expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
   }
