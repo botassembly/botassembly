@@ -84,6 +84,10 @@ export const NO_CATCH = [
 // NO_CATCH without declaring here what it is exempted for.
 /** @type {Record<string, string[]>} */
 export const CATCH_BUDGET = {
+  "src/mutation-child.ts": [
+    "Child spawn can throw synchronously before a child exists; the direct-child boundary rejects that exact transport failure.",
+    "Direct-child signaling can throw at the operating-system boundary; cleanup distinguishes ESRCH from retained signal failure without signaling a process group.",
+  ],
   "src/run-search-command.ts": [
     "A prepared result write can throw synchronously at the command boundary; emit converts it to output-error without retrying or changing the prepared bytes.",
     "Directory enumeration can fail after the runs root is accepted; the recursive walk converts that platform failure to a bounded dependency failure.",

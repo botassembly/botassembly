@@ -43,9 +43,11 @@ async function consumer(): Promise<{ home: string; file: string; run: string }> 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as inspection from "bot/inspection";
+import * as admin from "bot/admin-readings";
 import * as oneRun from "bot/one-run";
 import { heldRecord } from "bot/record-lines";
 import * as readings from "bot/run-readings";
+import * as mutations from "bot/mutation-readings";
 import { renderSession, renderSessionTools } from "bot/session";
 
 const [home, directory, session] = process.argv.slice(2);
@@ -60,7 +62,13 @@ if (!renderSession(transcript).some((line) => line.includes("outside reader"))) 
 if (!renderSessionTools(transcript, "01-read").some((line) => line.includes("lookup"))) throw new Error("session tool reader did not render the call");
 if (!listed.stdout.toString().includes("${RUN}")) throw new Error("run list reader did not list the run");
 if (!rendered.output.toString().includes("outside reader")) throw new Error("one-run reader did not render the session");
-if ("lockRun" in inspection || "inspectPrune" in inspection) throw new Error("the reader door exposed runtime or mutation");
+if (typeof mutations.runStartReading !== "function") throw new Error("the mutation door has no run.start counterpart");
+for (const [door, namespace] of Object.entries({ inspection, oneRun, readings, admin, mutations })) {
+  for (const name of ["lockRun", "inspectPrune", "runCommand", "runOperation", "resumeOperation", "manage",
+    "dispatchNewCommand", "commandReading", "configuredModelRuntime", "createProcessGroups"]) {
+    if (name in namespace) throw new Error(door + " exposed private name " + name);
+  }
+}
 if ("inspectRuns" in inspection) throw new Error("the inspection door still carries inspectRuns");
 if ("inspectShow" in oneRun) throw new Error("the one-run door still carries inspectShow");
 `);

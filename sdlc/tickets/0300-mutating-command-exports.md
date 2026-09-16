@@ -97,7 +97,11 @@ The implementer may revise the new path name, parameter grouping, and transport-
 
 ## Size decision
 
-- Starting production size: 19,682 nonblank lines.
+- Starting production size: 19682 nonblank lines
+- Ending production size: 19899 nonblank lines
+- Why insufficient alternatives were rejected: Running all mutations in children contradicts the accepted in-process assembly and authentication boundary. Running starts and resumes in process shares signal ownership with the importer. Copying handler rules would split ownership of command refusals and bytes.
+- Production code deleted: The CLI's duplicate lazy Pi runtime construction and its private outer rejection branch. The shared boundary and settlement now serve the invoked CLI and importable mutations.
+- Size review: The implementation adds 217 lines, below the accepted 20032 ceiling. I searched the new child lifecycle, public wrapper, and CLI boundary for duplicated argument, stream, and settlement logic before raising the ratchet.
 - Production ceiling: at most 20,032 nonblank lines. Set the ratchet to the lower measured total after searching the touched owners for deletions. The added allowance covers one bounded child-lifecycle owner and the shared outer CLI settlement the first draft omitted.
 - Simpler approach tried: run all nine through a child, or run all nine handlers directly.
 - Why rejected: nine child commands contradict Ian's seven-in-process ruling and make ordinary assembly and credential mutation depend on process transport. Two direct run calls share signal handlers, process lifetime, and model-runtime state with the importer, which Ian explicitly declined to promise. Separate public functions that copy private handler rules would drift from structured refusals.
@@ -127,3 +131,4 @@ Re-score if implementation needs a new public failure envelope, a process-group 
 - Second design response: TERM `ESRCH` now permanently suppresses every later signal and receives a zero-KILL injected proof grounded in ADR 0005's owned-child rule. Cost of error is 2, the total is 9, and the irreducible exhaustive mutation-door outcome is level 4 with Sol Medium implementation and independent review.
 - Second design re-review: accepted. The same reviewer verified that TERM `ESRCH` permanently suppresses later signaling with an explicit zero-KILL proof, and confirmed the corrected cost-of-error 2, total 9, level-4 classification. The earlier bounded cleanup, mutation-list red proof, and shared outer rejection settlement findings remain remediated.
 - Code review: pending.
+- Implementation: red-first proof captured the missing `bot/mutation-readings` export and missing `mutation-child.ts` module before production code. The final core mutation, child-boundary, library-contract, and outside-import run passes 61 tests. The broader mutation, authentication, assembly, lazy-runtime, and signal set passes 166 tests. Typecheck, lint, diff, ratchet, and the non-root Linux platform check pass. The complete gate passes 1,871 Bot tests, 143 conformance cases, and 160 repository tests. Code review remains pending.

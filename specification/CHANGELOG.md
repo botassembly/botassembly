@@ -3,6 +3,10 @@
 > **Stability: not applicable.** This file is history, not a contract. A
 > chapter's own label is what binds a runtime.
 
+## 2026-09-16
+
+Ticket 0300 opens `bot/mutation-readings` for all nine mutating operations. Assembly and authentication functions run their command handlers in process through one collecting boundary. Run start and resume use one direct Bot child with bounded abort and transport cleanup. Every function returns the command's exact standard output, standard error, and numeric exit. Login keeps typed answers out of returned streams and preserves cancellation. A transport rejection does not prove that no mutation occurred and carries no safe-retry promise.
+
 ## 2026-09-14
 
 Ticket 0299 adds bounded literal search across retained root and child event files and stage session files. `bot run search` prefers one-thread ripgrep, falls back to portable NUL-framed grep, passes an explicit bytewise candidate list, rejects reordered tool output, and pages a version-1 result through a home-bound and query-bound cursor. The command publishes its process-group deadlines and stream bounds, loads no model runtime, changes no file, and joins the `bot/run-readings` package door.

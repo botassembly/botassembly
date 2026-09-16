@@ -43,7 +43,9 @@ const PENDING_EXPORT: readonly NewOperation[] = ["auth.list", "model.list"];
 // next ticket admits them under ruling 1 (2026-09-14): `run.start` and
 // `run.resume` start the run in a child process; every other admitted
 // mutation still runs in the importer's process.
-const PENDING_MUTATION: readonly NewOperation[] = [
+const PENDING_MUTATION: readonly NewOperation[] = [];
+
+const PRE_EXPORT_MUTATIONS: readonly NewOperation[] = [
   "assembly.install", "assembly.link", "assembly.remove", "assembly.update",
   "auth.import", "auth.login", "auth.logout", "run.start", "run.resume",
 ];
@@ -73,6 +75,15 @@ const COUNTERPARTS: Readonly<Partial<Record<NewOperation, string>>> = {
   "run.output": "runOutputReading (bot/run-readings)",
   "run.request": "runRequestReading (bot/run-readings)",
   "run.search": "runSearchReading (bot/run-readings)",
+  "assembly.install": "assemblyInstallReading (bot/mutation-readings)",
+  "assembly.link": "assemblyLinkReading (bot/mutation-readings)",
+  "assembly.remove": "assemblyRemoveReading (bot/mutation-readings)",
+  "assembly.update": "assemblyUpdateReading (bot/mutation-readings)",
+  "auth.import": "authImportReading (bot/mutation-readings)",
+  "auth.login": "authLoginReading (bot/mutation-readings)",
+  "auth.logout": "authLogoutReading (bot/mutation-readings)",
+  "run.start": "runStartReading (bot/mutation-readings)",
+  "run.resume": "runResumeReading (bot/mutation-readings)",
 };
 
 function operationFault(
@@ -94,6 +105,17 @@ test("every operation has exactly one importable counterpart or allowlist entry"
   const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
   expect(operationFault(operations, PENDING_EXPORT, PENDING_MUTATION, COUNTERPARTS)).toBeUndefined();
 });
+
+for (const operation of PRE_EXPORT_MUTATIONS) {
+  test(`${operation} removed from the mutation allowlist without a counterpart fails naming it`, () => {
+    const operations = CLI_CONTRACTS.map((descriptor) => descriptor.operation);
+    const pending = PRE_EXPORT_MUTATIONS.filter((name) => name !== operation);
+    const counterparts = Object.fromEntries(Object.entries(COUNTERPARTS)
+      .filter(([name]) => !PRE_EXPORT_MUTATIONS.includes(name as NewOperation)));
+    expect(operationFault(operations, PENDING_EXPORT, pending, counterparts))
+      .toBe(`${operation} has no importable counterpart and sits in no allowlist`);
+  });
+}
 
 // Red demonstration 1: a 27th operation named in neither list nor the map.
 test("an operation added to CLI_CONTRACTS with no export or allowlist entry fails naming it", () => {

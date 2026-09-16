@@ -1,48 +1,15 @@
 #!/usr/bin/env node
 import { existsSync, lstatSync, realpathSync } from "node:fs";
-import { join } from "node:path";
-import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { helpScreen, newHelpScreen } from "./help.ts";
-import { credentialPath } from "./invocation.ts";
 import { exitFlushed, ordinaryProcessOutput, processRawStdout } from "./process-output.ts";
 import { dispatchNewCommand } from "./new-command-dispatch.ts";
-import type { RunCommandBoundary } from "./run-command.ts";
 import { processClock } from "./process-clock.ts";
 import { readByteStream } from "./stdin.ts";
-import type { AuthListRuntime, AuthLogoutRuntime, ModelRuntime } from "./model-runtime.ts";
 import { CLI_CONTRACTS } from "./cli-contract.ts";
-import type { Models, Provider } from "@earendil-works/pi-ai";
+import { runtimeBoundary, settleCommand, type CliBoundary } from "./cli-boundary.ts";
 
-export interface CliBoundary extends RunCommandBoundary {
-  /** Node's platform spelling. Tests inject this without changing global state. */
-  platform?: string;
-  /** Whether a terminal is watching, which is what decides progress. */
-  stdout(bytes: string | Uint8Array): void; rawStdout?(): Writable; stderr(bytes: string | Uint8Array): void;
-  /** How a login reads one typed line, injectable like `models` below so a
-   *  witness can script a login without a terminal. */
-  readLine?: (hidden: boolean) => Promise<string>;
-  /** Pi's public authentication file, resolved with its agent directory. */
-  authPath?: string;
-  authPathResolver?: () => Promise<string>;
-  authRuntime?: () => Promise<ModelRuntime>;
-  authLogoutRuntime?: () => Promise<AuthLogoutRuntime>;
-  authListRuntime?: () => Promise<AuthListRuntime>;
-  modelRuntime?: () => Promise<Models>;
-  authProvider?: (id: string) => Provider | undefined | Promise<Provider | undefined>;
-  signal?: AbortSignal;
-  /** Retired Bot store used only for the transition-preservation warning. */
-  retiredCredentialPath?: string;
-  beforeCredentialAccess?: () => void;
-  afterAssemblyUpdateAside?: () => Promise<void>;
-  afterAssemblyUpdateSelection?: () => Promise<void>;
-  afterAssemblyUpdatePublish?: () => Promise<void>;
-  afterAuthImportDestinationLock?: (input: { temporary?: string }) => void | Promise<void>;
-  afterAuthImportSourceLock?: (input: { temporary?: string }) => void | Promise<void>;
-  beforeAuthImportRename?: (input: { temporary: string }) => void | Promise<void>;
-  afterAuthImportResultPreflight?: (input: { maximumBytes: number }) => void | Promise<void>;
-  afterAuthImportResultPrepared?: (input: { output: Buffer }) => void | Promise<void>;
-}
+export type { CliBoundary } from "./cli-boundary.ts";
 
 async function processStdin(): Promise<Buffer> {
   return readByteStream(process.stdin);
@@ -60,20 +27,11 @@ async function processStdin(): Promise<Buffer> {
 export function processBoundary(): CliBoundary {
   const env = { ...process.env };
   const clock = processClock();
-  let modelBoundary: Promise<{ agentDir: string; module: typeof import("./model-runtime.ts") }> | undefined;
-  const resolveModelBoundary = () => {
-    modelBoundary ??= import("./model-runtime.ts").then((module) => ({ module, agentDir: module.piAgentDirectory(env) }));
-    return modelBoundary;
-  };
-  let runtime: Promise<ModelRuntime> | undefined;
-  let authListRuntime: Promise<AuthListRuntime> | undefined;
-  let authLogoutRuntime: Promise<AuthLogoutRuntime> | undefined;
-  let catalog: Promise<ModelRuntime> | undefined;
   delete process.env["BOT_HOME"];
   // Build the ordinary queue here, so its stdout error listener is attached
   // before any command writes. Each write asks for it again, ending a raw latch.
   ordinaryProcessOutput();
-  return {
+  return runtimeBoundary({
     platform: process.platform,
     cwd: process.cwd(), env, stdinIsTTY: process.stdin.isTTY, stderrIsTTY: process.stderr.isTTY,
     readStdin: processStdin,
@@ -81,29 +39,7 @@ export function processBoundary(): CliBoundary {
     rawStdout: () => processRawStdout(),
     stderr: (bytes) => { process.stderr.write(bytes); },
     clock,
-    authPathResolver: async () => join((await resolveModelBoundary()).agentDir, "auth.json"),
-    retiredCredentialPath: credentialPath(env),
-    modelRuntime: () => {
-      runtime ??= resolveModelBoundary().then(({ agentDir, module }) => module.configuredModelRuntime({ agentDir, env, clock }));
-      return runtime;
-    },
-    authRuntime: () => {
-      runtime ??= resolveModelBoundary().then(({ agentDir, module }) => module.configuredModelRuntime({ agentDir, env, clock }));
-      return runtime;
-    },
-    authLogoutRuntime: () => {
-      authLogoutRuntime ??= resolveModelBoundary().then(({ agentDir, module }) => module.configuredAuthLogoutRuntime({ agentDir, env, clock }));
-      return authLogoutRuntime;
-    },
-    authListRuntime: () => {
-      authListRuntime ??= resolveModelBoundary().then(({ agentDir, module }) => module.configuredAuthListRuntime({ agentDir, env, clock }));
-      return authListRuntime;
-    },
-    authProvider: async (id) => {
-      catalog ??= resolveModelBoundary().then(({ agentDir, module }) => module.configuredProviderCatalog({ agentDir, env, clock }));
-      return (await catalog).getProvider(id);
-    },
-  };
+  });
 }
 
 function usage(command: string, message: string, boundary: CliBoundary): number {
@@ -166,11 +102,5 @@ export { exitFlushed };
 // a bare word in argv[1], and a word that names no file cannot name this one.
 const invoked = process.argv[1];
 if (invoked !== undefined && existsSync(invoked) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(invoked)) {
-  void main(process.argv.slice(2)).then(
-    exitFlushed,
-    (reason: unknown) => {
-      process.stderr.write(`${reason instanceof Error ? reason.message : "The runtime failed."}\n`);
-      exitFlushed(2);
-    },
-  );
+  void settleCommand(main(process.argv.slice(2)), (bytes) => { process.stderr.write(bytes); }).then(exitFlushed);
 }

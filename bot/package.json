@@ -7,6 +7,7 @@
   "exports": {
     "./admin-readings": "./src/public-admin-readings.ts",
     "./inspection": "./src/public-inspection.ts",
+    "./mutation-readings": "./src/public-mutation-readings.ts",
     "./one-run": "./src/one-run.ts",
     "./record-lines": "./src/record-lines.ts",
     "./run-readings": "./src/public-run-readings.ts",
