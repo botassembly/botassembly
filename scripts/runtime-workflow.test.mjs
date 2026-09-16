@@ -51,7 +51,7 @@ function validate(document) {
 	assert.deepEqual(steps, [
 		{ uses: CHECKOUT, with: { 'fetch-depth': 0, 'persist-credentials': false } },
 		{ uses: SETUP_NODE, with: {
-			'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/package-lock.json',
+			'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/npm-shrinkwrap.json',
 		} },
 		{ run: FETCH_REFS },
 		{ run: 'sh sdlc/scripts/install' },
@@ -68,7 +68,7 @@ function validate(document) {
 	assert.equal(platform['runs-on'], '${{ matrix.os }}');
 	assert.deepEqual(platform.steps, [
 		{ uses: CHECKOUT, with: { 'persist-credentials': false } },
-		{ uses: SETUP_NODE, with: { 'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/package-lock.json' } },
+		{ uses: SETUP_NODE, with: { 'node-version': '22.22.0', cache: 'npm', 'cache-dependency-path': 'bot/npm-shrinkwrap.json' } },
 		{ run: 'make -C bot install' },
 		{ run: 'test "$(id -u)" -ne 0' },
 		{ run: 'make platformcheck' },

@@ -10,22 +10,23 @@
       "bundleDependencies": [
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-ai",
-        "@earendil-works/pi-coding-agent"
+        "@earendil-works/pi-coding-agent",
+        "@types/node"
       ],
       "license": "MIT",
       "dependencies": {
         "@earendil-works/pi-agent-core": "0.85.1",
         "@earendil-works/pi-ai": "0.85.1",
         "@earendil-works/pi-coding-agent": "0.85.1",
+        "@types/node": "26.1.2",
         "ajv": "8.20.0",
         "proper-lockfile": "4.1.2",
         "yaml": "2.9.0"
       },
       "bin": {
-        "bot": "src/cli.ts"
+        "bot": "dist/cli.js"
       },
       "devDependencies": {
-        "@types/node": "26.1.2",
         "@types/proper-lockfile": "4.1.4",
         "@vitest/coverage-v8": "4.1.11",
         "eslint": "10.8.0",

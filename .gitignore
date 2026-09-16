@@ -1,5 +1,7 @@
 node_modules
 .tools/
+bot/types/
+bot/dist/
 .env
 .env.*
 credentials.json

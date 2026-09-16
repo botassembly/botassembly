@@ -131,6 +131,7 @@ export default defineConfig({
 					label: 'Reference',
 					items: [
 						{ label: 'Command reference', slug: 'reference/commands' },
+						{ label: 'Library reference', slug: 'reference/library' },
 						{
 							// Generated from specification/*.md by
 							// scripts/generate-specification.mjs, which wipes and

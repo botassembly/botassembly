@@ -3,13 +3,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { RuntimeProvenance } from "./record-events.ts";
 import { hashBytes } from "./record.ts";
 
 const packageDirectory = fileURLToPath(new URL("../", import.meta.url));
+const runtimeDirectory = basename(dirname(fileURLToPath(import.meta.url))) === "dist" ? "dist" : "src";
 const executeFile = promisify(execFile);
 
 export type RuntimeProvenanceResolution =
@@ -41,28 +42,29 @@ function providerAdapter(): Promise<string | undefined> {
 
 // Git is the one provenance source that can honestly be unknown: either this
 // package is not a checkout or Git itself is unavailable.
-function checkoutProvenance(): Promise<Pick<RuntimeProvenance, "runtimeSource" | "runtimeDigest">> {
+function checkoutProvenance(source: "src" | "dist"): Promise<Pick<RuntimeProvenance, "runtimeSource" | "runtimeDigest">> {
+  if (source === "dist") return Promise.resolve({ runtimeSource: "unknown", runtimeDigest: null });
   return executeFile("git", ["rev-parse", "HEAD"], { cwd: packageDirectory, encoding: "utf8" }).then(
     ({ stdout }) => ({ runtimeSource: "checkout", runtimeDigest: stdout.trim() }),
     () => ({ runtimeSource: "unknown", runtimeDigest: null }),
   );
 }
 
-async function sourcePaths(root: string): Promise<string[]> {
+async function sourcePaths(root: string, source: "src" | "dist"): Promise<string[]> {
   const paths = ["package.json"];
   const visit = async (directory: string, relative: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = relative === "" ? entry.name : `${relative}/${entry.name}`;
       if (entry.isDirectory()) await visit(join(directory, entry.name), path);
-      else if (entry.isFile() && entry.name.endsWith(".ts")) paths.push(`src/${path}`);
+      else if (entry.isFile() && entry.name.endsWith(source === "src" ? ".ts" : ".js")) paths.push(`${source}/${path}`);
     }
   };
-  await visit(join(root, "src"), "");
+  await visit(join(root, source), "");
   return paths.sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
 }
 
-export async function runtimeTreeIdentity(root: string): Promise<string> {
-  const paths = await sourcePaths(root);
+export async function runtimeTreeIdentity(root: string, source: "src" | "dist" = "src"): Promise<string> {
+  const paths = await sourcePaths(root, source);
   const hash = createHash("sha256").update("bot-runtime-tree-v1\0");
   for (const path of paths) {
     const pathBytes = Buffer.from(path), bytes = await readFile(join(root, path)), frame = Buffer.alloc(12);
@@ -73,9 +75,10 @@ export async function runtimeTreeIdentity(root: string): Promise<string> {
   return hash.digest("hex");
 }
 
-export async function resolveRuntimeSourceIdentity(sourceRoot = packageDirectory): Promise<RuntimeSourceIdentityResolution> {
-  const source = await checkoutProvenance();
-  const tree = await runtimeTreeIdentity(sourceRoot).then(
+export async function resolveRuntimeSourceIdentity(sourceRoot = packageDirectory,
+  sourceKind: "src" | "dist" = runtimeDirectory): Promise<RuntimeSourceIdentityResolution> {
+  const source = await checkoutProvenance(sourceKind);
+  const tree = await runtimeTreeIdentity(sourceRoot, sourceKind).then(
     (sha256) => sha256,
     (reason: unknown) => reason instanceof Error ? reason : new Error("The runtime source inventory failed with a non-Error value."),
   );
@@ -83,7 +86,7 @@ export async function resolveRuntimeSourceIdentity(sourceRoot = packageDirectory
     : { status: "resolved", identity: { ...source, runtimeTreeSha256: tree } };
 }
 
-export async function resolveRuntimeProvenance(lockfile = join(packageDirectory, "package-lock.json"),
+export async function resolveRuntimeProvenance(lockfile = join(packageDirectory, "npm-shrinkwrap.json"),
   sourceRoot = packageDirectory): Promise<RuntimeProvenanceResolution> {
   const lock = await readFile(lockfile).then((bytes) => bytes, () => undefined);
   if (lock === undefined) return { status: "failed", reason: `The runtime lockfile could not be read: ${lockfile}` };

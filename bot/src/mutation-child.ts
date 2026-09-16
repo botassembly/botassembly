@@ -28,6 +28,10 @@ function numericExit(ending: Ending): number {
   return 128 + (number ?? 0);
 }
 
+function childCli(): string {
+  return fileURLToPath(new URL(import.meta.url.endsWith(".ts") ? "./cli.ts" : "./cli.js", import.meta.url));
+}
+
 /** Run one mutating Bot command in one direct child and return its unrendered streams. */
 export function runMutationChild(
   args: readonly string[], cwd: string, suppliedEnv: NodeJS.ProcessEnv,
@@ -39,7 +43,7 @@ export function runMutationChild(
   const killSupported = (seam.platform ?? process.platform) === "linux" || (seam.platform ?? process.platform) === "darwin";
   let child: ChildProcessWithoutNullStreams;
   try {
-    child = spawn(process.execPath, [fileURLToPath(new URL("./cli.ts", import.meta.url)), ...args], {
+    child = spawn(process.execPath, [childCli(), ...args], {
       cwd, env: { ...suppliedEnv }, shell: false, stdio: ["pipe", "pipe", "pipe"],
     });
   } catch (reason: unknown) { return Promise.reject(transportError(reason)); }

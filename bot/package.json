@@ -4,22 +4,25 @@
   "version": "0.0.1",
   "license": "MIT",
   "type": "module",
+  "files": ["dist", "types", "npm-shrinkwrap.json"],
   "exports": {
-    "./admin-readings": "./src/public-admin-readings.ts",
-    "./inspection": "./src/public-inspection.ts",
-    "./mutation-readings": "./src/public-mutation-readings.ts",
-    "./one-run": "./src/one-run.ts",
-    "./record-lines": "./src/record-lines.ts",
-    "./run-readings": "./src/public-run-readings.ts",
-    "./session": "./src/session.ts"
+    "./admin-readings": { "types": "./types/public-admin-readings.d.ts", "default": "./dist/public-admin-readings.js" },
+    "./inspection": { "types": "./types/public-inspection.d.ts", "default": "./dist/public-inspection.js" },
+    "./mutation-readings": { "types": "./types/public-mutation-readings.d.ts", "default": "./dist/public-mutation-readings.js" },
+    "./one-run": { "types": "./types/one-run.d.ts", "default": "./dist/one-run.js" },
+    "./record-lines": { "types": "./types/record-lines.d.ts", "default": "./dist/record-lines.js" },
+    "./run-readings": { "types": "./types/public-run-readings.d.ts", "default": "./dist/public-run-readings.js" },
+    "./session": { "types": "./types/session.d.ts", "default": "./dist/session.js" }
   },
   "bin": {
-    "bot": "src/cli.ts"
+    "bot": "dist/cli.js"
   },
   "engines": {
     "node": ">=22.22"
   },
   "scripts": {
+    "build": "node scripts/build-package.mjs",
+    "prepare": "npm run build",
     "lint": "eslint . && node scripts/check-lint-rules.mjs && node --test scripts/check-test-model-runtime-boundary.node.mjs && node scripts/check-test-model-runtime-boundary.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -34,6 +37,7 @@
     "@earendil-works/pi-agent-core": "0.85.1",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
+    "@types/node": "26.1.2",
     "ajv": "8.20.0",
     "proper-lockfile": "4.1.2",
     "yaml": "2.9.0"
@@ -41,10 +45,10 @@
   "bundleDependencies": [
     "@earendil-works/pi-agent-core",
     "@earendil-works/pi-ai",
-    "@earendil-works/pi-coding-agent"
+    "@earendil-works/pi-coding-agent",
+    "@types/node"
   ],
   "devDependencies": {
-    "@types/node": "26.1.2",
     "@types/proper-lockfile": "4.1.4",
     "@vitest/coverage-v8": "4.1.11",
     "eslint": "10.8.0",

@@ -121,10 +121,13 @@ runtime's own environment identities — named by the runtime, not by this
 specification. bot, a Node program, records `lock_sha256` (the exact-byte
 SHA-256 of its colocated lockfile), `node` (the executing Node version),
 `provider_adapter` (the resolved adapter manifest's `name@version`), and
-`runtime_tree_sha256` (the observed Bot-owned source snapshot); a runtime
+`runtime_tree_sha256` (the observed Bot-owned runtime snapshot); a runtime
 built on another stack records the equivalent identities for its own world.
-Bot measures `package.json` plus every regular `src/**/*.ts` file immediately
-before the top-level start. A recursive directory listing ignores symbolic
+Bot measures `package.json` plus every regular `src/**/*.ts` file when it runs
+from a checkout, or `package.json` plus every regular `dist/**/*.js` file when
+it runs from an installed package. An installed package reports source
+`unknown` and digest null even when it sits inside another Git checkout. A
+recursive directory listing ignores symbolic
 links and other non-file leaves. Bot sorts UTF-8 root-relative paths bytewise and
 hashes `bot-runtime-tree-v1\0` followed by each file's four-byte unsigned
 big-endian path length, eight-byte unsigned big-endian byte count, UTF-8 path,

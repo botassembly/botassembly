@@ -194,7 +194,7 @@ const restrictedSyntax = (...groups) => ({
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/**"],
+    ignores: ["node_modules/**", "dist/**", "types/**"],
   },
   {
     files: ["**/*.ts"],

@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: "22.22.0"
           cache: npm
-          cache-dependency-path: bot/package-lock.json
+          cache-dependency-path: bot/npm-shrinkwrap.json
       - run: git fetch --force --tags origin '+refs/heads/*:refs/remotes/origin/*'
       - run: sh sdlc/scripts/install
       - run: test "$(id -u)" -ne 0
@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: "22.22.0"
           cache: npm
-          cache-dependency-path: bot/package-lock.json
+          cache-dependency-path: bot/npm-shrinkwrap.json
       - run: make -C bot install
       - run: test "$(id -u)" -ne 0
       - run: make platformcheck

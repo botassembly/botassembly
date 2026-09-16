@@ -5,6 +5,8 @@
 
 ## 2026-09-16
 
+Ticket 0301 gives each of the seven declared `bot/*` paths an emitted ESM runtime target and a generated declaration target. The packed artifact proves plain Node execution, strict TypeScript 5.9.3 consumers under NodeNext and Bundler resolution, scripted start and resume, its own exact Node declarations, and one publishable shrinkwrap for runtime provenance. Checkout runs identify the observed TypeScript source tree; installed runs identify the emitted JavaScript tree and never adopt an enclosing consumer checkout. The library reference states that paths, signatures, declarations, and returned schemas may change before 1.0. Version 1.0 remains the first cross-version compatibility boundary.
+
 Ticket 0300 opens `bot/mutation-readings` for all nine mutating operations. Assembly and authentication functions run their command handlers in process through one collecting boundary. Run start and resume use one direct Bot child with bounded abort and transport cleanup. Every function returns the command's exact standard output, standard error, and numeric exit. Login keeps typed answers out of returned streams and preserves cancellation. A transport rejection does not prove that no mutation occurred and carries no safe-retry promise.
 
 ## 2026-09-14

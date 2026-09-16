@@ -32,7 +32,7 @@ const CAPTURE = `stages/${STAGE}/1/1/checks/gate.txt`;
 const REQUEST = "request.txt";
 const ASSEMBLY = "review";
 const TARGET = `${ASSEMBLY}/main`;
-const CLI = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
+const CLI = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 
 // Eighteen operations carry `mutates: false` (ticket "Current facts").
 // Sixteen of them are compared live below. `auth.list` and `model.list` need a Pi

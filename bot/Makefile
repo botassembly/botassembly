@@ -12,6 +12,7 @@ fuzz:
 # gates on. Every document now points at this one target.
 install:
 	npm ci
+	npm run build
 
 lint:
 	npm run lint

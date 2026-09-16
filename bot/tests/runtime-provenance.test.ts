@@ -11,11 +11,11 @@ import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import { main } from "../src/cli.ts";
-import { resolveRuntimeProvenance, runtimeTreeIdentity } from "../src/runtime-provenance.ts";
+import { resolveRuntimeProvenance, resolveRuntimeSourceIdentity, runtimeTreeIdentity } from "../src/runtime-provenance.ts";
 import { at, events, realBoundary, runsIn, tempRoots, TEST_INSTALLATION_ID, writes } from "./cli-boundary.ts";
 
 const roots = tempRoots();
-const lockfile = fileURLToPath(new URL("../package-lock.json", import.meta.url));
+const lockfile = fileURLToPath(new URL("../npm-shrinkwrap.json", import.meta.url));
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 
 function sha256(bytes: string | Buffer): string {
@@ -111,7 +111,7 @@ test("runtime provenance hashes changed copied lockfile bytes", async () => {
   const { root } = await roots.scratch("bot-runtime-provenance-");
   const originalLock = await readFile(lockfile);
   const changedLock = Buffer.concat([originalLock, Buffer.from("\n")]);
-  const copiedLockfile = join(root, "package-lock.json");
+  const copiedLockfile = join(root, "npm-shrinkwrap.json");
   await writeFile(copiedLockfile, changedLock);
 
   const changed = await resolveRuntimeProvenance(copiedLockfile);
@@ -141,6 +141,26 @@ test("the observed runtime tree identity is stable by bytes and bytewise path or
   await rename(join(second, "src/gamma.ts"), join(second, "src/alpha.ts"));
   await writeFile(join(second, "package.json"), '{"name":"changed"}\n');
   expect(await runtimeTreeIdentity(second)).not.toBe(baseline);
+});
+
+test("an emitted runtime hashes JavaScript and never adopts an enclosing checkout", async () => {
+  const { root } = await roots.scratch("bot-runtime-dist-");
+  await mkdir(join(root, "dist"), { recursive: true });
+  await writeFile(join(root, "package.json"), '{"name":"bot"}\n');
+  await writeFile(join(root, "dist/cli.js"), "export const cli = true;\n");
+  await writeFile(join(root, "dist/ignored.ts"), "export const ignored = true;\n");
+  const resolved = await resolveRuntimeSourceIdentity(root, "dist");
+  expect(resolved).toEqual({
+    status: "resolved",
+    identity: {
+      runtimeSource: "unknown",
+      runtimeDigest: null,
+      runtimeTreeSha256: expectedTreeIdentity([
+        ["package.json", '{"name":"bot"}\n'],
+        ["dist/cli.js", "export const cli = true;\n"],
+      ]),
+    },
+  });
 });
 
 test("the observed runtime tree includes more than 256 source files", async () => {

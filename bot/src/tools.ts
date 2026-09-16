@@ -264,7 +264,7 @@ export class SlotExecutionEnv extends NodeExecutionEnvironment {
     this.#slots = slots;
   }
 
-  override absolutePath(path: string, context: ChordContext = HARNESS_CONTEXT) {
+  override absolutePath(path: string, context: ChordContext = HARNESS_CONTEXT): Promise<HarnessResult<string, FileError>> {
     const held = expandSlotPath(path, this.#slots);
     // Pi resolves a leading `~` to the real home before any file tool touches
     // the disk (pi-agent-core dist/harness/env/nodejs.js:25-32), which made the
@@ -281,7 +281,7 @@ export class SlotExecutionEnv extends NodeExecutionEnvironment {
   // the ambient `os.tmpdir()` — outside the run, and pruned by nobody. Every
   // temporary this env mints goes under the stage's own `$TMP` instead, which
   // stays available while its scope is live and is then destroyed (slots.md).
-  override async createTempDir(prefix: string | undefined, context: ChordContext) {
+  override async createTempDir(prefix: string | undefined, context: ChordContext): Promise<HarnessResult<string, FileError>> {
     const tmp = this.#slots["TMP"];
     if (tmp === undefined) return super.createTempDir(prefix, context);
     return mkdtemp(join(tmp, prefix ?? "tmp-")).then(
