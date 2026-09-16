@@ -119,9 +119,9 @@ test("maps timeout, page stop, stream error, signal error, and cleanup timeout e
   const pipe = await harness((child) => { child.stdout.emit("error", new Error("pipe")); child.directClose(null, "SIGTERM"); });
   await started(pipe); pipe.clock.advance(250); expect(await result(pipe.promise, "pipe")).toBe(4); expect(JSON.parse(Buffer.concat(pipe.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
 
-  const termProblem = Object.assign(new Error("operation not permitted"), { code: "EPERM" });
+  const termProblem = Object.assign(new Error("operation not permitted"), { code: "EACCES" });
   const signal = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, (value) => value === "SIGTERM" ? { exists: true, error: termProblem } : { exists: false });
-  await started(signal); signal.clock.advance(250); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { phase: "term", code: "EPERM", stopReason: "signal", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
+  await started(signal); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled.", details: { signal: { phase: "term", code: "EACCES", stopReason: "abort" } } } });
 
   const stuck = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, () => ({ exists: true }));
   await started(stuck); stuck.clock.advance(1_250); expect(await result(stuck.promise, "stuck")).toBe(4); expect(JSON.parse(Buffer.concat(stuck.stderr).toString())).toMatchObject({ error: { cause: "close-failed" } }); expect(stuck.signals).toEqual(["SIGTERM", "SIGKILL"]);
@@ -132,9 +132,23 @@ test("preserves clean timeout and abort outcomes after bounded settlement", asyn
   timeout.child?.finish(null, "SIGTERM"); await flush(); timeout.clock.advance(250);
   expect(await timeout.promise).toBe(4); expect(JSON.parse(Buffer.concat(timeout.stderr).toString())).toMatchObject({ error: { cause: "timeout" } });
 
-  const aborted = await harness((child, _clock, abort) => { abort.abort(); child.finish(null, "SIGTERM"); });
-  await started(aborted); aborted.clock.advance(250);
+  const denied = Object.assign(new Error("Darwin reports a departed group"), { code: "EPERM" });
+  const aborted = await harness((child, _clock, abort) => { abort.abort(); child.finish(null, "SIGTERM"); }, (signal) => signal === "SIGTERM" ? { exists: true, error: denied } : { exists: false });
+  await started(aborted);
   expect(await aborted.promise).toBe(4); expect(JSON.parse(Buffer.concat(aborted.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
+  expect(aborted.signals).toEqual(["SIGTERM"]);
+});
+
+test("accepts a settled page after TERM EPERM and times out incomplete settlement without resignal", async () => {
+  const denied = Object.assign(new Error("Darwin reports a departed group"), { code: "EPERM" });
+  const settled = await harness((child) => { child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.finish(null, "SIGTERM"); }, () => ({ exists: true, error: denied }));
+  await started(settled); expect(await result(settled.promise, "settled TERM EPERM")).toBe(0); expect(settled.signals).toEqual(["SIGTERM"]);
+
+  const incomplete = await harness((child) => { child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.directClose(null, "SIGTERM"); }, () => ({ exists: true, error: denied }));
+  await started(incomplete); incomplete.clock.advance(1_000);
+  expect(await result(incomplete.promise, "incomplete TERM EPERM")).toBe(4);
+  expect(JSON.parse(Buffer.concat(incomplete.stderr).toString())).toMatchObject({ error: { cause: "close-failed", details: { signal: { phase: "term", code: "EPERM", stopReason: "page", exited: true, closed: true, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
+  expect(incomplete.signals).toEqual(["SIGTERM"]);
 });
 
 test("ignores termination-time stream bytes after page stop while settling direct close", async () => {
@@ -244,6 +258,21 @@ test("maps probe grace signal failure and cleanup timeout without a second kill"
     expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "rg version probing failed.", details: expected } });
     expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
   }
+});
+
+test("bounds probe cleanup after TERM EPERM without signaling the group again", async () => {
+  const held = await home(), clock = new FakeClock(), abort = new AbortController(), stderr: Buffer[] = [], signals: Array<NodeJS.Signals | 0> = [];
+  abort.abort();
+  const spawnChild = (() => new FakeChild() as unknown as ChildProcess) as unknown as typeof spawn;
+  const problem = Object.assign(new Error("Darwin reports a departed group"), { code: "EPERM" });
+  const promise = runSearchCommand(["--json", "--home", held, "--", "needle"], { cwd: held, env: { PATH: "/tools" }, stdout: () => undefined, stderr: (bytes) => { stderr.push(Buffer.from(bytes)); }, signal: abort.signal, clock }, {
+    spawn: spawnChild,
+    signalGroup: (_pid, signal) => { signals.push(signal); return { exists: true, error: problem }; },
+  });
+  while (signals.length === 0) await flush(); clock.advance(1_000);
+  expect(await result(promise, "probe/TERM EPERM")).toBe(4);
+  expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "rg version probing failed.", details: { signal: { phase: "term", code: "EPERM", stopReason: "abort", exited: false, closed: false, stdoutEof: false, stderrEof: false, stdoutClosed: false, stderrClosed: false } } } });
+  expect(signals).toEqual(["SIGTERM"]);
 });
 
 test("distinguishes protocol corruption from actual protocol size overflow", async () => {

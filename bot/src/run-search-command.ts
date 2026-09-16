@@ -194,16 +194,24 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
     const complete = () => {
       if (settled) return;
       const direct = exited && closed && exitCode === closeCode && exitSignal === closeSignal;
-      const pipes = reason === undefined ? stdoutEof && stderrEof && stdoutClosed && stderrClosed : stdoutClosed && stderrClosed;
+      const pipes = reason === undefined || termProblem !== undefined ? stdoutEof && stderrEof && stdoutClosed && stderrClosed : stdoutClosed && stderrClosed;
       if (!direct || !pipes || (reason !== undefined && !terminationReady)) return;
       settled = true; clock.clearTimeout(timer); if (killer !== undefined) clock.clearTimeout(killer); if (cleanup !== undefined) clock.clearTimeout(cleanup); abort?.removeEventListener("abort", aborted);
       accept({ out: Buffer.concat(output), err: Buffer.concat(errors), code: closeCode ?? -1, signal: closeSignal, ...(reason === undefined ? {} : { reason }) });
     };
     const terminate = (why: StopReason) => {
       if (reason !== undefined) return; reason = why;
-      if (child.pid !== undefined) { const stopped = signalGroup(child.pid, "SIGTERM"); if (stopped.error !== undefined) { reason = "signal"; termProblem = stopped.error; } }
+      if (child.pid !== undefined) {
+        const stopped = signalGroup(child.pid, "SIGTERM");
+        if (stopped.error !== undefined) {
+          const problem = stopped.error;
+          if (errorCode(problem) !== "EPERM") { fail(signalFailure("term", problem)); return; }
+          termProblem = problem; terminationReady = true; complete(); if (settled) return;
+          cleanup = clock.setTimeout(() => { complete(); if (!settled) fail(signalFailure("term", problem)); }, RUN_SEARCH_CONTRACT.cleanupMilliseconds); return;
+        }
+      }
       killer = clock.setTimeout(() => {
-        const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL"); if (killed.error !== undefined) { fail(signalFailure("kill", killed.error)); return; } if (termProblem !== undefined) { fail(signalFailure("term", termProblem)); return; }
+        const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL"); if (killed.error !== undefined) { fail(signalFailure("kill", killed.error)); return; }
         child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = true; complete(); if (settled) return;
         cleanup = clock.setTimeout(() => { complete(); if (!settled) fail(new Error("close-failed")); }, RUN_SEARCH_CONTRACT.cleanupMilliseconds);
       }, RUN_SEARCH_CONTRACT.graceMilliseconds);
