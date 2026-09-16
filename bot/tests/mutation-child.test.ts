@@ -1,4 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, expect, test, vi } from "vitest";
 import {
@@ -278,3 +283,56 @@ test("close-before-exit settles with the same coherent result", async () => {
   child.emit("close", 4, null); child.emit("exit", 4, null);
   await expect(promise).resolves.toEqual({ exit: 4, stdout: Buffer.from("out"), stderr: Buffer.from("err") });
 });
+
+test.skipIf(process.platform !== "linux" && process.platform !== "darwin")(
+  "a real killed child and its pipe-holding descendant are gone before rejection",
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), "bot-mutation-real-child-"));
+    const preload = join(root, "preload.mjs"), descendant = join(root, "descendant.mjs");
+    const marker = join(root, "ready"), directPid = join(root, "direct.pid"), descendantPid = join(root, "descendant.pid"), done = join(root, "descendant.done");
+    let cleanupPid = 0;
+    try {
+      await writeFile(descendant, [
+        'import { spawnSync } from "node:child_process";',
+        'import { writeFileSync } from "node:fs";',
+        'const done = process.env["DESCENDANT_DONE"];',
+        'const owner = process.ppid; const identity = process.env["OWNER_ID"]; let finished = false;',
+        'const finish = () => { if (finished) return; finished = true; writeFileSync(done, "ended"); process.exit(0); };',
+        'process.stdout.on("error", finish); process.stderr.on("error", finish); process.on("SIGTERM", finish);',
+        'setInterval(() => { const command = spawnSync("ps", ["-p", String(owner), "-o", "command="], { encoding: "utf8" }).stdout; if (!command.includes(identity)) finish(); process.stdout.write("held stdout\\n"); process.stderr.write("held stderr\\n"); }, 10);',
+      ].join("\n"));
+      await writeFile(preload, [
+        'import { spawn } from "node:child_process";',
+        'import { writeFileSync } from "node:fs";',
+        'process.on("SIGTERM", () => {});',
+        'writeFileSync(process.env["DIRECT_PID"], String(process.pid));',
+        'const env = { ...process.env }; delete env.NODE_OPTIONS;',
+        'const child = spawn(process.execPath, [process.env["DESCENDANT_SCRIPT"]], { detached: true, stdio: ["ignore", process.stdout, process.stderr], env });',
+        'writeFileSync(process.env["DESCENDANT_PID"], String(child.pid)); child.unref();',
+        'writeFileSync(process.env["READY"], "ready");',
+        'setInterval(() => {}, 1000); await new Promise(() => {});',
+      ].join("\n"));
+      const controller = new AbortController();
+      const promise = runMutationChild([], root, {
+        ...process.env, NODE_OPTIONS: `--import=${preload}`, READY: marker, DIRECT_PID: directPid,
+        DESCENDANT_SCRIPT: descendant, DESCENDANT_PID: descendantPid, DESCENDANT_DONE: done, OWNER_ID: preload,
+      }, { signal: controller.signal });
+      const deadline = Date.now() + 10_000;
+      while (!existsSync(marker) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(existsSync(marker)).toBe(true);
+      cleanupPid = Number(await readFile(descendantPid, "utf8"));
+      controller.abort();
+      await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+      const descendantProbe = spawnSync("ps", ["-p", String(cleanupPid), "-o", "pid=,ppid=,command="], { encoding: "utf8" });
+      expect({ done: existsSync(done), descendant: descendantProbe.stdout }).toEqual({ done: true, descendant: "" });
+      for (const [file, identity] of [[directPid, preload], [descendantPid, descendant]] as const) {
+        const pid = (await readFile(file, "utf8")).trim();
+        const probe = spawnSync("ps", ["-p", pid, "-o", "command="], { encoding: "utf8" });
+        expect(probe.stdout).not.toContain(identity);
+      }
+    } finally {
+      if (cleanupPid > 0) { try { process.kill(-cleanupPid, "SIGKILL"); } catch { /* the owned group ended */ } }
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 15_000,
+);

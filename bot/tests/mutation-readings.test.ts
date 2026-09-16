@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +40,32 @@ async function place(): Promise<{ root: string; home: string; env: NodeJS.Proces
   await mkdir(join(home, "assemblies"), { recursive: true }); await chmod(home, 0o700); await mkdir(agent, { mode: 0o700 });
   await writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n");
   return { root, home, env: { HOME: root, PWD: root, XDG_CACHE_HOME: join(root, "cache"), PI_CODING_AGENT_DIR: agent, PATH: process.env["PATH"] } };
+}
+
+async function snapshot(path: string): Promise<unknown> {
+  const held = await lstat(path);
+  if (held.isSymbolicLink()) return { kind: "link", target: await readlink(path) };
+  if (!held.isDirectory()) {
+    const bytes = await readFile(path);
+    if (path.endsWith("/.bot-source")) {
+      const [source = "", _timestamp = ""] = bytes.toString().trimEnd().split("\n");
+      return { kind: "file", source, timestamp: "per-operation" };
+    }
+    return { kind: "file", bytes };
+  }
+  const entries = await readdir(path);
+  return { kind: "directory", entries: Object.fromEntries(await Promise.all(entries.sort()
+    .map(async (name): Promise<[string, unknown]> => [name, await snapshot(join(path, name))]))) };
+}
+
+async function expectRetainedRun(home: string, document: { data: Record<string, unknown> }): Promise<void> {
+  const run = String(document.data["run"]), directory = join(home, "runs", run);
+  const rows = (await readFile(join(directory, "record.jsonl"), "utf8")).trim().split("\n")
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+  expect(rows.at(0)).toMatchObject({ event: "run_start", run });
+  expect(rows.at(-1)).toMatchObject({ event: "run_end", exit: 0, cause: "success" });
+  const output = document.data["output"] as { path: string };
+  expect(await readFile(join(directory, output.path), "utf8")).toBe("answer");
 }
 
 test("all nine mutation readings return only command bytes and a numeric exit on refusals", async () => {
@@ -99,6 +125,38 @@ test("the shared outer settlement turns a handler rejection into the CLI's stder
   expect(Buffer.concat(stderr)).toEqual(Buffer.from("dependency broke\n"));
 });
 
+test("a real human assembly dependency rejection matches the invoked CLI", async () => {
+  const reading = await place(), command = await place(), tools = join(reading.root, "tools"), git = join(tools, "git");
+  const readingPid = join(reading.root, "escaped.pid"), commandPid = join(command.root, "escaped.pid");
+  await mkdir(tools);
+  await writeFile(git, [
+    `#!${process.execPath}`,
+    'import { spawn } from "node:child_process";',
+    'import { mkdirSync, writeFileSync } from "node:fs";',
+    'const root = process.argv.at(-1);',
+    'mkdirSync(`${root}/.git`, { recursive: true });',
+    'writeFileSync(`${root}/ASSEMBLY.md`, "---\\nintelligence: default\\n---\\nFetched.\\n");',
+    'const child = spawn("/bin/sleep", ["10"], { detached: true, stdio: ["ignore", process.stdout, process.stderr] });',
+    'writeFileSync(process.env.ESCAPED_PID, String(child.pid));',
+    'child.unref();',
+  ].join("\n"));
+  await chmod(git, 0o755);
+  const readingEnv = { ...reading.env, PATH: tools, ESCAPED_PID: readingPid };
+  const commandEnv = { ...command.env, PATH: tools, ESCAPED_PID: commandPid };
+  try {
+    const imported = await assemblyInstallReading(reading.home, "https://example.invalid/review.git", {}, reading.root, readingEnv);
+    const invoked = await invoke(["assembly", "install", "https://example.invalid/review.git", "--home", command.home], command.root, commandEnv);
+    expect(imported).toEqual(invoked);
+    expect(imported).toEqual({ exit: 2, stdout: Buffer.alloc(0), stderr: Buffer.from("Git clone did not close its captured output after exiting.\n") });
+  } finally {
+    for (const file of [readingPid, commandPid]) {
+      const pid = Number(await readFile(file, "utf8").catch(() => "0"));
+      if (pid <= 0) continue;
+      try { process.kill(-pid, "SIGKILL"); } catch { /* already gone */ }
+    }
+  }
+});
+
 test("assembly install succeeds in process and returns the command's structured bytes", async () => {
   const { root, home, env } = await place(), source = join(root, "review");
   await mkdir(join(source, "flows", "main"), { recursive: true });
@@ -137,15 +195,17 @@ test("assembly and auth-import successes match equivalent invoked CLI state and 
   ]);
   expect(await assemblyInstallReading(reading.home, source, { json: true, name: "team/review" }, reading.root, reading.env))
     .toEqual(await invoke(["assembly", "install", source, "--json", "--name", "team/review", "--home", command.home], command.root, command.env));
-  expect(await readFile(join(reading.home, "assemblies", "team", "review", "ASSEMBLY.md")))
-    .toEqual(await readFile(join(command.home, "assemblies", "team", "review", "ASSEMBLY.md")));
+  expect(await snapshot(reading.home)).toEqual(await snapshot(command.home));
   await writeFile(join(source, "ASSEMBLY.md"), "---\nintelligence: default\n---\nUpdated.\n");
   expect(await assemblyUpdateReading(reading.home, "team/review", true, reading.root, reading.env))
     .toEqual(await invoke(["assembly", "update", "team/review", "--json", "--home", command.home], command.root, command.env));
+  expect(await snapshot(reading.home)).toEqual(await snapshot(command.home));
   expect(await assemblyLinkReading(reading.home, source, { json: true, name: "live" }, reading.root, reading.env))
     .toEqual(await invoke(["assembly", "link", source, "--json", "--name", "live", "--home", command.home], command.root, command.env));
+  expect(await snapshot(reading.home)).toEqual(await snapshot(command.home));
   expect(await assemblyRemoveReading(reading.home, "live", true, reading.root, reading.env))
     .toEqual(await invoke(["assembly", "remove", "live", "--json", "--home", command.home], command.root, command.env));
+  expect(await snapshot(reading.home)).toEqual(await snapshot(command.home));
 
   const credential = join(reading.root, "credentials.json");
   await writeFile(credential, JSON.stringify({ groq: { type: "api_key", key: "fixture-secret" } }), { mode: 0o600 });
@@ -206,6 +266,7 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
   expect(reading.exit, reading.stderr.toString()).toBe(0);
   const document = JSON.parse(reading.stdout.toString()) as { kind: string; data: Record<string, unknown> };
   expect(document.kind).toBe("bot.run.result"); expect(document.data).toMatchObject({ complete: true, exit: 0, correlation: "outside" });
+  await expectRetainedRun(home, document);
   const run = String(document.data["run"]);
   expect(await readFile(join(root, "run.id"), "utf8")).toBe(`${run}\n`);
   expect(await readFile(join(home, "runs", run, "request.txt"), "utf8")).toBe("-literal");
@@ -216,6 +277,7 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
   expect({ exit: direct.exit, stderr: direct.stderr }).toEqual({ exit: reading.exit, stderr: reading.stderr });
   const directDocument = JSON.parse(direct.stdout.toString()) as { kind: string; data: Record<string, unknown> };
   expect(directDocument).toMatchObject({ kind: "bot.run.result", data: { complete: true, exit: 0, correlation: "outside" } });
+  await expectRetainedRun(home, directDocument);
   const directRun = String(directDocument.data["run"]);
   expect(await readFile(join(root, "direct.id"), "utf8")).toBe(`${directRun}\n`);
   expect(await readFile(join(home, "runs", directRun, "request.txt"), "utf8")).toBe("-literal");
@@ -231,11 +293,14 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
   const resumedDocument = JSON.parse(resumed.stdout.toString()) as { kind: string; data: Record<string, unknown> };
   expect(resumedDocument.kind).toBe("bot.run.result");
   expect(resumedDocument.data).toMatchObject({ donor: run, complete: true, exit: 0, correlation: "resume", carried: { count: 1 } });
+  await expectRetainedRun(home, resumedDocument);
   const directResume = await invoke(["run", "resume", directRun, "--json", "--correlation", "resume", "--home", home], root, env);
   expect({ exit: directResume.exit, stderr: directResume.stderr }).toEqual({ exit: resumed.exit, stderr: resumed.stderr });
-  expect(JSON.parse(directResume.stdout.toString())).toMatchObject({
+  const directResumeDocument = JSON.parse(directResume.stdout.toString()) as { kind: string; data: Record<string, unknown> };
+  expect(directResumeDocument).toMatchObject({
     kind: "bot.run.result", data: { donor: directRun, complete: true, exit: 0, correlation: "resume", carried: { count: 1 } },
   });
+  await expectRetainedRun(home, directResumeDocument);
 });
 
 test("run start preserves the private-home refusal", async () => {

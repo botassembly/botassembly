@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -29,6 +29,9 @@ async function consumer(): Promise<{ home: string; file: string; run: string }> 
   const home = join(root, "home");
   const directory = join(home, "runs", RUN);
   await mkdir(join(directory, "stages/01-read/1"), { recursive: true });
+  await chmod(home, 0o700);
+  await mkdir(join(root, "pi-agent"), { mode: 0o700 });
+  await writeFile(join(home, "config.yaml"), "intelligences:\n  default: { provider: faux, model: faux-1, reasoning: medium }\n");
   await writeFile(join(directory, "record.jsonl"), currentRecord([
     { record: 1, event: "run_start", run: RUN, assembly: "reader", flow: "main", ts: "2026-08-11T17:00:00.000Z" },
     { event: "stage_start", stage: "01-read", retry: 1, session: SESSION, ts: "2026-08-11T17:00:01.000Z" },
@@ -51,6 +54,8 @@ import * as mutations from "bot/mutation-readings";
 import { renderSession, renderSessionTools } from "bot/session";
 
 const [home, directory, session] = process.argv.slice(2);
+const root = join(home, "..");
+const env = { HOME: root, PWD: root, XDG_CACHE_HOME: join(root, "cache"), PI_CODING_AGENT_DIR: join(root, "pi-agent"), PATH: process.env.PATH };
 const transcript = await readFile(join(directory, session), "utf8");
 const record = await heldRecord(directory);
 const parsed = readings.parseRunList([]);
@@ -62,7 +67,21 @@ if (!renderSession(transcript).some((line) => line.includes("outside reader"))) 
 if (!renderSessionTools(transcript, "01-read").some((line) => line.includes("lookup"))) throw new Error("session tool reader did not render the call");
 if (!listed.stdout.toString().includes("${RUN}")) throw new Error("run list reader did not list the run");
 if (!rendered.output.toString().includes("outside reader")) throw new Error("one-run reader did not render the session");
-if (typeof mutations.runStartReading !== "function") throw new Error("the mutation door has no run.start counterpart");
+const mutationResults = [
+  await mutations.assemblyInstallReading(home, "missing", { json: true }, root, env),
+  await mutations.assemblyLinkReading(home, "missing", { json: true }, root, env),
+  await mutations.assemblyRemoveReading(home, "absent", true, root, env),
+  await mutations.assemblyUpdateReading(home, "absent", true, root, env),
+  await mutations.authImportReading("missing.json", true, root, env),
+  await mutations.authLoginReading("faux", { json: true }, root, env),
+  await mutations.authLogoutReading("-invalid", { json: true }, root, env),
+  await mutations.runStartReading(home, "absent/main", undefined, { json: true }, root, env),
+  await mutations.runResumeReading(home, "absent", { json: true }, root, env),
+];
+if (mutationResults.length !== 9 || mutationResults.some((result) =>
+  Object.keys(result).sort().join(",") !== "exit,stderr,stdout" || typeof result.exit !== "number")) {
+  throw new Error("the outside package did not call all nine mutation readings");
+}
 for (const [door, namespace] of Object.entries({ inspection, oneRun, readings, admin, mutations })) {
   for (const name of ["lockRun", "inspectPrune", "runCommand", "runOperation", "resumeOperation", "manage",
     "dispatchNewCommand", "commandReading", "configuredModelRuntime", "createProcessGroups"]) {
