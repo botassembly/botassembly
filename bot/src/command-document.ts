@@ -5,7 +5,7 @@ import { mapping } from "./model.ts";
 import type { CommandResult, ErrorDocument } from "./new-command-result.ts";
 import type { RunListState } from "./run-list-query.ts";
 import { jsonValue } from "./schema-check.ts";
-import { ERROR_CAUSES, ERROR_CODES, type ErrorCause, type ErrorCode } from "./spine.ts";
+import { ERROR_CAUSES, ERROR_CODES, type Cause, type ErrorCause, type ErrorCode } from "./spine.ts";
 
 export type { ErrorDocument } from "./new-command-result.ts";
 export type DocumentReading<D> = { kind: "document"; exit: number; document: D; command: CommandResult<number> }
@@ -32,10 +32,12 @@ export interface DocumentWarning { id: string; code: string; diagnostic: string 
 export interface RunListDocument { schemaVersion: 1; kind: "bot.run.list"; data: Array<Partial<RunListRow>>; page: Page; summary: Required<Summary>; warnings: DocumentWarning[] }
 export interface RunSearchHit { run: string; stage: string | null; repeat: number | null; retry: number | null; file: string; line: number; text: string; omittedBytes: number }
 export interface RunSearchDocument { schemaVersion: 1; kind: "bot.run.search"; data: { query: string; tool: { name: "rg" | "grep"; version: string }; hits: RunSearchHit[] }; page: Omit<Page, "through">; summary: { candidateFiles: number; returned: number } }
-export interface RunShowStage { identity: string; stage: string; repeat: number | null; attempt: number; state: string; exit: number | null; cause: string | null; scratch: string | null }
-export interface RunShowSubflow { caller: string; attempt: number; call: number; subflow: string; item: string | null; started: boolean; child: string | null; exit: number | null; cause: string | null }
-export interface RunShowWarning { code: string; subject: string; field: string; omittedBytes: number }
-export interface RunShowDocument { schemaVersion: 1; kind: "bot.run.show"; data: { run: string; state: string; startedAt: string | null; endedAt: string | null; exit: number | null; cause: string | null; stages: RunShowStage[]; subflows: RunShowSubflow[] }; summary: { stageCount: number; stagesIncluded: number; stagesOmitted: number; subflowCount: number; subflowsIncluded: number; subflowsOmitted: number; warningCount: number; warningsOmitted: number }; warnings: RunShowWarning[] }
+export type RunShowRootState = "ended" | "incomplete" | "running" | "crashed";
+export type RunShowStageState = "carried" | "incomplete" | "unreconciled" | "ended";
+export interface RunShowStage { identity: string; stage: string; repeat: number | null; attempt: number; state: RunShowStageState; exit: number | null; cause: Cause | null; scratch: string | null }
+export interface RunShowSubflow { caller: string; attempt: number; call: number; subflow: string; item: string | null; started: boolean; child: string | null; exit: number | null; cause: Cause | null }
+export interface RunShowWarning { code: "text-unavailable"; subject: string; field: string; omittedBytes: number }
+export interface RunShowDocument { schemaVersion: 1; kind: "bot.run.show"; data: { run: string; state: RunShowRootState; startedAt: string | null; endedAt: string | null; exit: number | null; cause: Cause | null; stages: RunShowStage[]; subflows: RunShowSubflow[] }; summary: { stageCount: number; stagesIncluded: number; stagesOmitted: number; subflowCount: number; subflowsIncluded: number; subflowsOmitted: number; warningCount: number; warningsOmitted: number }; warnings: RunShowWarning[] }
 export interface AssemblyCreationData { name: string; kind: "installed" | "linked"; changed: true }
 export interface AssemblyInstallDocument { schemaVersion: 1; kind: "bot.assembly.install"; data: AssemblyCreationData & { kind: "installed" } }
 export interface AssemblyLinkDocument { schemaVersion: 1; kind: "bot.assembly.link"; data: AssemblyCreationData & { kind: "linked" } }
@@ -45,10 +47,18 @@ export interface AssemblyUpdateDocument { schemaVersion: 1; kind: "bot.assembly.
 export interface AuthImportDocument { schemaVersion: 1; kind: "bot.auth.import"; data: { imported: boolean; providerCount: number } }
 export interface AuthLoginDocument { schemaVersion: 1; kind: "bot.auth.login"; data: { provider: string; authenticated: true; credentialType: "api_key" | "oauth" } }
 export interface AuthLogoutDocument { schemaVersion: 1; kind: "bot.auth.logout"; data: { provider: string; result: "completed" } }
-export interface RunResultReason { text: string; bytes: number; truncated: boolean }
-export interface RunResultOutput { path: string; extension: string; bytes: number; sha256: string; contentIncluded: boolean; encoding?: "utf8" | "base64"; content?: string }
+export type RunResultReason = { text: string; bytes: number; truncated: false } | { text: string; bytes: number; truncated: true };
+interface RunResultOutputFacts { path: string; extension: string; bytes: number; sha256: string }
+export type RunResultOutput = RunResultOutputFacts & (
+  | { contentIncluded: true; encoding: "utf8" | "base64"; content: string }
+  | { contentIncluded: false; encoding?: never; content?: never }
+);
 export interface StageIdentity { stage: string; repeat?: number; retry: number }
-export interface RunResultDocument { schemaVersion: 1; kind: "bot.run.result"; data: { run: string; startedAt: string; installationId: string; complete: boolean; exit: number; cause: string; endedAt?: string; reason?: RunResultReason; terminalStage?: StageIdentity; correlation?: string; donor?: string; carried?: { count: number; identitiesIncluded: boolean; identities?: StageIdentity[] }; output?: RunResultOutput } }
+export type RunResultCarried = { count: number; identitiesIncluded: true; identities: StageIdentity[] }
+  | { count: number; identitiesIncluded: false; identities?: never };
+export interface RunResultCommon { run: string; startedAt: string; installationId: string; exit: number; cause: Cause; reason?: RunResultReason; terminalStage?: StageIdentity; correlation?: string; donor?: string; carried?: RunResultCarried; output?: RunResultOutput }
+export type RunResultData = RunResultCommon & ({ complete: true; endedAt: string } | { complete: false; endedAt?: never });
+export interface RunResultDocument { schemaVersion: 1; kind: "bot.run.result"; data: RunResultData }
 
 type FramingPolicy = "exclusive-json" | "authentication-interaction" | "authentication-advisory";
 export interface StructuredContract { operation: NewOperation; reading: string; typed: string; kind: string; schemaVersion: 1; resultBytes: number; exclusive: boolean; framing: FramingPolicy }
@@ -77,6 +87,11 @@ export const STRUCTURED_COMMANDS: readonly StructuredContract[] = entries.map(([
 export function structuredRegistryFault(registry: readonly StructuredContract[], descriptors: readonly CliDescriptor[]): string | undefined {
   const operations = registry.map((entry) => entry.operation);
   if (new Set(operations).size !== operations.length) return "duplicate structured operation";
+  const fields = ["reading", "typed", "kind", "schemaVersion", "resultBytes", "exclusive", "framing"] as const;
+  for (const entry of registry) {
+    const expected = STRUCTURED_COMMANDS.find((held) => held.operation === entry.operation);
+    if (expected !== undefined) for (const field of fields) if (entry[field] !== expected[field]) return `${entry.operation} has the wrong ${field}`;
+  }
   for (const descriptor of descriptors) {
     const found = registry.filter((entry) => entry.operation === descriptor.operation);
     const structured = "schemaVersion" in descriptor.output;
@@ -86,10 +101,7 @@ export function structuredRegistryFault(registry: readonly StructuredContract[],
     if (one !== undefined && (!("schemaVersion" in descriptor.output)
       || one.kind !== descriptor.output.kind || one.schemaVersion !== descriptor.output.schemaVersion)) return `${descriptor.operation} has the wrong document identity`;
   }
-  const login = registry.filter((entry) => entry.framing === "authentication-interaction");
-  const logout = registry.filter((entry) => entry.framing === "authentication-advisory");
-  if (login.length !== 1 || login[0]?.operation !== "auth.login") return "authentication-interaction framing is misassigned";
-  return logout.length !== 1 || logout[0]?.operation !== "auth.logout" ? "authentication-advisory framing is misassigned" : undefined;
+  return undefined;
 }
 export function structuredContract(operation: NewOperation): StructuredContract {
   const found = STRUCTURED_COMMANDS.find((entry) => entry.operation === operation);

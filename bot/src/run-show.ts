@@ -6,9 +6,9 @@ import { bytewise } from "./model.ts";
 import { isRunLive } from "./inspection.ts";
 import { attemptKey, scratchAttempt, scratchOfRun } from "./invocation.ts";
 import { heldRecord } from "./record-lines.ts";
-import { CAUSES, type ErrorCause } from "./spine.ts";
+import { CAUSES, type Cause, type ErrorCause } from "./spine.ts";
 import type { CliFailure } from "./run-list-query.ts";
-import type { RunShowDocument } from "./command-document.ts";
+import type { RunShowDocument, RunShowRootState, RunShowStage, RunShowSubflow, RunShowWarning } from "./command-document.ts";
 
 const RUN_SHOW_DOCUMENT_BYTES = 1_048_576;
 const RUN_SHOW_ROW_LIMIT = 1_000;
@@ -16,11 +16,11 @@ const TEXT_BYTES = 4_096;
 const WARNING_LIMIT = 20;
 const causes = new Set<string>(CAUSES);
 type Event = Record<string, unknown>;
-type Warning = { code: string; subject: string; field: string; omittedBytes: number };
-type StageRow = { identity: string; stage: string; repeat: number | null; attempt: number; state: string; exit: number | null; cause: string | null; scratch: string | null };
-type SubflowRow = { caller: string; attempt: number; call: number; subflow: string; item: string | null; started: boolean; child: string | null; exit: number | null; cause: string | null };
+type Warning = RunShowWarning;
+type StageRow = RunShowStage;
+type SubflowRow = RunShowSubflow;
 type OrderedRow = { order: number; type: "stage"; row: StageRow; sourceWarnings: Warning[] } | { order: number; type: "subflow"; row: SubflowRow; sourceWarnings: Warning[] };
-interface RootData { run: string; state: string; startedAt: string | null; endedAt: string | null; exit: number | null; cause: string | null; stages: StageRow[]; subflows: SubflowRow[] }
+type RootData = RunShowDocument["data"];
 interface RootModel { data: RootData; sourceWarnings: Warning[] }
 export interface RunShowDependencies {
   documentBytes?: number;
@@ -55,14 +55,15 @@ function optional(value: unknown, subject: string, field: string, warnings: Warn
   return null;
 }
 
-function pair(event: Event, context: string): { exit: number; cause: string } | undefined {
+function pair(event: Event, context: string): { exit: number; cause: Cause } | undefined {
   const exit = event["exit"], cause = event["cause"];
   if (exit === undefined && cause === undefined) return undefined;
   return checkedPair(exit, cause, context);
 }
 
-function checkedPair(exit: unknown, cause: unknown, context: string): { exit: number; cause: string } {
-  if (typeof exit !== "number" || !Number.isSafeInteger(exit) || exit < 0 || typeof cause !== "string" || !causes.has(cause)) {
+function knownCause(value: unknown): value is Cause { return typeof value === "string" && causes.has(value); }
+function checkedPair(exit: unknown, cause: unknown, context: string): { exit: number; cause: Cause } {
+  if (typeof exit !== "number" || !Number.isSafeInteger(exit) || exit < 0 || !knownCause(cause)) {
     throw integrity("record-invalid", `The selected record has an invalid ${context} outcome.`);
   }
   const fixed = new Map<string, readonly number[]>([["success", [0]], ["fault", [2]], ["timeout", [1, 2]], ["signal", [129, 130, 143]]]);
@@ -83,7 +84,7 @@ async function scratchPath(root: string, home: string, run: string, stage: strin
   });
 }
 
-interface StageFacts { rows: OrderedRow[]; attempts: Map<string, OrderedRow>; ends: Map<string, { exit: number; cause: string }>; unreconciled: Set<string> }
+interface StageFacts { rows: OrderedRow[]; attempts: Map<string, OrderedRow>; ends: Map<string, { exit: number; cause: Cause }>; unreconciled: Set<string> }
 function repeatOf(event: Event, context: string): number | null {
   const repeat = event["repeat"];
   if (repeat === undefined) return null;
@@ -122,7 +123,7 @@ function subflowCounters(event: Event): { repeat: number | null; attempt: number
   if (!positive(attempt) || !positive(call)) throw integrity("record-invalid", "The selected record has an invalid subflow counter.");
   return { repeat, attempt, call };
 }
-function subflowCompletion(event: Event, started: boolean, child: string): { exit: number; cause: string } | undefined {
+function subflowCompletion(event: Event, started: boolean, child: string): { exit: number; cause: Cause } | undefined {
   const outcome = pair(event, "subflow");
   if (!started && (event["child"] !== undefined || outcome !== undefined)) throw integrity("record-invalid", "The selected record has facts for a subflow that did not start.");
   if (started && event["child"] !== child) throw integrity("record-invalid", "The selected record has an invalid child path.");
@@ -260,7 +261,7 @@ function selectedRecord(directory: string) {
   return heldRecord(directory).then((record) => record, () => { throw dependency("record-unavailable", "Run show could not inspect the selected record."); });
 }
 
-function rootState(start: Event | undefined, end: Event | undefined, directory: string, live: RunShowDependencies["live"] = isRunLive): string {
+function rootState(start: Event | undefined, end: Event | undefined, directory: string, live: RunShowDependencies["live"] = isRunLive): RunShowRootState {
   if (end !== undefined) return "ended";
   if (start === undefined) return "incomplete";
   return live(directory) ? "running" : "crashed";
@@ -300,7 +301,7 @@ async function observeScratch(rows: OrderedRow[], scratchRoot: string, home: str
   }
 }
 
-function rootData(run: string, state: string, start: Event | undefined, end: Event | undefined, outcome: { exit: number; cause: string } | undefined): RootModel {
+function rootData(run: string, state: RunShowRootState, start: Event | undefined, end: Event | undefined, outcome: { exit: number; cause: Cause } | undefined): RootModel {
   const startedAt = start?.["ts"], endedAt = end?.["ts"];
   const name = required(start?.["run"] ?? run, "run name"), sourceWarnings: Warning[] = [];
   return { data: { run: name, state, startedAt: optional(startedAt, name, "startedAt", sourceWarnings), endedAt: optional(endedAt, name, "endedAt", sourceWarnings), exit: outcome?.exit ?? null, cause: outcome?.cause ?? null, stages: [], subflows: [] }, sourceWarnings };

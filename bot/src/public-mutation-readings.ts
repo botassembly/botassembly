@@ -7,7 +7,7 @@ import type { CommandResult } from "./new-command-result.ts";
 import { processClock } from "./process-clock.ts";
 import { decodeDocument, structuredContract, type AssemblyInstallDocument, type AssemblyLinkDocument, type AssemblyRemoveDocument, type AssemblyUpdateDocument, type AuthImportDocument, type AuthLoginDocument, type AuthLogoutDocument, type DocumentReading, type RunResultDocument } from "./command-document.ts";
 
-export type { AssemblyCreationData, AssemblyInstallDocument, AssemblyLinkDocument, AssemblyRemoveDocument, AssemblyUpdateDocument, AssemblyUpdateOutcome, AuthImportDocument, AuthLoginDocument, AuthLogoutDocument, DocumentReading, ErrorDocument, RunResultDocument, RunResultOutput, RunResultReason, StageIdentity } from "./command-document.ts";
+export type { AssemblyCreationData, AssemblyInstallDocument, AssemblyLinkDocument, AssemblyRemoveDocument, AssemblyUpdateDocument, AssemblyUpdateOutcome, AuthImportDocument, AuthLoginDocument, AuthLogoutDocument, DocumentReading, ErrorDocument, RunResultCarried, RunResultCommon, RunResultData, RunResultDocument, RunResultOutput, RunResultReason, StageIdentity } from "./command-document.ts";
 
 export { MUTATION_FINAL_SETTLEMENT_MS, MUTATION_TERM_GRACE_MS };
 

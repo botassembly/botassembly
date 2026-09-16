@@ -22,8 +22,15 @@ test("registry drift identifies omissions, duplicates, raw operations, identity 
   expect(structuredRegistryFault(STRUCTURED_COMMANDS.filter((entry) => entry.operation !== "run.show"), CLI_CONTRACTS)).toBe("run.show lacks one typed document");
   expect(structuredRegistryFault([...STRUCTURED_COMMANDS, STRUCTURED_COMMANDS[0] as StructuredContract], CLI_CONTRACTS)).toBe("duplicate structured operation");
   expect(structuredRegistryFault([...STRUCTURED_COMMANDS, { ...STRUCTURED_COMMANDS[0] as StructuredContract, operation: "run.output" }], CLI_CONTRACTS)).toBe("run.output must not have a typed document");
-  expect(structuredRegistryFault(STRUCTURED_COMMANDS.map((entry) => entry.operation === "run.show" ? { ...entry, kind: "bot.run.wrong" } : entry), CLI_CONTRACTS)).toBe("run.show has the wrong document identity");
-  expect(structuredRegistryFault(STRUCTURED_COMMANDS.map((entry) => entry.operation === "auth.login" ? { ...entry, framing: "exclusive-json" } : entry), CLI_CONTRACTS)).toBe("authentication-interaction framing is misassigned");
+  expect(structuredRegistryFault(STRUCTURED_COMMANDS.map((entry) => entry.operation === "run.show" ? { ...entry, kind: "bot.run.wrong" } : entry), CLI_CONTRACTS)).toBe("run.show has the wrong kind");
+  expect(structuredRegistryFault(STRUCTURED_COMMANDS.map((entry) => entry.operation === "auth.login" ? { ...entry, framing: "exclusive-json" } : entry), CLI_CONTRACTS)).toBe("auth.login has the wrong framing");
+  for (const [field, value] of [
+    ["reading", "wrongReading"], ["typed", "wrongDocument"], ["resultBytes", 17], ["exclusive", false],
+    ["framing", "authentication-advisory"],
+  ] as const) {
+    const changed = STRUCTURED_COMMANDS.map((entry) => entry.operation === "run.show" ? { ...entry, [field]: value } : entry);
+    expect(structuredRegistryFault(changed, CLI_CONTRACTS), field).toBe(`run.show has the wrong ${field}`);
+  }
 });
 
 test("exclusive framing returns documents at any exit and command refusals at exits 1 through 5", () => {

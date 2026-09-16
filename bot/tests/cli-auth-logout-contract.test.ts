@@ -8,6 +8,7 @@ import { lock } from "proper-lockfile";
 import { afterEach, expect, test, vi } from "vitest";
 import { main, processBoundary, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
+import { decodeDocument, structuredContract } from "../src/command-document.ts";
 import { configuredAuthLogoutRuntime } from "../src/model-runtime.ts";
 import { mapping } from "../src/model.ts";
 import { inertText } from "../src/new-command-result.ts";
@@ -301,6 +302,10 @@ test("a typed post-delete synchronization failure preserves the completion resul
   } });
   expect(JSON.parse(await readFile(authPath, "utf8"))).toEqual({ other: { type: "api_key", key: "other-secret" } });
   expect(result.out + result.err).not.toContain(SECRET);
+  const typed = decodeDocument({ exit: result.code, stdout: Buffer.from(result.out), stderr: Buffer.from(result.err) }, structuredContract("auth.logout"));
+  expect(typed).toMatchObject({ kind: "error", exit: 5, error: { error: { cause: "synchronization-failed" } }, command: {
+    stdout: Buffer.from(result.out), stderr: Buffer.from(result.err),
+  } });
 });
 
 test("two Pi runtime instances serialize concurrent same-provider login and logout without corrupting the store", async () => {

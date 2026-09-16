@@ -241,7 +241,7 @@ import type { AssemblyCheckDocument, AssemblyListDocument, CapabilitiesDocument,
 import { inspectStatus, promptConstruction } from "bot/inspection";
 import type { InspectionResult } from "bot/inspection";
 import { assemblyInstallDocument, assemblyInstallReading, assemblyLinkDocument, assemblyRemoveDocument, assemblyUpdateDocument, authImportDocument, authLoginDocument, authLogoutDocument, MUTATION_FINAL_SETTLEMENT_MS, runResumeDocument, runStartDocument } from "bot/mutation-readings";
-import type { AssemblyInstallDocument, AssemblyLinkDocument, AssemblyRemoveDocument, AssemblyUpdateDocument, AuthImportDocument, AuthLoginDocument, AuthLogoutDocument, RunResultDocument, RunResumeReadingOptions, RunStartReadingOptions } from "bot/mutation-readings";
+import type { AssemblyInstallDocument, AssemblyLinkDocument, AssemblyRemoveDocument, AssemblyUpdateDocument, AuthImportDocument, AuthLoginDocument, AuthLogoutDocument, RunResultCarried, RunResultCommon, RunResultData, RunResultDocument, RunResultOutput, RunResumeReadingOptions, RunStartReadingOptions } from "bot/mutation-readings";
 import { inspectSession, openRunDirectory } from "bot/one-run";
 import type { LogsQuery, SelectedOutput } from "bot/one-run";
 import { field, heldRecord } from "bot/record-lines";
@@ -268,6 +268,23 @@ type Named = InspectionResult | RunResumeReadingOptions | RunStartReadingOptions
   AssemblyUpdateDocument | AuthImportDocument | AuthLoginDocument | AuthLogoutDocument | RunResultDocument;
 const named: Named | undefined = undefined;
 void named;
+declare const assemblyCheck: AssemblyCheckDocument, assemblyList: AssemblyListDocument, capabilities: CapabilitiesDocument,
+  homeBusy: HomeBusyDocument, homeShow: HomeShowDocument, intelligenceList: IntelligenceListDocument,
+  runCheck: RunCheckDocument, runChecklist: RunChecklistDocument, runEvents: RunEventsDocument,
+  runList: RunListDocument, runSearch: RunSearchDocument, runShow: RunShowDocument,
+  assemblyInstall: AssemblyInstallDocument, assemblyLink: AssemblyLinkDocument, assemblyRemove: AssemblyRemoveDocument,
+  assemblyUpdate: AssemblyUpdateDocument, authImport: AuthImportDocument, authLogin: AuthLoginDocument,
+  authLogout: AuthLogoutDocument, runResult: RunResultDocument;
+void [assemblyCheck.data.stages[0], assemblyCheck.page.next, assemblyList.data[0]?.broken,
+  assemblyList.summary.matched, capabilities.data.commands[0]?.operation, homeBusy.data.busy,
+  homeShow.data.paths.piAuth.exists, intelligenceList.data[0]?.provider, runCheck.data.recordings[0]?.capture,
+  runChecklist.data.marks[0]?.decision, runEvents.data.events[0]?.["event"], runList.data[0]?.startedAt,
+  runList.warnings[0]?.diagnostic, runSearch.data.tool.name, runSearch.page.complete,
+  runShow.data.stages[0]?.state, runShow.data.subflows[0]?.child, runShow.summary.warningCount,
+  assemblyInstall.data.changed, assemblyLink.data.kind, assemblyRemove.data.removed,
+  assemblyUpdate.data.outcomes[0]?.reason, authImport.data.providerCount, authLogin.data.credentialType,
+  authLogout.data.result, runResult.data.cause, runResult.data.carried?.identitiesIncluded,
+  runResult.data.output?.contentIncluded];
 async function narrow(): Promise<string> {
   const reading: DocumentReading<CapabilitiesDocument> = await capabilitiesDocument();
   if (reading.kind === "error") return reading.error.error.code + reading.command.stderr.toString();
@@ -285,6 +302,27 @@ async function wrongField(): Promise<void> {
   }
 }
 void wrongField;
+// @ts-expect-error run-result causes use the closed runtime vocabulary
+const wrongRunCause: RunResultDocument["data"]["cause"] = "unknown";
+// @ts-expect-error included output always carries encoding and content
+const missingOutputContent: RunResultOutput = { path: "out", extension: "txt", bytes: 1, sha256: "hash", contentIncluded: true };
+// @ts-expect-error omitted output content cannot carry encoding or content
+const forbiddenOutputContent: RunResultOutput = { path: "out", extension: "txt", bytes: 1, sha256: "hash", contentIncluded: false, encoding: "utf8", content: "x" };
+// @ts-expect-error included carried identities are required
+const missingCarriedIdentities: RunResultCarried = { count: 1, identitiesIncluded: true };
+// @ts-expect-error omitted carried identities cannot be present
+const forbiddenCarriedIdentities: RunResultCarried = { count: 1, identitiesIncluded: false, identities: [] };
+declare const runResultCommon: RunResultCommon;
+// @ts-expect-error a complete run always carries endedAt
+const completeWithoutEnding: RunResultData = { ...runResultCommon, complete: true };
+// @ts-expect-error an incomplete run never carries endedAt
+const incompleteWithEnding: RunResultData = { ...runResultCommon, complete: false, endedAt: "now" };
+// @ts-expect-error run-show root states use the emitted finite vocabulary
+const wrongShowState: RunShowDocument["data"]["state"] = "unknown";
+// @ts-expect-error run-show stage states use the emitted finite vocabulary
+const wrongStageState: RunShowDocument["data"]["stages"][number]["state"] = "unknown";
+void [wrongRunCause, missingOutputContent, forbiddenOutputContent, missingCarriedIdentities,
+  forbiddenCarriedIdentities, completeWithoutEnding, incompleteWithEnding, wrongShowState, wrongStageState];
 // @ts-expect-error raw operations have no typed document function
 const { runOutputDocument } = await import("bot/run-readings");
 void runOutputDocument;

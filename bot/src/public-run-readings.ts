@@ -18,7 +18,7 @@ import type { RunListQuery } from "./run-list-query.ts";
 
 export { inspectRunList, runListFailure, type RunListResult } from "./run-list.ts";
 export { parseRunList, type CliFailure, type RunListQuery } from "./run-list-query.ts";
-export type { CheckRecording, ChecklistMark, DocumentReading, DocumentWarning, ErrorDocument, Page, RunCheckDocument, RunChecklistDocument, RunEventsDocument, RunListDocument, RunListRow, RunSearchDocument, RunSearchHit, RunShowDocument, RunShowStage, RunShowSubflow, RunShowWarning, Summary } from "./command-document.ts";
+export type { CheckRecording, ChecklistMark, DocumentReading, DocumentWarning, ErrorDocument, Page, RunCheckDocument, RunChecklistDocument, RunEventsDocument, RunListDocument, RunListRow, RunSearchDocument, RunSearchHit, RunShowDocument, RunShowRootState, RunShowStage, RunShowStageState, RunShowSubflow, RunShowWarning, Summary } from "./command-document.ts";
 
 /** `bot run show RUN [--json]`, reproducing `run-show-command.ts`. The scratch root comes
  *  from the supplied environment, so the caller's environment decides the scratch paths. */

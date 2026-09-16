@@ -121,31 +121,28 @@ function reasonDescriptor(reason: string): { text: string; bytes: number; trunca
 function outputDescriptor(result: StartedRunResult, include: boolean): RunResultOutput | undefined {
   const source = result.outputSource, bytes = result.output;
   if (source === undefined || bytes === undefined) return undefined;
-  const utf8 = isUtf8(bytes);
-  return {
+  const facts = {
     path: source.record.path,
     extension: source.extension,
     bytes: bytes.length,
     sha256: source.record.sha256,
-    contentIncluded: include,
-    ...(include ? { encoding: utf8 ? "utf8" : "base64", content: utf8 ? bytes.toString("utf8") : bytes.toString("base64") } : {}),
   };
+  if (!include) return { ...facts, contentIncluded: false };
+  const utf8 = isUtf8(bytes), encoding = utf8 ? "utf8" : "base64";
+  return { ...facts, contentIncluded: true, encoding, content: bytes.toString(encoding) };
 }
 
 function resultData(result: StartedRunResult, content: boolean, identities: boolean): RunResultDocument["data"] {
   const output = outputDescriptor(result, content);
-  const carried = result.carried === undefined ? undefined : {
-    count: result.carried.length, identitiesIncluded: identities,
-    ...(identities ? { identities: result.carried } : {}),
-  };
-  return {
+  const carried = result.carried === undefined ? undefined : identities
+    ? { count: result.carried.length, identitiesIncluded: true as const, identities: result.carried }
+    : { count: result.carried.length, identitiesIncluded: false as const };
+  const common = {
     run: result.run,
     startedAt: result.startedAt,
     installationId: result.installationId,
-    complete: result.ending !== undefined,
     exit: result.exitCode,
     cause: result.cause,
-    ...(result.ending === undefined ? {} : { endedAt: result.ending.ts }),
     ...(result.reason === undefined ? {} : { reason: reasonDescriptor(result.reason) }),
     ...(result.terminalStage === undefined ? {} : { terminalStage: result.terminalStage }),
     ...(result.correlation === undefined ? {} : { correlation: result.correlation }),
@@ -153,6 +150,7 @@ function resultData(result: StartedRunResult, content: boolean, identities: bool
     ...(carried === undefined ? {} : { carried }),
     ...(output === undefined ? {} : { output }),
   };
+  return result.ending === undefined ? { ...common, complete: false } : { ...common, complete: true, endedAt: result.ending.ts };
 }
 
 function document(result: StartedRunResult, content: boolean, identities: boolean): Buffer {

@@ -5,8 +5,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, expect, test } from "vitest";
 import {
-  assemblyInstallReading, assemblyLinkReading, assemblyRemoveReading, assemblyUpdateReading,
-  authImportReading, authLoginReading, authLogoutReading, runResumeReading, runStartReading,
+  assemblyInstallDocument, assemblyInstallReading, assemblyLinkDocument, assemblyLinkReading,
+  assemblyRemoveDocument, assemblyRemoveReading, assemblyUpdateDocument, assemblyUpdateReading,
+  authImportDocument, authImportReading, authLoginDocument, authLoginReading, authLogoutDocument,
+  authLogoutReading, runResumeDocument, runResumeReading, runStartDocument, runStartReading,
+  type DocumentReading,
 } from "../src/public-mutation-readings.ts";
 import { settleCommand } from "../src/cli-boundary.ts";
 import { BOUNDARY_MS, CHILD_MS } from "./boundary.ts";
@@ -58,14 +61,22 @@ async function snapshot(path: string): Promise<unknown> {
     .map(async (name): Promise<[string, unknown]> => [name, await snapshot(join(path, name))]))) };
 }
 
-async function expectRetainedRun(home: string, document: { data: Record<string, unknown> }): Promise<void> {
-  const run = String(document.data["run"]), directory = join(home, "runs", run);
+async function expectRetainedRun(home: string, document: { data: { run: string; output?: { path: string } } }): Promise<void> {
+  const run = document.data.run, directory = join(home, "runs", run);
   const rows = (await readFile(join(directory, "record.jsonl"), "utf8")).trim().split("\n")
     .map((line) => JSON.parse(line) as Record<string, unknown>);
   expect(rows.at(0)).toMatchObject({ event: "run_start", run });
   expect(rows.at(-1)).toMatchObject({ event: "run_end", exit: 0, cause: "success" });
-  const output = document.data["output"] as { path: string };
+  const output = document.data.output;
+  if (output === undefined) throw new Error("Expected the retained run output descriptor.");
   expect(await readFile(join(directory, output.path), "utf8")).toBe("answer");
+}
+
+function documentOf<D>(reading: DocumentReading<D>): D {
+  if (reading.kind !== "document") throw new Error(`Expected a document, received ${reading.error.error.cause}.`);
+  expect(reading.exit).toBe(reading.command.exit);
+  expect(JSON.parse(reading.command.stdout.toString())).toEqual(reading.document);
+  return reading.document;
 }
 
 function commandForPid(pid: number): string | undefined {
@@ -216,23 +227,54 @@ test("assembly install succeeds in process and returns the command's structured 
     writeFile(join(source, "flows", "main", "FLOW.md"), "---\ndescription: main\n---\n"),
     writeFile(join(source, "flows", "main", "01-work.md"), "---\n---\nWork.\n"),
   ]);
-  const reading = await assemblyInstallReading(home, source, { json: true, name: "team/review" }, root, env);
-  expect(reading.exit).toBe(0); expect(reading.stderr).toHaveLength(0);
-  expect(JSON.parse(reading.stdout.toString())).toEqual({
+  const installed = await assemblyInstallDocument(home, source, { name: "team/review" }, root, env);
+  expect(installed.command.exit).toBe(0); expect(installed.command.stderr).toHaveLength(0);
+  expect(documentOf(installed)).toEqual({
     schemaVersion: 1, kind: "bot.assembly.install",
     data: { name: "team/review", kind: "installed", changed: true },
   });
   await writeFile(join(source, "ASSEMBLY.md"), "---\nintelligence: default\n---\nUpdated.\n");
-  const updated = await assemblyUpdateReading(home, "team/review", true, root, env);
-  expect(updated.exit, updated.stderr.toString()).toBe(0);
-  expect(JSON.parse(updated.stdout.toString())).toMatchObject({ kind: "bot.assembly.update", data: { outcomes: [{ name: "team/review", state: "updated" }] } });
+  const updated = await assemblyUpdateDocument(home, "team/review", root, env);
+  expect(updated.command.exit, updated.command.stderr.toString()).toBe(0);
+  expect(documentOf(updated)).toMatchObject({ kind: "bot.assembly.update", data: { outcomes: [{ name: "team/review", state: "updated" }] } });
 
-  const linked = await assemblyLinkReading(home, source, { json: true, name: "live" }, root, env);
-  expect(linked.exit, linked.stderr.toString()).toBe(0);
-  expect(JSON.parse(linked.stdout.toString())).toMatchObject({ kind: "bot.assembly.link", data: { name: "live", kind: "linked" } });
-  const removed = await assemblyRemoveReading(home, "live", true, root, env);
-  expect(removed.exit, removed.stderr.toString()).toBe(0);
-  expect(JSON.parse(removed.stdout.toString())).toMatchObject({ kind: "bot.assembly.remove", data: { name: "live", removed: true } });
+  const linked = await assemblyLinkDocument(home, source, { name: "live" }, root, env);
+  expect(linked.command.exit, linked.command.stderr.toString()).toBe(0);
+  expect(documentOf(linked)).toMatchObject({ kind: "bot.assembly.link", data: { name: "live", kind: "linked" } });
+  const removed = await assemblyRemoveDocument(home, "live", root, env);
+  expect(removed.command.exit, removed.command.stderr.toString()).toBe(0);
+  expect(documentOf(removed)).toMatchObject({ kind: "bot.assembly.remove", data: { name: "live", removed: true } });
+});
+
+test("assembly update documents preserve wholly failed and partly published exit-two outcomes", async () => {
+  const { root, home, env } = await place();
+  const makeAssembly = async (name: string, text: string): Promise<string> => {
+    const source = join(root, name);
+    await mkdir(join(source, "flows", "main"), { recursive: true });
+    await Promise.all([
+      writeFile(join(source, "ASSEMBLY.md"), `---\nintelligence: default\n---\n${text}\n`),
+      writeFile(join(source, "flows", "main", "FLOW.md"), "---\ndescription: main\n---\n"),
+      writeFile(join(source, "flows", "main", "01-work.md"), "---\n---\nWork.\n"),
+    ]);
+    return source;
+  };
+  const first = await makeAssembly("first", "First one."), last = await makeAssembly("last", "Last one.");
+  documentOf(await assemblyInstallDocument(home, first, { name: "a-first" }, root, env));
+  documentOf(await assemblyInstallDocument(home, last, { name: "z-last" }, root, env));
+  await writeFile(join(first, "ASSEMBLY.md"), "---\nintelligence: default\n---\nFirst two.\n");
+  await rm(join(last, "ASSEMBLY.md"));
+
+  const partial = await assemblyUpdateDocument(home, undefined, root, env);
+  expect(partial.command.exit).toBe(2);
+  expect(documentOf(partial).data.outcomes.map(({ name, state }) => ({ name, state }))).toEqual([
+    { name: "a-first", state: "updated" }, { name: "z-last", state: "failed" },
+  ]);
+
+  const failed = await assemblyUpdateDocument(home, "missing", root, env);
+  expect(failed.command.exit).toBe(2);
+  expect(documentOf(failed).data.outcomes).toEqual([
+    { name: "missing", state: "failed", reason: "Name an assembly the home holds." },
+  ]);
 });
 
 test("assembly and auth-import successes match equivalent invoked CLI state and bytes", async () => {
@@ -266,23 +308,25 @@ test("assembly and auth-import successes match equivalent invoked CLI state and 
     .toEqual(JSON.parse(await readFile(join(String(command.env["PI_CODING_AGENT_DIR"]), "auth.json"), "utf8")));
 }, BOUNDARY_MS);
 
-test("authentication import, login, and logout mutate Pi state without returning a typed answer", async () => {
+test("authentication document wrappers mutate Pi state exactly once", async () => {
   const { root, env } = await place(), agent = String(env["PI_CODING_AGENT_DIR"]), source = join(root, "credentials.json");
   const importedSecret = "fixture-import-secret", typedSecret = "fixture-login-secret";
   await writeFile(source, JSON.stringify({ groq: { type: "api_key", key: importedSecret } }), { mode: 0o600 });
-  const imported = await authImportReading(source, true, root, env);
-  expect(imported.exit, imported.stderr.toString()).toBe(0);
-  expect(imported.stdout.toString()).not.toContain(importedSecret);
+  const imported = await authImportDocument(source, root, env);
+  expect(imported.command.exit, imported.command.stderr.toString()).toBe(0);
+  expect(imported.command.stdout.toString()).not.toContain(importedSecret);
+  expect(documentOf(imported).data).toEqual({ imported: true, providerCount: 1 });
 
   const hidden: boolean[] = [];
-  const loggedIn = await authLoginReading("openai", { json: true, readLine: (value) => { hidden.push(value); return Promise.resolve(typedSecret); } }, root, env);
-  expect(loggedIn.exit, loggedIn.stderr.toString()).toBe(0); expect(hidden).toEqual([true]);
-  expect(Buffer.concat([loggedIn.stdout, loggedIn.stderr]).toString()).not.toContain(typedSecret);
+  const loggedIn = await authLoginDocument("openai", { readLine: (value) => { hidden.push(value); return Promise.resolve(typedSecret); } }, root, env);
+  expect(loggedIn.command.exit, loggedIn.command.stderr.toString()).toBe(0); expect(hidden).toEqual([true]);
+  expect(Buffer.concat([loggedIn.command.stdout, loggedIn.command.stderr]).toString()).not.toContain(typedSecret);
+  expect(documentOf(loggedIn).data).toEqual({ provider: "openai", authenticated: true, credentialType: "api_key" });
   expect(await readFile(join(agent, "auth.json"), "utf8")).toContain(typedSecret);
 
-  const loggedOut = await authLogoutReading("openai", { json: true }, root, env);
-  expect(loggedOut.exit, loggedOut.stderr.toString()).toBe(0);
-  expect(JSON.parse(loggedOut.stdout.toString())).toMatchObject({ kind: "bot.auth.logout", data: { provider: "openai", result: "completed" } });
+  const loggedOut = await authLogoutDocument("openai", {}, root, env);
+  expect(loggedOut.command.exit, loggedOut.command.stderr.toString()).toBe(0);
+  expect(documentOf(loggedOut)).toMatchObject({ kind: "bot.auth.logout", data: { provider: "openai", result: "completed" } });
 });
 
 test("authentication cancellation stays a command result while run cancellation before spawn rejects", async () => {
@@ -311,25 +355,25 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
     ])),
   ]);
   await chmod(join(stage, "gate"), 0o755);
-  const reading = await runStartReading(home, "review/main", "-literal", {
-    json: true, script: "script.json", correlation: "outside", idFile: "run.id", stdin: Buffer.alloc(1024 * 1024, 120),
+  const reading = await runStartDocument(home, "review/main", "-literal", {
+    script: "script.json", correlation: "outside", idFile: "run.id", stdin: Buffer.alloc(1024 * 1024, 120),
   }, root, env);
-  expect(reading.exit, reading.stderr.toString()).toBe(0);
-  const document = JSON.parse(reading.stdout.toString()) as { kind: string; data: Record<string, unknown> };
+  expect(reading.command.exit, reading.command.stderr.toString()).toBe(0);
+  const document = documentOf(reading);
   expect(document.kind).toBe("bot.run.result"); expect(document.data).toMatchObject({ complete: true, exit: 0, correlation: "outside" });
   await expectRetainedRun(home, document);
-  const run = String(document.data["run"]);
+  const run = document.data.run;
   expect(await readFile(join(root, "run.id"), "utf8")).toBe(`${run}\n`);
   expect(await readFile(join(home, "runs", run, "request.txt"), "utf8")).toBe("-literal");
   const direct = await invoke([
     "run", "start", "--json", "--correlation", "outside", "--id-file", "direct.id", "--script", "script.json",
     "--home", home, "--", "review/main", "-literal",
   ], root, env);
-  expect({ exit: direct.exit, stderr: direct.stderr }).toEqual({ exit: reading.exit, stderr: reading.stderr });
-  const directDocument = JSON.parse(direct.stdout.toString()) as { kind: string; data: Record<string, unknown> };
+  expect({ exit: direct.exit, stderr: direct.stderr }).toEqual({ exit: reading.command.exit, stderr: reading.command.stderr });
+  const directDocument = JSON.parse(direct.stdout.toString()) as { kind: string; data: { run: string; output?: { path: string } } };
   expect(directDocument).toMatchObject({ kind: "bot.run.result", data: { complete: true, exit: 0, correlation: "outside" } });
   await expectRetainedRun(home, directDocument);
-  const directRun = String(directDocument.data["run"]);
+  const directRun = directDocument.data.run;
   expect(await readFile(join(root, "direct.id"), "utf8")).toBe(`${directRun}\n`);
   expect(await readFile(join(home, "runs", directRun, "request.txt"), "utf8")).toBe("-literal");
   await Promise.all([
@@ -339,19 +383,39 @@ test("run start uses the direct child and keeps a leading-hyphen request literal
       models: [{ id: "operator-model", reasoning: true, contextWindow: 4096, maxTokens: 512 }],
     } } }), { mode: 0o600 }),
   ]);
-  const resumed = await runResumeReading(home, run, { json: true, correlation: "resume" }, root, env);
-  expect(resumed.exit, resumed.stderr.toString()).toBe(0);
-  const resumedDocument = JSON.parse(resumed.stdout.toString()) as { kind: string; data: Record<string, unknown> };
+  const resumed = await runResumeDocument(home, run, { correlation: "resume" }, root, env);
+  expect(resumed.command.exit, resumed.command.stderr.toString()).toBe(0);
+  const resumedDocument = documentOf(resumed);
   expect(resumedDocument.kind).toBe("bot.run.result");
   expect(resumedDocument.data).toMatchObject({ donor: run, complete: true, exit: 0, correlation: "resume", carried: { count: 1 } });
   await expectRetainedRun(home, resumedDocument);
   const directResume = await invoke(["run", "resume", directRun, "--json", "--correlation", "resume", "--home", home], root, env);
-  expect({ exit: directResume.exit, stderr: directResume.stderr }).toEqual({ exit: resumed.exit, stderr: resumed.stderr });
-  const directResumeDocument = JSON.parse(directResume.stdout.toString()) as { kind: string; data: Record<string, unknown> };
+  expect({ exit: directResume.exit, stderr: directResume.stderr }).toEqual({ exit: resumed.command.exit, stderr: resumed.command.stderr });
+  const directResumeDocument = JSON.parse(directResume.stdout.toString()) as { kind: string; data: { run: string; output?: { path: string } } };
   expect(directResumeDocument).toMatchObject({
     kind: "bot.run.result", data: { donor: directRun, complete: true, exit: 0, correlation: "resume", carried: { count: 1 } },
   });
   await expectRetainedRun(home, directResumeDocument);
+}, BOUNDARY_MS);
+
+test("a started nonzero run remains a typed run-result document", async () => {
+  const { root, home, env } = await place(), stage = join(home, "assemblies", "review", "flows", "main", "01-work");
+  await mkdir(stage, { recursive: true });
+  await Promise.all([
+    writeFile(join(home, "assemblies", "review", "ASSEMBLY.md"), "---\nintelligence: default\n---\nReview.\n"),
+    writeFile(join(home, "assemblies", "review", "flows", "main", "FLOW.md"), "---\ndescription: main\n---\n"),
+    writeFile(join(stage, "STAGE.md"), "---\n---\nWrite.\n"),
+    writeFile(join(stage, "gate"), "#!/bin/sh\nexit 1\n"),
+    writeFile(join(root, "script.json"), JSON.stringify([
+      [{ type: "toolCall", id: "write", name: "write", arguments: { path: "$OUTPUT", content: "answer" } }], "done",
+    ])),
+  ]);
+  await chmod(join(stage, "gate"), 0o755);
+  const reading = await runStartDocument(home, "review/main", "request", { script: "script.json" }, root, env);
+  expect(reading.command.exit).not.toBe(0);
+  const document = documentOf(reading);
+  expect(document).toMatchObject({ kind: "bot.run.result", data: { complete: true, exit: reading.command.exit } });
+  expect(document.data.cause).not.toBe("success");
 }, BOUNDARY_MS);
 
 test("run start preserves the private-home refusal", async () => {

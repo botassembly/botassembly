@@ -6,6 +6,7 @@ import { CredentialSynchronizationError, type ModelRuntime } from "@earendil-wor
 import { afterEach, expect, test } from "vitest";
 import { main, type CliBoundary } from "../src/cli.ts";
 import { CLI_CONTRACTS } from "../src/cli-contract.ts";
+import { decodeDocument, structuredContract } from "../src/command-document.ts";
 import { mapping } from "../src/model.ts";
 import { inertText } from "../src/new-command-result.ts";
 import { nativeModelRuntime } from "./support/native-model-runtime.ts";
@@ -268,6 +269,10 @@ test("an aborted post-mutation synchronization failure preserves the durable cre
   } });
   expect(JSON.parse(await readFile(authPath, "utf8"))).toEqual({ settled: credential });
   expect(result.out + result.err).not.toContain(SECRET);
+  const typed = decodeDocument({ exit: result.code, stdout: Buffer.from(result.out), stderr: Buffer.from(result.err) }, structuredContract("auth.login"));
+  expect(typed).toMatchObject({ kind: "error", exit: 5, error: { error: { cause: "synchronization-failed" } }, command: {
+    stdout: Buffer.from(result.out), stderr: Buffer.from(result.err),
+  } });
 });
 
 test("a real Pi API-key login persists exact bytes with private directory and file modes", async () => {

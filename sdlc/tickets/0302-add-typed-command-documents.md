@@ -84,15 +84,16 @@ This is an additive pre-1.0 library surface. Existing byte functions, byte ident
 
 ## Size decision
 
-- Starting production size: 19908 nonblank lines
+- Starting production size: 20235 nonblank lines
+- Accepted design baseline: 19,908 nonblank lines before the first implementation commit.
 - Production ceiling: 20270 nonblank lines.
 - Simpler approach tried: export one generic JSON value, accept a caller-supplied type parameter, or hand-write document types only in the wrappers.
 - Why insufficient alternatives were rejected: `unknown` is not a typed application surface; a caller-selected generic can lie without evidence; wrapper-only types can drift from the object the command encodes.
 - Production code deleted: none planned. The byte functions and their owners remain the execution boundary.
 - Accepted cost: one shared policy-aware decoder, 21 thin functions, and exact types checked at each owning constructor. Login and logout need separate narrow framing branches because only login admits provider interaction while both authentication mutations admit the exact advisory and their own synchronization result.
 - Expected production change: at most 362 nonblank lines across the decoder, public doors, and document owners. Set the ratchet to the lower measured result after one duplication pass.
-- Measured production change: 327 nonblank lines. `bot/src` is 20,235 lines and the ratchet equals that result, 35 lines below the accepted ceiling.
-- Ending production size: 20235 nonblank lines
+- Measured production change: 11 nonblank lines in review remediation and 338 total from the accepted design baseline. `bot/src` is 20,246 lines and the ratchet equals that result, 24 lines below the accepted ceiling.
+- Ending production size: 20246 nonblank lines
 
 ## Complexity
 
@@ -121,4 +122,6 @@ Re-score if implementation needs a new schema, changes a command result, validat
 - Final design review: accepted at `a6dff7cc8438c6b646622aa1d67a81d31a925bfa`. The independent reviewer confirmed the 21-operation typed surface, three explicit framing policies, exact-byte retention, generic nonzero-document rule, authentication-only synchronization layouts, opaque login interaction prefix, narrow logout advisory bound, and prose-only specification reconciliation. Verdict: `ACCEPT` with no remaining findings.
 - Red-first implementation evidence: after an exact dependency install and package build, `tests/typed-command-documents.test.ts` failed because the built package exported neither `capabilitiesDocument` nor `runStartDocument`. The focused test passed after both read-only and mutation doors existed.
 - Implementation evidence: the registry and decoder tests cover all 21 structured operations, both pending operations, four raw exclusions, all three framing policies, exits 1 through 5, valid nonzero documents, authentication synchronization layouts, opaque login prefixes, the exact logout advisory, bounds, malformed identities, and byte-free invariant messages. Hermetic command tests invoke every typed function once. The actual tarball passes plain Node calls and strict TypeScript 5.9.3 NodeNext and Bundler consumers. Focused reading suites, owner suites, documentation publication, static checks, `make platformcheck`, and the complete `make check` gate pass. The hosted platform legs remain pending.
-- Code review: pending.
+- First code review: rejected at `0096dbd`. The registry oracle did not compare reading name, typed name, result bound, or inclusive/exclusive semantics; run result and run show declarations admitted values their owners never emit; and the proof used synthetic documents where real nonzero mutations and authentication synchronization layouts were required.
+- First review response: the registry oracle now compares every accepted field and rejects one hostile mutation per field and policy. Run result and run show use closed cause and state vocabularies plus correlated completion, output-content, and carried-identity unions, with actual-tarball negative checks. Real wrappers now cover successful mutations, wholly failed and partly published exit-2 assembly updates, and a started nonzero run; the real authentication synchronization fixtures pass their exact dual streams through the production decoder. Focused owner and decoder suites, the actual-tarball NodeNext and Bundler proof, static checks, install qualification, `make platformcheck`, and the complete `make check` gate pass. Updated hosted legs and independent re-review remain pending.
+- Code re-review: pending.
