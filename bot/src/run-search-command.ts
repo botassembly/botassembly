@@ -202,15 +202,13 @@ async function execute(name: string, args: string[], cwd: string, deadline: numb
       if (reason !== undefined) return; reason = why;
       if (child.pid !== undefined && signalGroup(child.pid, "SIGTERM").error !== undefined) reason = "signal";
       killer = clock.setTimeout(() => {
-        let killed = false;
-        if (child.pid !== undefined) {
-          const alive = signalGroup(child.pid, 0);
-          if (alive.error !== undefined) reason = "signal";
-          else if (alive.exists) { killed = true; if (signalGroup(child.pid, "SIGKILL").error !== undefined) reason = "signal"; }
-        }
-        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = !killed; complete();
+        const killed = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL");
+        if (killed.error !== undefined) reason = "signal";
+        child.stdout?.destroy(); child.stderr?.destroy(); terminationReady = !killed.exists;
+        complete(); if (settled) return;
         cleanup = clock.setTimeout(() => {
-          if (child.pid !== undefined && signalGroup(child.pid, 0).exists) { fail(new Error("close-failed")); return; }
+          const survived = child.pid === undefined ? { exists: false } : signalGroup(child.pid, "SIGKILL"); if (survived.error !== undefined) { fail(new Error("signal-failed")); return; }
+          if (survived.exists) { fail(new Error("close-failed")); return; }
           terminationReady = true; complete(); if (!settled) fail(new Error("close-failed"));
         }, RUN_SEARCH_CONTRACT.cleanupMilliseconds);
       }, RUN_SEARCH_CONTRACT.graceMilliseconds);
@@ -334,9 +332,11 @@ function searchFailure(result: { reason?: StopReason; err: Buffer; code: number 
   const stoppedBadly = result.reason !== undefined && result.reason !== "page";
   const exitedBadly = result.reason === undefined && result.code !== 0 && !(result.code === 1 && hitCount === 0);
   if (!stoppedBadly && protocolFailure === undefined && result.err.length === 0 && !exitedBadly) return undefined;
-  const cause = result.reason === "timeout" ? "timeout" : result.reason === "stream" || protocolFailure === "size" ? "result-too-large" : "dependency-failed";
-  return fault("dependency-failed", cause, result.reason === "timeout" ? "Run search timed out." : "The search tool returned an invalid result.", 4);
+  const cause = result.reason === "timeout" ? "timeout" : result.reason === "stream" || protocolFailure === "size" ? "result-too-large" : result.reason === "signal" ? "close-failed" : "dependency-failed", message = result.reason === "timeout" ? "Run search timed out." : result.reason === "signal" ? "The search tool process group could not be signaled." : "The search tool returned an invalid result.";
+  return fault("dependency-failed", cause, message, 4);
 }
+function settlementCause(reason: unknown): ErrorCause { return reason instanceof Error && ["close-failed", "signal-failed"].includes(reason.message) ? "close-failed" : "dependency-failed"; }
+function settlementMessage(reason: unknown): string { return reason instanceof Error && reason.message === "signal-failed" ? "The search tool process group could not be signaled." : "The search tool could not settle safely."; }
 
 export async function runSearchCommand(args: string[], boundary: Boundary, dependencies: RunSearchDependencies = {}): Promise<number> {
   const parsed = parse(args, boundary.cwd, boundary.env), json = args.includes("--json") || args.includes("-j");
@@ -382,7 +382,7 @@ export async function runSearchCommand(args: string[], boundary: Boundary, depen
     : ["--null", "-a", "-H", "-n", "-F", "--", parsed.query, ...selected];
   let result;
   try { result = await execute(tool.name, invocation, runs, deadline, RUN_SEARCH_CONTRACT.streamBytes, boundary.env, boundary.clock, spawnChild, signalGroup, boundary.signal, consume); }
-  catch (reason) { const cause = reason instanceof Error && reason.message === "close-failed" ? "close-failed" : "dependency-failed"; return emit(boundary, newCommandFailure("run.search", fault("dependency-failed", cause, "The search tool could not settle safely.", 4), parsed.json), parsed.json); }
+  catch (reason) { return emit(boundary, newCommandFailure("run.search", fault("dependency-failed", settlementCause(reason), settlementMessage(reason), 4), parsed.json), parsed.json); }
   if (pending.length > 0 && result.reason !== "page") protocolFailure = "protocol";
   const failed = searchFailure(result, protocolFailure, hits.length);
   if (failed !== undefined) return emit(boundary, newCommandFailure("run.search", failed, parsed.json), parsed.json);

@@ -85,11 +85,11 @@ test("uses exact minimal probe and search invocations and accepts natural/no-mat
 test("kills a surviving process group after direct child close and descendant-held pipes", async () => {
   let alive = true;
   const run = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, (signal) => {
-    if (signal === "SIGKILL") alive = false;
+    if (signal === "SIGKILL" && alive) { alive = false; return { exists: true }; }
     return { exists: alive };
   });
   await started(run); run.clock.advance(250); await flush();
-  expect(run.signals).toEqual(["SIGTERM", 0, "SIGKILL"]);
+  expect(run.signals).toEqual(["SIGTERM", "SIGKILL"]);
   run.clock.advance(1_000); expect(await run.promise).toBe(4);
   expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
 });
@@ -100,12 +100,12 @@ test("disposes each descendant-held pipe for in-group and escaped descendants", 
     const run = await harness((child, _clock, abort) => {
       abort.abort(); if (held === "stdout") child.stderr.end(); else child.stdout.end(); child.directClose(null, "SIGTERM");
     }, (signal) => {
-      if (signal === "SIGKILL") alive = false;
+      if (signal === "SIGKILL" && alive) { alive = false; return { exists: true }; }
       return { exists: alive };
     });
-    await started(run); run.clock.advance(250); if (!escaped) run.clock.advance(1_000);
+    await started(run); run.clock.advance(250); await flush(); if (!escaped) run.clock.advance(1_000);
     expect(await result(run.promise, `${held}/${String(escaped)}`)).toBe(4);
-    expect(run.signals.slice(0, escaped ? 2 : 3)).toEqual(escaped ? ["SIGTERM", 0] : ["SIGTERM", 0, "SIGKILL"]);
+    expect(run.signals).toEqual(escaped ? ["SIGTERM", "SIGKILL"] : ["SIGTERM", "SIGKILL", "SIGKILL"]);
   }
 });
 
@@ -114,13 +114,13 @@ test("maps timeout, page stop, stream error, signal error, and cleanup timeout e
   expect(await result(timeout.promise, "timeout")).toBe(4); expect(JSON.parse(Buffer.concat(timeout.stderr).toString())).toMatchObject({ error: { cause: "close-failed" } });
 
   const page = await harness((child) => { child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.directClose(null, "SIGTERM"); });
-  await started(page); page.clock.advance(250); expect(await result(page.promise, "page")).toBe(0); expect(page.signals).toEqual(["SIGTERM", 0]);
+  await started(page); page.clock.advance(250); expect(await result(page.promise, "page")).toBe(0); expect(page.signals).toEqual(["SIGTERM", "SIGKILL"]);
 
   const pipe = await harness((child) => { child.stdout.emit("error", new Error("pipe")); child.directClose(null, "SIGTERM"); });
   await started(pipe); pipe.clock.advance(250); expect(await result(pipe.promise, "pipe")).toBe(4); expect(JSON.parse(Buffer.concat(pipe.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
 
   const signal = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, (value) => value === "SIGTERM" ? { exists: true, error: new Error("EPERM") } : { exists: false });
-  await started(signal); signal.clock.advance(250); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "dependency-failed" } });
+  await started(signal); signal.clock.advance(250); expect(await result(signal.promise, "signal")).toBe(4); expect(JSON.parse(Buffer.concat(signal.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled." } });
 
   const stuck = await harness((child, _clock, abort) => { abort.abort(); child.directClose(null, "SIGTERM"); }, () => ({ exists: true }));
   await started(stuck); stuck.clock.advance(1_250); expect(await result(stuck.promise, "stuck")).toBe(4); expect(JSON.parse(Buffer.concat(stuck.stderr).toString())).toMatchObject({ error: { cause: "close-failed" } });
@@ -142,7 +142,38 @@ test("ignores termination-time stream bytes after page stop while settling direc
     child.stderr.write("termination diagnostic after page stop\n"); child.directClose(null, "SIGTERM");
   });
   await started(run); run.clock.advance(250);
-  expect(await result(run.promise, "page/direct close")).toBe(0); expect(run.signals).toEqual(["SIGTERM", 0]);
+  expect(await result(run.promise, "page/direct close")).toBe(0); expect(run.signals).toEqual(["SIGTERM", "SIGKILL"]);
+});
+
+test("settles a page stop without a signal-zero process-group probe", async () => {
+  let kills = 0;
+  const run = await harness((child) => {
+    child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.directClose(null, "SIGTERM");
+  }, (signal) => {
+    if (signal === 0) return { exists: true, error: new Error("Darwin signal-zero failure") };
+    if (signal === "SIGKILL") return { exists: ++kills === 1 };
+    return { exists: true };
+  });
+  await started(run); run.clock.advance(250); await flush(); run.clock.advance(1_000);
+  expect(await result(run.promise, "page/kill settlement")).toBe(0);
+  expect(run.signals).toEqual(["SIGTERM", "SIGKILL", "SIGKILL"]);
+});
+
+test("reports process-group kill errors during grace and cleanup", async () => {
+  for (const failedAt of [1, 2]) {
+    let kills = 0;
+    const run = await harness((child) => {
+      child.stdout.write(rg()); child.stdout.write(rg("one/record.jsonl", 2)); child.directClose(null, "SIGTERM");
+    }, (signal) => {
+      if (signal !== "SIGKILL") return { exists: true };
+      kills += 1; if (kills === failedAt) return { exists: true, error: new Error("signal failure") };
+      return { exists: failedAt === 2 };
+    });
+    await started(run); run.clock.advance(250); await flush(); run.clock.advance(1_000);
+    expect(await result(run.promise, `signal failure ${String(failedAt)}`)).toBe(4);
+    expect(JSON.parse(Buffer.concat(run.stderr).toString())).toMatchObject({ error: { cause: "close-failed", message: "The search tool process group could not be signaled." } });
+    expect(run.signals).toEqual(["SIGTERM", "SIGKILL", "SIGKILL"]);
+  }
 });
 
 test("maps synchronous spawn failure without falling through to search", async () => {
@@ -171,7 +202,7 @@ test("stops a version probe at 4,096 bytes and carries abort into probing", asyn
   const held = await home(), clock = new FakeClock(), abort = new AbortController(), signals: Array<NodeJS.Signals | 0> = [], stderr: Buffer[] = [];
   const spawnChild = (() => { const child = new FakeChild(); queueMicrotask(() => { child.stdout.write(Buffer.alloc(4_097, 120)); child.directClose(null, "SIGTERM"); }); return child as unknown as ChildProcess; }) as unknown as typeof spawn;
   const promise = runSearchCommand(["--json", "--home", held, "--", "needle"], { cwd: held, env: { PATH: "/tools" }, stdout: () => undefined, stderr: (bytes) => { stderr.push(Buffer.from(bytes)); }, signal: abort.signal, clock }, { spawn: spawnChild, signalGroup: (_pid, signal) => { signals.push(signal); return { exists: false }; } });
-  while (signals.length === 0) await flush(); clock.advance(250); expect(await promise).toBe(4); expect(signals).toEqual(["SIGTERM", 0]);
+  while (signals.length === 0) await flush(); clock.advance(250); expect(await promise).toBe(4); expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
   expect(JSON.parse(Buffer.concat(stderr).toString())).toMatchObject({ error: { cause: "result-too-large" } });
 
   const pre = new AbortController(); pre.abort(); const aborted: Array<NodeJS.Signals | 0> = [];
