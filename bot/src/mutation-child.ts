@@ -48,7 +48,7 @@ export function runMutationChild(
     const stdout: Buffer[] = [], stderr: Buffer[] = [];
     let exit: Ending | undefined, close: Ending | undefined;
     let stdoutEof = false, stdoutClosed = false, stderrEof = false, stderrClosed = false;
-    let stdinFinished = false, stdinClosed = false, settled = false, stopping = false, unsignalable = false;
+    let stdinFinished = false, stdinClosed = false, settled = false, stopping = false, unsignalable = false, spawned = false;
     let failure: Error | undefined, escalated = false;
     let grace: TimerHandle | undefined, final: TimerHandle | undefined;
 
@@ -101,9 +101,10 @@ export function runMutationChild(
       stop(undefined);
     };
 
-    child.once("error", (reason) => {
-      if (exit === undefined && close === undefined) { settled = true; clear(); reject(reason); }
-      else stop(reason);
+    child.once("spawn", () => { spawned = true; });
+    child.on("error", (reason) => {
+      if (!spawned && !stopping) { settled = true; clear(); reject(transportError(reason)); }
+      else stop(transportError(reason));
     });
     child.once("exit", (code, signalName) => {
       exit = { code, signal: signalName };
@@ -125,6 +126,8 @@ export function runMutationChild(
     child.stdin.once("finish", () => { stdinFinished = true; inspect(); });
     child.stdin.once("close", () => { stdinClosed = true; inspect(); });
     options.signal?.addEventListener("abort", onAbort, { once: true });
-    child.stdin.end(options.stdin === undefined ? undefined : Buffer.from(options.stdin));
+    if (options.signal?.aborted === true) onAbort();
+    try { child.stdin.end(options.stdin === undefined ? undefined : Buffer.from(options.stdin)); }
+    catch (reason: unknown) { stop(transportError(reason)); }
   });
 }

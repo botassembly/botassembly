@@ -71,7 +71,7 @@ export function runStartReading(home: string, target: string, request: string | 
     ...valued("--timeout", options.timeout), ...slotArgs(options.slots), "--home", home, "--", target,
     ...(request === undefined ? [] : [request])];
   return runMutationChild(args, cwd, env, {
-    ...(options.stdin === undefined ? {} : { stdin: options.stdin }),
+    ...(request !== undefined || options.stdin === undefined ? {} : { stdin: options.stdin }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 }

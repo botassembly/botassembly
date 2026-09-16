@@ -87,6 +87,7 @@ export const CATCH_BUDGET = {
   "src/mutation-child.ts": [
     "Child spawn can throw synchronously before a child exists; the direct-child boundary rejects that exact transport failure.",
     "Direct-child signaling can throw at the operating-system boundary; cleanup distinguishes ESRCH from retained signal failure without signaling a process group.",
+    "Closing piped child input can throw synchronously after spawn; the direct-child boundary retains the transport failure and performs bounded cleanup.",
   ],
   "src/run-search-command.ts": [
     "A prepared result write can throw synchronously at the command boundary; emit converts it to output-error without retrying or changing the prepared bytes.",
