@@ -86,4 +86,4 @@ Exclude writing the table. Exclude paging: the document is bounded and refuses p
 ## Review
 
 - Origin: requirement A1 and proposed ticket 8 in the 2026-09-14 admin surface note, and the issue filed 2026-09-14.
-- Design review: pending.
+- Design review: accepted after the draft corrected its refusal causes, made the missing-file case reachable, and grounded the exit code in the specification.

@@ -80,4 +80,5 @@ Bot copies Pi's agent-directory rule, caught only by the drift test. Existence i
 ## Review
 
 - Origin: requirement A2 and proposed ticket 7 in the 2026-09-14 admin surface note; plan item 27.
-- Design review: rejected once for an insufficient bound, an unreachable bound proof, an unrequired credential path, a misstated Pi rule, and a stale baseline. Revised.
+- Design review: accepted on the third round after the byte bound moved to 65,536, the proof became computable without creating an overlong path, the unrequired credential path left scope, Pi's rule was corrected, and the source citations and baseline were refreshed.
+- Code review: rejected the first implementation because its copied Pi directory rule did not normalize `file://` URLs. The implementation added the missing normalization and a direct comparison with the pinned Pi behavior. The same reviewer accepted the revision.

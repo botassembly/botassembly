@@ -10,7 +10,7 @@ The [trusted execution and completion decision](decisions/2026-09-13-trusted-exe
 
 ## Work sequence
 
-Every selected implementation ticket is complete, and the release rule now applies. Tickets 0270 and 0272 through 0285 completed the fifteen outcomes this plan selected. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair, and Ian pulled the documentation review forward the same day and widened it into a full rewrite for first-time readers. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count was a forecast, not a quota. Shape one reviewed ready ticket when a new outcome is selected. Keep no draft or calendar-hold queue.
+Selected implementation remains in items 23, 24, and 29, followed by the typed layer recorded in the admin-surface requirements note. The release rule does not apply yet. Tickets 0270 and 0272 through 0285 completed the fifteen outcomes this plan first selected. Three independent reviews on 2026-09-14 (recent work, specification, documentation site; reports in `notes/2026-09-14-review-*.md`) inserted two repair outcomes ahead of the planned pair, and Ian pulled the documentation review forward the same day and widened it into a full rewrite for first-time readers. The [sequence decision](decisions/2026-09-13-evidence-based-completion-sequence.md) consolidated overlapping qualification after independent review. The count was a forecast, not a quota. Shape one reviewed ready ticket when a new outcome is selected. Keep no draft or calendar-hold queue.
 
 1. **Completed in ticket 0270:** commands that need no model load no Pi model runtime.
 2. **Completed in ticket 0272:** one pinned repository scanner covers the working directory and available Git history in local and hosted checks; the custom production machinery is deleted.
@@ -38,7 +38,7 @@ Every selected implementation ticket is complete, and the release rule now appli
 24. **Planned:** declare `types` and the compatibility rule for every export path in `bot/package.json`.
 25. **Completed in ticket 0293:** pin the specification's operation inventory sentence to `CLI_CONTRACTS` with a test that checks both directions, and add the missing `auth.import`.
 26. **Completed in ticket 0294:** report the assembly hash in `bot assembly check` and as a field of `bot assembly list`.
-27. **Planned:** report the configuration file, runs directory, cache directory, and authentication file paths in `bot home show`.
+27. **Completed in ticket 0298:** report the resolved configuration, runs, assemblies, installation, cache, and Pi authentication paths with their point-in-time existence in `bot home show`.
 28. **Completed in ticket 0297:** `bot intelligence list` reports the home's intelligence table.
 29. **Planned:** add `bot run search` over a home's session files, spawning ripgrep or grep.
 30. **Completed in ticket 0296:** `bot run resume` inherits the donor's recorded command-rung intelligence.

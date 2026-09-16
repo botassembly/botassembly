@@ -4,11 +4,7 @@ Ian stopped the session for budget. This note says where the sequence from the [
 
 ## Landed on main
 
-Tickets 0287 through 0297 are complete, recorded, and archived. The last three: 0295 exported the remaining read-only readings, 0296 made `bot run resume` inherit the donor's command-rung intelligence, and 0297 added `bot intelligence list`. The operation inventory is 26. The library door compares fifteen read-only operations live; `auth.list` and `model.list` stay pending export because they need the Pi runtime; nine mutating operations stay pending under the child-process ruling.
-
-## Ticket 0298, home paths in `bot home show`
-
-Accepted after three design-review rounds and committed as `sdlc/tickets/0298-home-show-paths.md` on branch `ticket/0298` (worktree `worktrees/botassembly-0298`, pushed to origin). Ready to implement: run `npm ci` in `bot` and `docs` and `sh sdlc/scripts/install` there first. Rulings recorded in the ticket: byte bound 65,536; Pi's authentication path reported with a drift test against Pi's dist source; the retired credential file not reported; `assemblies` and `installation.json` reported and declared as beyond requirement A2; no schema bump.
+Tickets 0287 through 0298 are complete, recorded, and archived. Ticket 0298 added six resolved home paths and their point-in-time existence to `bot home show` without loading Pi or reaching the network. The operation inventory is 26. The library door compares fifteen read-only operations live; `auth.list` and `model.list` stay pending export because they need the Pi runtime; nine mutating operations stay pending under the child-process ruling.
 
 ## Ticket 0299, `bot run search`
 
