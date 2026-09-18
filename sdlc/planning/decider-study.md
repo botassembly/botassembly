@@ -69,7 +69,14 @@ Mechanically, a verdict on finished work with a send-back is what a gate already
 
 An experiment outside this repository ran a classifier gate over 120 accepted stage outputs from sealed run records, with no change to Bot. Where the gate saw a real input document it caught every request that code had swapped for another run's, and it wrongly rejected 3.3% of accepted work at a pass mark of 0.70. Where the stage input was only a ticket path it caught about a quarter of swapped requests. Verdicts inside the unsure band flipped between runs 5% to 14% of the time, and outside it 0.5% to 2%.
 
-Two more experiments are running: whether a classifier reproduces recorded `chose` and loop decisions and how much context it needs, and what the agent's claims and the runtime's receipts each add to a done verdict. Their numbers belong here when they land.
+Two more experiments ran the same day over all 2,039 readable run records on one machine.
+
+- No `chose`, `loop_done`, `subflow_call`, or `fanout_done` event exists in those records. The flows that run here are straight lines of stages. A decider for a choose or a loop has no history to be tuned against. A flow with a real `CHOOSE` has to run a few dozen times before anything can be measured.
+- The stand-in was the design-review verdict, 470 cases with 23% refused. Given the design document, the classifier approved all 150 sampled cases at 0.98 confidence. The reviewers who refused had run the tests and read the code, and none of that is in the document. A decider needs a different kind of input, and a longer document does not supply it. High confidence was wrong, so confidence alone cannot decide when to decline.
+- Success criteria written as outcomes measured poorly across four stage kinds. The classifier rejected 18% to 46% of accepted work and caught 20% to 33% of attempts a real check had refused. The criteria were written in one pass and never tuned, and wording moves this model a lot.
+- Adding the agent's checklist evidence halved false rejects and cut every catch rate. The classifier reads the agent's account and believes it.
+- Showing the classifier the other checks' results turned it into a relay. Requests swapped in from another run then passed every time. A decider must never be shown those results.
+- `record.jsonl` keeps no commands run and no files written. The receipts it does keep, turn counts, timings, and tool tallies, moved the numbers by about a point. The Pi session files in a run folder may hold the commands. They were not read.
 
 ## 9. Open for ruling
 
@@ -78,10 +85,16 @@ Two more experiments are running: whether a classifier reproduces recorded `chos
 3. The declined exit code, and whether exit 75 keeps its gate meaning of an external blocker.
 4. How a program gets a credential. The runtime scrubs provider credentials from everything it starts, and no built-in path hands a named secret to a gate or a decider.
 5. Whether success criteria become a heading, and whether gates get a slot with the stage's own account.
-6. Whether the agent's manifest is worth a new tool, once the measurement is in.
+6. Whether the agent's manifest is worth a new tool. The measurement says no for now: the agent's claims made the classifier agreeable.
+7. Whether the decider becomes a named setting resolved through config rows, in the way `intelligence` is, with a program as the escape hatch and the agent as the fallback. Ian expects several decider models from several vendors, local ones among them. A pass mark tuned for one model does not carry to another, so the mark would live with the config row and the assembly would stay portable.
 
 ## 10. Recommendation
 
-Build `decide` for `CHOOSE` and `LOOP` first. It is one new name, it serves a script, structured output, and a classifier alike, and it leaves the graph static. Cost: specification text for two elements, a `by` field on two record events, one new refusal or fault cause, conformance cases, and the reversal of a settled ruling that authors may have read.
+The measurements change the order. The design in section 4 still stands. It is cheap, it forces no model on anyone, and it leaves the graph static. The evidence does not yet show that today's classifier can judge whether work is done.
 
-Hold the success-criteria heading and the gate slot until the running measurement says what a gate needs to see. Leave `DESCEND` and `FANOUT` alone. Their decisions are writing.
+1. Run a classifier gate in shadow mode on real flows with no change to Bot. It records and never blocks. Start with the one question that measured well: whether the output answers the request it was given.
+2. Give gates and deciders real receipts: commands run with exit codes, and files written. First check whether the Pi session files already hold them. This serves script gates and human readers with or without a classifier.
+3. Build `decide` for `CHOOSE` and `LOOP`. Cost: specification text for two elements, a field on two record events saying who answered, one new fault cause, conformance cases, and the reversal of a settled ruling that authors may have read. It has no history to tune against, so a flow with a real `CHOOSE` should exist first.
+4. Hold the success-criteria heading until shadow numbers on real flows earn it. Never hand a decider the other checks' results.
+
+Leave `DESCEND` and `FANOUT` alone. Their decisions are writing.
