@@ -12,21 +12,40 @@ A question file is a complete declaration of a judge. Its first key names the ve
 
 `--details` gives one result object across all eight verbs, so the runtime needs no wrapper around the output either. That removes most of what `sdlc/planning/decider-study.md` was searching for. It leaves the six items below.
 
-## 1. Pass `--record` into the run directory, always
+## 1. Name the judged evidence inside the run directory, always
 
-A single-verb details row carries `meta.question_sha256` and no request digest, so a `decide` row alone cannot prove what the judge was shown. The recording can. `--record DIR` writes the exact request under a digest that names the entry.
+Two halves, and the first already works. `specification/elements/record.md:393` retains a gate's exit code, its executable file, its hash, and its exact evidence capture, and `check.capture` holds the bounded output. A gate that prints a ThinkThen `--details` row therefore puts that row in the sealed record with no new mechanism anywhere.
 
-The runtime owns this and the gate author does not. A gate that forgets the flag writes a run record that cannot be audited, and it fails silently.
+The evidence behind the row has no home. A single-verb details row carries `meta.question_sha256` and no request digest, so a `decide` row alone cannot name what the judge was shown. The recording can, and `--record DIR` writes the exact request under a digest that names the entry.
 
-The runtime should place the recording under the stage attempt directory and name it in a record event, so a reader holding a sealed record reaches the evidence with no convention to know. Item 1 of `repos/thinkthen/sdlc/issues/2026-09-21-what-a-procedure-runtime-asks-of-a-judgment.md` asks ThinkThen to put the digest in `meta` directly. That makes this cheaper and does not remove it, because the digest names an entry and the folder still has to exist.
+The runtime owns this and the gate author does not, because a gate that forgets the flag writes a run record that cannot be audited and fails silently. The runtime should place a recording under the stage attempt directory and name it in a record event, so a reader holding a sealed record reaches the evidence with no convention to know.
+
+**This is a change to the record layout, and a published record layout is a compatibility surface.** It should land before the layout is fixed, and it should use `--record` and never the shared XDG cache, because a cache is prunable at its size limit and a sealed record is not. A pruned entry leaves a digest that points at nothing, and that breaks the promise that a finished run can be re-read.
+
+Item 1 of `repos/thinkthen/sdlc/issues/2026-09-21-what-a-procedure-runtime-asks-of-a-judgment.md` asks ThinkThen to put the digest in `meta` directly. That makes this cheaper and does not remove it, because the digest names an entry and the folder still has to exist.
 
 ## 2. Own the budget
 
 ThinkThen holds a request cap and declined a ledger across runs, on the reasoning that the budget belongs to whatever sequences the work. That is this repository. A `LOOP` and a `FANOUT` spend across processes and across runs, and a flow that runs a hundred times has no ceiling today.
 
-`specification/` should carry a bounded cost on a flow or a run, refused before the request or the stage attempt that would cross it. The runtime already keeps the sealed record, so it already holds the row count and the token count a budget needs.
+`specification/` should carry a bounded cost on a flow or a run. The runtime already keeps the sealed record, so it already holds the row count and the token count a budget needs.
 
-This is the one item here that gates a feature rather than a convenience. Without it, handing a loop to a judgment is not safe to run.
+### What to size it against, measured 2026-09-21
+
+Measured from this machine's own home at `~/.local/share/bot/runs`, which holds 2,040 runs from 2026-08-06 to 2026-09-16.
+
+| Measure | Value |
+| --- | --- |
+| Runs a day | 206 at the peak, about 49 across the whole span |
+| Stage attempts in one run | median 5, p90 7, max 9, mean 4.0 (120-run sample) |
+| Stage attempts that are a retry | 18.8% (208 attempts in 60 runs) |
+| Checks in one stage attempt | 1 to 4, mean 3.33 (193 attempts) |
+
+One run makes 4 to 13 judgments if every check became one, and a peak day makes 800 to 2,700. At the price ThinkThen measured, about 1.2 cents per thousand judgments, that is 1 to 3 cents a day.
+
+**A ceiling on requests alone is not enough.** Measured stage output sizes, which are the evidence a gate would judge, run from 40 bytes to 1,433,440 bytes across 136 outputs: median 2,750 bytes, p90 16,253, mean 54,365. The spread is about 36,000 to 1, and one request at the top of it is roughly 350,000 tokens, five times over the vendor's 64,000 limit. A count-based ceiling lets that one call through.
+
+So the budget needs two parts: a running count for the loop and a `FANOUT`, and an input-size guard that refuses before the send. This is the one item here that gates a feature rather than a convenience. Without it, handing a loop to a judgment is not safe to run.
 
 ## 3. Ship a band in every gate example
 
@@ -50,6 +69,8 @@ The `thruwire/foreman` checkout at `~/foss/foreman` answers it by construction. 
 
 The sealed record in this repository holds exactly what that judge lacks: check results, gate verdicts, exit codes, and output hashes. A manifest built from this repository's own record is strictly better evidence than Foreman's, and that is the whole argument for it.
 
+The size measurement in item 2 says the manifest must also select and bound. Stage outputs run from 40 bytes to 1.4 MB, so a manifest that carries the raw output would blow the request limit on the long ones and waste money on all of them. Foreman bounds its diff at 20,000 characters and each output tail at 12,000 for the same reason. A receipt list plus bounded excerpts is the shape.
+
 Three mechanisms from Foreman are worth taking with it. `src/foreman/policy.py:21` decides the action in a deterministic function and the judge never acts. One steer per worker, a grace window, and a verification flag that cannot re-trigger stop the policy oscillating on noisy probabilities. Three consecutive model errors continue the work with a recorded reason, and the fourth escalates.
 
 Foreman's overall shape is not worth taking. It supervises one un-authored loop and lets a policy decide when to stop. This repository's claim is that the author owns the graph, and a supervisor that adds or skips a stage would contradict it.
@@ -62,7 +83,7 @@ A gate that records and never blocks produces that history at a cost of cents. E
 
 ## Order
 
-Record the shadow history. Ship the band in the examples. Own the budget. Settle the manifest. The answerer setting is last, and it needs a ruling on where a question file lives in a stage folder and how the answers reach the stage after.
+Name the judged evidence inside the run directory, because the record layout is a compatibility surface and the default cache can prune what a digest points at. Record the shadow history. Ship the band in the examples. Own the budget. Settle the manifest. The answerer setting is last, and it needs a ruling on where a question file lives in a stage folder and how the answers reach the stage after.
 
 ## What Ian can overturn
 
