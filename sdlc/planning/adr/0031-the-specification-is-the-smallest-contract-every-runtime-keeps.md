@@ -20,4 +20,4 @@ ThinkThen is its own product with its own command line. It is a core primitive t
 - Runtime configuration stays out of the conformance corpus. A second runtime would not have to match `bot`'s configuration.
 - The open judgment issues are judged against this rule. The cost ceiling in item 2 of `sdlc/issues/2026-09-21-what-botassembly-owes-the-judgment.md` leaves the specification. Whether an answerer for `CHOOSE.md` and `LOOP.md`, or a stage with no agent, belongs in the specification must pass the same test.
 - The 2026-09-14 ruling in `sdlc/planning/plan.md` stands. `bot` has no whole-run spending ceiling today. A later budget in `bot` would arrive as runtime configuration.
-- Botassembly the platform names more than this repository: the specification and runtime, SDLC, Factory, Optimizer, and Bench. Those live in separate repositories for now. A monorepo is not ruled out.
+- Botassembly the platform names more than this repository: the specification and runtime, SDLC, the work queue, Optimizer, and Bench. Those live in separate repositories for now. A monorepo is not ruled out.

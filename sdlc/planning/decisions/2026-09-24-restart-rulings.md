@@ -20,8 +20,8 @@ Bounded new experiments must replace them before any ruling rests on their numbe
 
 ## Context for this repository
 
-- Factory keeps running software work through SDLC. What Factory runs next is undecided.
-- The first domain agent is undecided. It will be variant classification, trial curation, or pathology report extraction.
+- The work queue keeps running software work through SDLC. What it runs next is undecided.
+- The first domain agent is undecided.
 
 ## What Ian can overturn
 
