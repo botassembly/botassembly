@@ -4,7 +4,7 @@ Status: Open
 
 Written 2026-09-21 at `06676fa`. No ThinkThen work is blocked on this repository, and ThinkThen has asked for nothing here. This page records the six things the runtime and the authoring side own, so they are not mistaken for ThinkThen gaps when Botassembly restarts. It extends `2026-09-18-no-outside-decider-for-done-loop-or-choose.md` and `2026-09-20-thinkthen-as-the-judgment-inside-a-stage.md`.
 
-The findings behind these six, and the two that measured badly, are in `notes/jev/botassembly.md` and `notes/jev/decider-models-report.md` in the workspace.
+The findings behind these six, and the two that measured badly, are in `sdlc/planning/jev-in-botassembly.md` and `sdlc/planning/decider-models-report.md`.
 
 ## What ThinkThen already settles here
 
@@ -63,7 +63,7 @@ Item 3 of the ThinkThen issue also stands here. An unresolved answer inside a qu
 
 ## 5. Build the manifest from runtime receipts, and not from the agent's account
 
-The experiment that showed the judge the agent's own claims turned the judge agreeable, and the report recommended the runtime build the manifest. `notes/ideas/jev-decisions-in-botassembly.md` still records Ian saying the agent builds it. That is unsettled and it is the largest open question on this page.
+The experiment that showed the judge the agent's own claims turned the judge agreeable, and the report recommended the runtime build the manifest. The retired idea note, now at `~/workspace/archive/notes-jev-2026-09-24/notes/ideas/jev-decisions-in-botassembly.md`, still records Ian saying the agent builds it. That is unsettled and it is the largest open question on this page.
 
 The `thruwire/foreman` checkout at `~/foss/foreman` answers it by construction. `src/foreman/observation.py` builds the evidence from git status, a bounded diff, changed file names, process exit codes, and the event history, and it never reads the worker's report of itself. Its own weakness carries the other half of the lesson. `src/foreman/observation.py:172` hardcodes `test_results` to an empty list, so its judge never sees a structured test result.
 
