@@ -37,3 +37,14 @@ Ian then described a smaller shape, and he calls the choice between the two a bi
 ## Status
 
 Open. Botassembly work is paused while Thinkthen ships. `sdlc/planning/decider-study.md` holds the earlier design options, and nothing there is ruled. The ideal state for Botassembly carries these as gaps as of 2026-09-20.
+
+## Rulings of 2026-09-24
+
+Ian ruled on 2026-09-24. `sdlc/planning/adr/0031-the-specification-is-the-smallest-contract-every-runtime-keeps.md` and `sdlc/planning/decisions/2026-09-24-restart-rulings.md` record the rulings.
+
+- ThinkThen is its own product and a core primitive. It is never a Botassembly runtime or a part of Botassembly. This issue's title reads as ThinkThen judging inside a stage through an ordinary command. It does not make ThinkThen part of the run.
+- Every runtime supports everything in the specification. The specification stays as small as it can be. Use two's first shape, a stage with no agent, would add a specification element. It must show that every runtime needs it. The end-of-stage shape, `annotate` plus a gate, needs no specification change. Question 1 above is now judged against that rule.
+- Question 4 is judged the same way. Handing exit, loop, or branch to a judgment enters the specification only if every runtime must support it.
+- Question 6 rests on provisional evidence. The trial that found a judge agreeable predates what Ian now knows about ThinkThen and Jev. Bounded new experiments replace it. ThinkThen's new `recognize` and `relate` functions are a candidate building block for them.
+
+Still open: questions 1 through 6, each judged against ADR 0031.

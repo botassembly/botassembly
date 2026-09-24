@@ -15,3 +15,13 @@ Constraints any answer has to respect. Bot calls no provider except through Pi (
 Smallest outcome that closes it: a ruling on three questions, and the specification text that follows from it. First, whether a stage may declare success criteria apart from its checklist, and where they live. Second, what the manifest is and who writes it: the agent's receipts, the runtime's own account from the record, or both handed to the decider under separate labels. Third, whether `CHOOSE.md` and a loop's tail may name a program as the decider, with the agent asked only when the program declines. Descend is a weaker fit. How an input divides is writing, and a decider does not write. Only the yes/no of whether to split at all is a decider's question.
 
 Review trigger: the outside experiments on recorded loop and choose decisions report their agreement numbers, or 2026-10-18.
+
+## Rulings of 2026-09-24
+
+Ian ruled on 2026-09-24. `sdlc/planning/adr/0031-the-specification-is-the-smallest-contract-every-runtime-keeps.md` and `sdlc/planning/decisions/2026-09-24-restart-rulings.md` record the rulings.
+
+- The specification stays as small as it can be. Every runtime supports all of it, always. Each of the three questions above is judged against that rule. An answerer for `CHOOSE.md` or a loop's tail enters the specification only if every runtime must support it. Otherwise it is `bot` configuration or a hook.
+- A decider shaped as a gate needs no specification change. A gate is already a program that answers by exit code. ThinkThen is a separate primitive, and an assembly reaches it through such a command.
+- The Jev evidence above is provisional. It predates what Ian now knows about ThinkThen and Jev. Bounded new experiments replace it before a ruling rests on its numbers.
+
+Still open: all three questions. The review trigger stands.

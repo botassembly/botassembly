@@ -90,3 +90,17 @@ Name the judged evidence inside the run directory, because the record layout is 
 Item 5, in whole or in part. He described the agent building the manifest and this page argues the runtime should. Items 1, 3, and 6 are mechanical. Item 2 commits this repository to owning a run's cost, and he may want that decision at the scheduling layer instead, because that layer already owns the attempt and its settlement.
 
 Review trigger: the ThinkThen version one surface freezes, or 2026-10-21.
+
+## Rulings of 2026-09-24
+
+Ian ruled on 2026-09-24. `sdlc/planning/adr/0031-the-specification-is-the-smallest-contract-every-runtime-keeps.md` and `sdlc/planning/decisions/2026-09-24-restart-rulings.md` record the rulings.
+
+- **Item 1 lands before `0.1.0` ships.** Any run-record change lands before the release. This item is ruled and waits for a ticket.
+- **Item 2 leaves the specification.** Cost limits are a runtime concern. Any budget arrives as `bot` configuration or a hook. The 2026-09-14 ruling in `sdlc/planning/plan.md` against a whole-run ceiling in `bot` stands. Whether a judgment loop needs a count and an input-size guard in `bot` configuration is still open. So is whether the scheduling layer owns it instead.
+- **Item 4 is judged against ADR 0031.** A third `CHOOSE.md` outcome is a specification change. It enters only if every runtime must support it.
+- **Item 5 rests on provisional evidence.** The b07 finding that the agent's claims made the judge agreeable predates what Ian now knows about ThinkThen and Jev. Bounded new experiments replace it before a ruling.
+- Items 3 and 6 need no specification change. They stay open as documentation and example work.
+
+### Ticket 0303 waits
+
+Ticket 0303 sits on `ticket/0303`, with its design accepted at `66fac0d`. Its starting facts are stale. It says the issues folder held no work. This folder has held open issues since 2026-09-18. Its scope forbids a record contract change, and item 1 is one. Editing the ticket would void its accepted design review, so the ticket text stays unchanged. At restart the queue owner lands item 1 through its own ticket. Then 0303 gets fresh starting facts, a dependency on that ticket, and a new design review.

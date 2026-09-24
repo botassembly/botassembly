@@ -72,3 +72,5 @@ Ruled by Ian, 2026-09-14: a whole-run spending ceiling is not a Bot feature. The
 ## Release rule
 
 Create no release ticket until every selected implementation ticket has a completion record, the issue and draft directories carry no work, local and hosted checks pass, and main matches origin. The one release ticket then qualifies an exact clean-clone commit on Linux, macOS, and WSL, exercises one generic live run, checks dependencies and licenses, and retains only secret-free summaries. Publishing `v0.1.0` still requires Ian's final authorization.
+
+Ruled by Ian, 2026-09-24: any run-record change lands before `0.1.0` ships. The judged-evidence recording in item 1 of the 2026-09-21 judgment issue is one, so ticket 0303 waits for it. [The restart rulings](decisions/2026-09-24-restart-rulings.md) and [ADR 0031](adr/0031-the-specification-is-the-smallest-contract-every-runtime-keeps.md) hold the rest of that day's rulings.

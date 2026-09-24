@@ -1,5 +1,7 @@
 # Who answers a sentinel's question
 
+Ian ruled on 2026-09-24 that the conclusions of the three 2026-09-18 experiments in section 8 are provisional. Bounded new experiments replace them. See `decisions/2026-09-24-restart-rulings.md`.
+
 **A study, not a decision.** Written 2026-09-18 at Ian's direction, after he reopened "no other chooser". It answers the issue `sdlc/issues/2026-09-18-no-outside-decider-for-done-loop-or-choose.md`. Nothing here is ruled. No ticket exists for any of it. The recommendation at the end is the driver's and Ian's to overrule.
 
 ## 1. The ask
