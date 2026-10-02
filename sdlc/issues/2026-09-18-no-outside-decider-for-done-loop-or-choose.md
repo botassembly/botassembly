@@ -1,5 +1,7 @@
 # Nothing outside the agent decides done, loop, or choose
 
+Status: Open
+
 Observed 2026-09-18 at commit `f78074e` on the Linux box.
 
 Every decision about moving on belongs to an agent today. `CHOOSE.md` is answered by an agent with the `select` tool, and the specification closes the door on anything else: "There is no other chooser" (`specification/elements/choose.md:58`). The settled vocabulary says the same: "There is no deterministic chooser", ruled with ticket 0022 (`sdlc/planning/vocabulary.md:27-29`). A loop's last stage is asked whether to go again and answers with a control tool (`specification/elements/loop.md:48-65`). A descend is an agent's call too: a stage inside the flow decides how its input divides and calls the flow on the pieces (`specification/elements/descend.md:37-49`). A stage's checklist is marked by the agent that did the work, and the runtime declines to judge the evidence text: "its quality is for the checklist author to demand, not the runtime to judge" (`specification/elements/checklist.md:50-51`). The gate is the one check that "judges the work rather than its form" (`specification/elements/gate.md:8-9`), and a gate sees only `$INPUT` and `$OUTPUT`.

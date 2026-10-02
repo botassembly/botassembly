@@ -1,0 +1,14 @@
+{
+  "recordNaming": "ticket",
+  "statusMappings": {
+    "landed": "complete",
+    "done": "complete"
+  },
+  "adrStatusMappings": {
+    "adopted": "accepted"
+  },
+  "mailroom": {
+    "repo": "sdlc",
+    "name": "botassembly"
+  }
+}

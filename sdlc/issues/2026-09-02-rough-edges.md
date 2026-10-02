@@ -1,5 +1,7 @@
 # BotAssembly gaps, inconsistencies, and rough edges
 
+Status: Open
+
 Moved from Ian's notes vault on 2026-09-24. Written 2026-09-02; nothing was rechecked on the move.
 
 Companion to `botassembly-endorsement.md`. The endorsement says what the framework promises. This note says where the promise and the machine still disagree. Written 2026-09-02 by Jarvis. Each item names what was checked. Nothing here is a ruling. Decisions are Ian's.
@@ -64,7 +66,7 @@ Lever: publish the runtime as an npm package or a single-file release. Keep the 
 
 The endorsement mentions a clinical trial curation pipeline and a software factory. Checked against the workspace ruling of 2026-08-28: public repos must not name private projects. The endorsement lives in notes, so the rule does not bind it yet. If any part of it moves into the botassembly docs or the marketing repo, the examples must be described generically or drawn from the public repos alone.
 
-Lever: when promoting, replace the private examples with the public ones: biodata, biomcp, pangopup.
+Lever: when promoting, replace the private examples with generic public examples.
 
 ## 9. Small inconsistencies found while reading
 
