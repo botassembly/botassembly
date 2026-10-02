@@ -1,5 +1,7 @@
 # The pinned model-catalog library has no provider-targeted refresh
 
+Status: Open
+
 Moved from Ian's notes vault on 2026-09-24. Written 2026-08-23; nothing was rechecked on the move.
 
 2026-08-23. The library bot pins for model catalogs exposes only a collection-wide `Models.refresh()`. There is no way to refresh one provider's catalog, so `bot models --live PROVIDER` contacts every configured dynamic provider even though it prints only the named one's models (repo issue: `botassembly/sdlc/issues/2026-08-21-named-live-models-refresh-all-providers.md`; ticket 0126 pursues a local workaround at bot's own seam).

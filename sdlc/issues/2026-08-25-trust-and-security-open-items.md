@@ -1,5 +1,7 @@
 # Trust and security — the standing note
 
+Status: Open
+
 Moved from Ian's notes vault on 2026-09-24. Written 2026-08-25; nothing was rechecked on the move.
 
 Opened 2026-08-25 because the cold review found the security material scattered: the three-agent review surfaced real findings and none had a home. This gathers the trust model and the open items in one place. Staging note — anything that must survive becomes a ticket.

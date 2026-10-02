@@ -98,7 +98,7 @@ The audit found twelve; the strongest candidates for the principles page:
 4. The record is the product, not a byproduct — designed to be trusted later; evals get built on top because the data was sealed first.
 5. Agnostic all the way down, on purpose — not a sandbox, not an orchestrator; runs inside whatever you already have.
 
-**Audiences:** engineering leaders/CTOs (reviewability, not betting the org on a dying framework — the peer audience and the strongest); ML/platform engineers (context-window discipline, caching, routing, eval-ready records — lead with mechanisms, they will stress-test); regulated-industry teams (proving what happened — speak from GenomOncology experience, never as compliance marketing); indie builders (no lock-in, low ceremony, markdown and shell — the Hacker News audience).
+**Audiences:** engineering leaders/CTOs (reviewability, not betting the org on a dying framework — the peer audience and the strongest); ML/platform engineers (context-window discipline, caching, routing, eval-ready records — lead with mechanisms, they will stress-test); regulated-industry teams (proving what happened — speak from experience in a regulated industry, never as compliance marketing); indie builders (no lock-in, low ceremony, markdown and shell — the Hacker News audience).
 
 **Blog article pitches (twelve, in suggested order):**
 1. *The Workflow Is a Folder* — the flagship; everything a DAG file expresses, placement expresses; demonstrable in one `tree` output.

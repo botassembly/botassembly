@@ -1,5 +1,7 @@
 # Scratch keeps filling the disk — third time, and the tickets will not stop it
 
+Status: Open
+
 Moved from Ian's notes vault on 2026-09-24. Written 2026-08-21; nothing was rechecked on the move.
 
 Written 2026-08-21 for the botassembly architecture team. Staging note: nothing here is authoritative until it lands in a ticket.
@@ -14,7 +16,7 @@ This is the **third** hand-deletion. 0043 records the first (2026-08-16, 43G). 0
 
 ## Where the bytes come from
 
-Almost all of it is one thing: biomcp is a Rust project, and its test `tests/test_source_package_boundary.py::test_verified_package_compiles_focused_identity_test_after_extraction` packages the crate, extracts it into a pytest temp directory, and runs a full `cargo test` in there. That builds a complete `target/` tree from scratch inside a throwaway directory — about 4G, including a single 662MB `libbiomcp_cli` rlib.
+Almost all of it is one test in a consuming Rust project. The test `tests/test_source_package_boundary.py::test_verified_package_compiles_focused_identity_test_after_extraction` packages the crate, extracts it into a pytest temp directory, and runs a full `cargo test` in there. That builds a complete `target/` tree from scratch inside a throwaway directory — about 4G, including a single 662MB command-line rlib.
 
 Two multipliers turn 4G into 30G:
 
@@ -45,7 +47,7 @@ Three gaps, roughly in order of how much they matter:
 
 2. **The health floor is too low to be a warning.** 10 GiB on a 915 GiB volume is about 1%. A single bot run can produce 33G. The floor cannot distinguish "getting tight" from "already too late" — today it fired only after the disk was at 100% and had crashed runs. A floor should be at least a few times the largest thing one run can make. Something like 60G would have stopped dispatch with room to work.
 
-3. **The producer is unbounded and unowned.** No ticket in botassembly or biomcp says the crate-compile test must reuse a target directory or bound its temp usage. Pointing that extracted-crate `cargo test` at a shared `CARGO_TARGET_DIR` would cut per-run scratch by most of its size and make the test much faster. The trade-off is that it slightly weakens the isolation the test performs — but the test's claim is that the *packaged crate* compiles standalone, not that the target directory is pristine, so sharing it looks fine. That is biomcp's call, not botassembly's, but botassembly should not assume its consumers are well-behaved.
+3. **The producer is unbounded and unowned.** No ticket in botassembly or the consumer says the crate-compile test must reuse a target directory or bound its temp usage. Pointing that extracted-crate `cargo test` at a shared `CARGO_TARGET_DIR` would cut per-run scratch by most of its size and make the test much faster. The trade-off is that it slightly weakens the isolation the test performs — but the test's claim is that the *packaged crate* compiles standalone, not that the target directory is pristine, so sharing it looks fine. That is the consumer's call, not botassembly's, but botassembly should not assume its consumers are well-behaved.
 
 ## The one-line version
 

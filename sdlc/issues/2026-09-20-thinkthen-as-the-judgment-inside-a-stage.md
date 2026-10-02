@@ -1,5 +1,7 @@
 # Thinkthen as the judgment inside a stage: exit, loop, choose, and structured output
 
+Status: Open
+
 Observed 2026-09-20 at commit `06676fa` on the Linux box. Ian asked for this issue on 2026-09-20. It extends `2026-09-18-no-outside-decider-for-done-loop-or-choose.md`.
 
 Thinkthen is a command-line tool that puts a judgment model in the shell. It reads evidence on standard input, takes a bounded question as arguments, prints a bare answer, and sets an exit code. It never writes text and never acts. Its `annotate` command reads a question file that holds several named questions and adds each answer to the record as a new field.
