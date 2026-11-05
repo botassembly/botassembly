@@ -7,10 +7,6 @@
   "adrStatusMappings": {
     "adopted": "accepted"
   },
-  "mailroom": {
-    "repo": "sdlc",
-    "name": "botassembly"
-  },
   "ticketFolders": {
     "archive": "tickets/archive",
     "drafts": "tickets/drafts"
